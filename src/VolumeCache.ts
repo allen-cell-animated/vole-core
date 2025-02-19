@@ -1,7 +1,7 @@
 import { Chunk, DataType } from "@zarrita/core";
 
 type MaybeCacheEntry = CacheEntry | null;
-type CacheData = ArrayBuffer | Chunk<DataType>;
+export type CacheData = ArrayBuffer | Chunk<DataType>;
 type CacheEntry = {
   /** The data contained in this entry */
   data: CacheData;
