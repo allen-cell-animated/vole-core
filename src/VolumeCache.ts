@@ -1,7 +1,10 @@
+import { Chunk, DataType } from "@zarrita/core";
+
 type MaybeCacheEntry = CacheEntry | null;
+type CacheData = ArrayBuffer | Chunk<DataType>;
 type CacheEntry = {
   /** The data contained in this entry */
-  data: ArrayBuffer;
+  data: CacheData;
   /** The previous entry in the LRU list (more recently used) */
   prev: MaybeCacheEntry;
   /** The next entry in the LRU list (less recently used) */
@@ -9,6 +12,9 @@ type CacheEntry = {
   /** The key which indexes this entry */
   key: string;
 };
+
+const dataSize = (data: CacheData): number =>
+  (data as ArrayBuffer).byteLength ?? (data as Chunk<DataType>).data.byteLength;
 
 /** Default: 250MB. Should be large enough to be useful but safe for most any computer that can run the app */
 const CACHE_MAX_SIZE_DEFAULT = 250_000_000;
@@ -51,7 +57,7 @@ export default class VolumeCache {
    */
   private removeEntryFromStore(entry: CacheEntry): void {
     this.entries.delete(entry.key);
-    this.currentSize -= entry.data.byteLength;
+    this.currentSize -= dataSize(entry.data);
   }
 
   /**
@@ -118,8 +124,9 @@ export default class VolumeCache {
    * Adds a new entry to the cache.
    * @returns {boolean} a boolean indicating whether the insertion succeeded.
    */
-  public insert(key: string, data: ArrayBuffer): boolean {
-    if (data.byteLength > this.maxSize) {
+  public insert(key: string, data: CacheData): boolean {
+    const size = dataSize(data);
+    if (size > this.maxSize) {
       console.error("VolumeCache: attempt to insert a single entry larger than the cache");
       return false;
     }
@@ -136,7 +143,7 @@ export default class VolumeCache {
     const newEntry: CacheEntry = { data, prev: null, next: null, key };
     this.addEntryAsFirst(newEntry);
     this.entries.set(key, newEntry);
-    this.currentSize += data.byteLength;
+    this.currentSize += size;
 
     // Evict until size is within limit
     while (this.currentSize > this.maxSize) {
@@ -155,7 +162,7 @@ export default class VolumeCache {
   }
 
   /** Attempts to get a single entry from the cache. */
-  public get(key: string): ArrayBuffer | undefined {
+  public get(key: string): CacheData | undefined {
     return this.getEntry(key)?.data;
   }
 
