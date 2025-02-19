@@ -1,6 +1,7 @@
 import { Array, ArrayMetadata, Chunk, DataType } from "@zarrita/core";
 import VolumeCache, { CacheData } from "../../VolumeCache";
 import { AbsolutePath, Readable } from "@zarrita/storage";
+import { pathIsToMetadata } from "./utils";
 
 const ZARR_EXTS = [".zarray", ".zgroup", ".zattrs", "zarr.json"];
 
@@ -12,7 +13,7 @@ export default class CachingArray<T extends DataType, Store extends Readable = R
   }
 
   async getChunk(coords: number[], opts?: Parameters<Store["get"]>[1]): Promise<Chunk<T>> {
-    if (!this.cache || ZARR_EXTS.some((s) => this.path.endsWith(s))) {
+    if (!this.cache || pathIsToMetadata(this.path)) {
       return super.getChunk(coords, opts);
     }
 

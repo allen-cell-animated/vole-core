@@ -18,6 +18,9 @@ export function getSourceChannelNames(src: ZarrSource): string[] {
   return Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
 }
 
+const META_FILENAMES = [".zarray", ".zgroup", ".zattrs", "zarr.json"];
+export const pathIsToMetadata = (path: string): boolean => META_FILENAMES.some((s) => path.endsWith(s));
+
 /** Turns `axesTCZYX` into the number of dimensions in the array */
 export const getDimensionCount = ([t, c, z]: TCZYX<number>) => 2 + Number(t > -1) + Number(c > -1) + Number(z > -1);
 
