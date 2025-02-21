@@ -1,7 +1,5 @@
 import { Chunk, DataType } from "@zarrita/core";
 
-export const isChunk = (data: CacheData): data is Chunk<DataType> => (data as Chunk<DataType>).data !== undefined;
-
 type MaybeCacheEntry = CacheEntry | null;
 export type CacheData = ArrayBuffer | Chunk<DataType>;
 type CacheEntry = {
@@ -14,6 +12,8 @@ type CacheEntry = {
   /** The key which indexes this entry */
   key: string;
 };
+
+export const isChunk = (data: CacheData): data is Chunk<DataType> => (data as Chunk<DataType>).data !== undefined;
 
 const dataSize = (data: CacheData): number =>
   (data as ArrayBuffer).byteLength ?? (data as Chunk<DataType>).data.byteLength;
