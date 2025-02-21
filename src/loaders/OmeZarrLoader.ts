@@ -454,6 +454,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
   /** Reads a list of chunk keys requested by a `loadVolumeData` call and sets up appropriate prefetch requests. */
   private beginPrefetch(keys: ZarrChunkFetchInfo[], scaleLevel: number): void {
     // Convert keys to arrays of coords
+    if (keys.length === 0) {
+      return;
+    }
+
     const chunkCoords = keys.map(({ sourceIdx, key }) => {
       const numDims = getDimensionCount(this.sources[sourceIdx].axesTCZYX);
       const coordsInDimensionOrder = key
