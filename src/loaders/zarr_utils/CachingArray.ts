@@ -27,6 +27,19 @@ export default function cachingArray<T extends DataType, Store extends Readable 
   };
 
   return new Proxy(array, {
-    get: (target, prop, reciever) => (prop === "getChunk" ? getChunk : Reflect.get(target, prop, reciever)),
+    get: (target, prop) => {
+      if (prop === "getChunk") {
+        return getChunk;
+      }
+
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding
+      const value = target[prop];
+      if (value instanceof Function) {
+        return function (...args: unknown[]) {
+          return value.apply(target, args);
+        };
+      }
+      return value;
+    },
   });
 }
