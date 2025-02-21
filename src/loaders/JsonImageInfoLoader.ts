@@ -8,7 +8,7 @@ import {
 } from "./IVolumeLoader.js";
 import { computeAtlasSize, type ImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
-import VolumeCache from "../VolumeCache.js";
+import VolumeCache, { isChunk } from "../VolumeCache.js";
 import type { TypedArray, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
 
@@ -260,7 +260,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
       for (let j = 0; j < Math.min(image.channels.length, 4); ++j) {
         const chindex = image.channels[j];
         const cacheResult = cache?.get(`${image.name}/${chindex}`);
-        if (cacheResult) {
+        if (cacheResult && !isChunk(cacheResult)) {
           // all data coming from this loader is natively 8-bit
           const channelData = new Uint8Array(cacheResult);
           if (syncChannels) {

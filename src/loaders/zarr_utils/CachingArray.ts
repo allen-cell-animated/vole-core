@@ -1,9 +1,7 @@
 import { Array as ZarrArray, Chunk, DataType } from "@zarrita/core";
-import VolumeCache, { CacheData } from "../../VolumeCache";
+import VolumeCache, { isChunk } from "../../VolumeCache";
 import { Readable } from "@zarrita/storage";
 import { pathIsToMetadata } from "./utils";
-
-const isChunk = (data: CacheData): data is Chunk<DataType> => (data as Chunk<DataType>).data !== undefined;
 
 export default function cachingArray<T extends DataType, Store extends Readable = Readable>(
   array: ZarrArray<T, Store>,
