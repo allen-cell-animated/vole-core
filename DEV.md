@@ -18,6 +18,6 @@ you.
 - Make sure you can run build successfully: `npm run build`
 - Update version: `npm version {major|minor|patch}`
 - Push to main: `git push origin main`
-- Push tags: `git push origin v{X.X.X}`
+- Push tags: `git push origin tag v{X.X.X}`
 
 The CI/CD pipeline will automatically publish the package to npm.
