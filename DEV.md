@@ -11,11 +11,13 @@
 
 ## Publishing
 
-- Requires that you are listed as a maintainer for this npm module
+Requires that you have write access to `main` in this repository on GitHub. If
+you do not have write access, ask someone who does to publish a new version for
+you.
 
-* Make sure you can run build successfully: `npm run build`
-* Update version: `npm version patch`
-* Push to main: `git push origin main`
-* Push tags: `git push origin --tags vX.X.X`
+- Make sure you can run build successfully: `npm run build`
+- Update version: `npm version {major|minor|patch}`
+- Push to main: `git push origin main`
+- Push tags: `git push origin v{X.X.X}`
 
-You do not need to run `npm publish` as the CI/CD pipeline will automatically publish the package to npm.
+The CI/CD pipeline will automatically publish the package to npm.
