@@ -1,6 +1,7 @@
 import { Array as ZarrArray, Chunk, DataType } from "@zarrita/core";
-import VolumeCache, { isChunk } from "../../VolumeCache";
 import { Readable } from "@zarrita/storage";
+
+import VolumeCache, { isChunk } from "../../VolumeCache";
 import { pathIsToMetadata } from "./utils";
 
 export default function cachingArray<T extends DataType, Store extends Readable = Readable>(
