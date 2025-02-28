@@ -2,7 +2,6 @@ import { Box3, Vector3 } from "three";
 
 import * as zarr from "@zarrita/core";
 import { get as zarrGet, slice, Slice } from "@zarrita/indexing";
-import { AbsolutePath } from "@zarrita/storage";
 // Importing `FetchStore` from its home subpackage (@zarrita/storage) causes errors.
 // Getting it from the top-level package means we don't get its type. This is also a bug, but it's more acceptable.
 import { FetchStore } from "zarrita";
@@ -27,7 +26,6 @@ import {
 import ChunkPrefetchIterator from "./zarr_utils/ChunkPrefetchIterator.js";
 import WrappedStore from "./zarr_utils/WrappedStore.js";
 import {
-  getDimensionCount,
   getScale,
   getSourceChannelNames,
   matchSourceScaleLevels,
@@ -105,7 +103,7 @@ export type ZarrLoaderFetchOptions = {
 
 type ZarrChunkFetchInfo = {
   sourceIdx: number;
-  key: string;
+  coords: number[];
 };
 
 const DEFAULT_FETCH_OPTIONS = {
@@ -431,24 +429,19 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     return Promise.resolve({ imageInfo: imgdata, loadSpec: fullExtentLoadSpec });
   }
 
-  private async prefetchChunk(
-    scaleLevel: NumericZarrArray,
-    coords: TCZYX<number>,
-    subscriber: SubscriberId
-  ): Promise<void> {
-    const { store, path } = scaleLevel;
-    const separator = path.endsWith("/") ? "" : "/";
-    const key = path + separator + this.orderByDimension(coords).join("/");
+  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId) {
     // Calling `get` and doing nothing with the result still triggers a cache check, fetch, and insertion
-    await store
-      .get(key as AbsolutePath, { subscriber, isPrefetch: true })
-      .catch(
+    const key = scaleLevel.path + "/" + coords.join(",");
+    this.requestQueue.addRequest(key, subscriber, async () => {
+      const prefetchPromise = scaleLevel.getChunk(this.orderByDimension(coords), { subscriber });
+      await prefetchPromise.catch(
         wrapVolumeLoadError(
-          `Unable to prefetch chunk with key ${key}`,
+          `Unable to prefetch chunk with coords ${coords.join(", ")}`,
           VolumeLoadErrorType.LOAD_DATA_FAILED,
           CHUNK_REQUEST_CANCEL_REASON
         )
       );
+    });
   }
 
   /** Reads a list of chunk keys requested by a `loadVolumeData` call and sets up appropriate prefetch requests. */
@@ -458,15 +451,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       return;
     }
 
-    const chunkCoords = keys.map(({ sourceIdx, key }) => {
-      const numDims = getDimensionCount(this.sources[sourceIdx].axesTCZYX);
-      const coordsInDimensionOrder = key
-        .trim()
-        .split("/")
-        .slice(-numDims)
-        .filter((s) => s !== "")
-        .map((s) => parseInt(s, 10));
-      const sourceCoords = this.orderByTCZYX(coordsInDimensionOrder, 0, sourceIdx);
+    const chunkCoords = keys.map(({ sourceIdx, coords }) => {
+      const sourceCoords = this.orderByTCZYX(coords, 0, sourceIdx);
       // Convert source channel index to absolute channel index for `ChunkPrefetchIterator`'s benefit
       // (we match chunk coordinates output from `ChunkPrefetchIterator` back to sources below)
       sourceCoords[1] += this.sources[sourceIdx].channelOffset;
@@ -557,9 +543,9 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // Prefetch housekeeping: we want to save keys involved in this load to prefetch later
     const keys: ZarrChunkFetchInfo[] = [];
-    const reportKeyBase = (sourceIdx: number, key: string, sub: SubscriberId) => {
+    const reportChunkBase = (sourceIdx: number, coords: number[], sub: SubscriberId) => {
       if (sub === subscriber) {
-        keys.push({ sourceIdx, key });
+        keys.push({ sourceIdx, coords });
       }
     };
 
@@ -577,9 +563,9 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
       const level = this.sources[sourceIdx].scaleLevels[multiscaleLevel];
       const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | Slice>, sourceIdx);
-      const reportKey = (key: string, sub: SubscriberId) => reportKeyBase(sourceIdx, key, sub);
+      const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
-      const result = await zarrGet(level, sliceSpec, { opts: { subscriber, reportKey } }).catch(
+      const result = await zarrGet(level, sliceSpec, { opts: { subscriber, reportChunk } }).catch(
         wrapVolumeLoadError(
           "Could not load OME-Zarr volume data",
           VolumeLoadErrorType.LOAD_DATA_FAILED,

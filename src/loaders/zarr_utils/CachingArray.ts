@@ -1,16 +1,25 @@
-import { Array as ZarrArray, Chunk, DataType } from "@zarrita/core";
-import { Readable } from "@zarrita/storage";
+import { Array as ZarrArray, type Chunk, type DataType } from "@zarrita/core";
+import type { AsyncReadable } from "@zarrita/storage";
 
 import VolumeCache, { isChunk } from "../../VolumeCache";
 import { pathIsToMetadata } from "./utils";
+import { CachingArrayOpts } from "./types";
 
-export default function cachingArray<T extends DataType, Store extends Readable = Readable>(
-  array: ZarrArray<T, Store>,
-  cache: VolumeCache
-): ZarrArray<T, Store> {
-  const getChunk = async (coords: number[], opts?: Parameters<Store["get"]>[1]): Promise<Chunk<T>> => {
+type AsyncReadableExt<Opts> = AsyncReadable<Opts & CachingArrayOpts>;
+
+export default function cachingArray<
+  T extends DataType,
+  Opts = unknown,
+  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
+>(array: ZarrArray<T, Store>, cache: VolumeCache): ZarrArray<T, AsyncReadableExt<Opts>> {
+  const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
     if (pathIsToMetadata(array.path)) {
+      // TODO do we ever hit this...? or are we always getting actual chunks?
+      console.log(array.path);
       return array.getChunk(coords, opts);
+    }
+    if (opts?.subscriber && opts.reportChunk) {
+      opts.reportChunk(coords, opts.subscriber);
     }
 
     const trailingSlash = array.path.endsWith("/") ? "" : "/";
