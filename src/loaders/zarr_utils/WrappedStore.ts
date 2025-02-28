@@ -1,10 +1,10 @@
 import { FetchStore } from "zarrita";
 import { AbsolutePath, AsyncMutable, Readable } from "@zarrita/storage";
 
-import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue";
+import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
 
-import { SubscriberId } from "./types";
-import { pathIsToMetadata } from "./utils";
+import { SubscriberId } from "./types.js";
+import { pathIsToMetadata } from "./utils.js";
 
 type WrappedStoreOpts<Opts> = {
   options?: Opts;

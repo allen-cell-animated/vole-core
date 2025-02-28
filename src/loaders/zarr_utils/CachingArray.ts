@@ -1,9 +1,9 @@
 import { Array as ZarrArray, type Chunk, type DataType } from "@zarrita/core";
 import type { AsyncReadable } from "@zarrita/storage";
 
-import VolumeCache, { isChunk } from "../../VolumeCache";
-import { pathIsToMetadata } from "./utils";
-import { CachingArrayOpts } from "./types";
+import VolumeCache, { isChunk } from "../../VolumeCache.js";
+import { pathIsToMetadata } from "./utils.js";
+import { CachingArrayOpts } from "./types.js";
 
 type AsyncReadableExt<Opts> = AsyncReadable<Opts & CachingArrayOpts>;
 
