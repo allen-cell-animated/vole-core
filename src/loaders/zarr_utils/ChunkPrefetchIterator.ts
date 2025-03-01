@@ -65,6 +65,13 @@ export default class ChunkPrefetchIterator {
       updateMinMax(chunk[4], extrema[3]);
     }
 
+    // Bail out if we have any non-finite values in the extrema (the iterator will be empty)
+    if (extrema.flat().some((val) => !Number.isFinite(val))) {
+      this.directionStates = [];
+      this.priorityDirectionStates = [];
+      return;
+    }
+
     // Create `PrefetchDirectionState`s for each direction
     this.directionStates = [];
     this.priorityDirectionStates = [];
