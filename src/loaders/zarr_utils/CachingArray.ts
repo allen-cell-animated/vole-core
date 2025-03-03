@@ -7,7 +7,7 @@ import { CachingArrayOpts } from "./types.js";
 
 type AsyncReadableExt<Opts> = AsyncReadable<Opts & CachingArrayOpts>;
 
-export default function cachingArray<
+export default function wrapArray<
   T extends DataType,
   Opts = unknown,
   Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
