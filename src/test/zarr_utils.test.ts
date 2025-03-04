@@ -1,5 +1,5 @@
-import { AbsolutePath, SyncReadable } from "@zarrita/storage";
-import * as zarr from "@zarrita/core";
+import type { AbsolutePath, AsyncReadable, AsyncWritable } from "zarrita";
+import * as zarr from "zarrita";
 
 import {
   NumericZarrArray,
@@ -9,7 +9,6 @@ import {
   TCZYX,
   ZarrSource,
 } from "../loaders/zarr_utils/types";
-import WrappedStore from "../loaders/zarr_utils/WrappedStore";
 import {
   getDimensionCount,
   getScale,
@@ -55,12 +54,16 @@ const createMockMultiscaleMetadata = (scales: number[][], paths?: string[]): OME
   })),
 });
 
-class MockStore implements SyncReadable {
-  get(_key: AbsolutePath, _opts?: unknown): Uint8Array | undefined {
+class MockStore implements AsyncReadable, AsyncWritable {
+  async set(_key: AbsolutePath, _value: Uint8Array): Promise<void> {
+    return undefined;
+  }
+
+  async get(_key: AbsolutePath, _opts?: unknown): Promise<Uint8Array | undefined> {
     return undefined;
   }
 }
-const MOCK_STORE = new WrappedStore(new MockStore());
+const MOCK_STORE = new MockStore();
 
 const createMockArrays = (shapes: number[][]): Promise<NumericZarrArray[]> => {
   // eslint-disable-next-line @typescript-eslint/naming-convention

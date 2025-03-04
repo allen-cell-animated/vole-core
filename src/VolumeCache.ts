@@ -1,4 +1,4 @@
-import { Chunk, DataType } from "@zarrita/core";
+import { Chunk, DataType } from "zarrita";
 
 type MaybeCacheEntry = CacheEntry | null;
 export type CacheData = ArrayBuffer | Chunk<DataType>;
@@ -15,8 +15,9 @@ type CacheEntry = {
 
 export const isChunk = (data: CacheData): data is Chunk<DataType> => (data as Chunk<DataType>).data !== undefined;
 
-const dataSize = (data: CacheData): number =>
-  (data as ArrayBuffer).byteLength ?? (data as Chunk<DataType>).data.byteLength;
+const chunkSize = ({ data }: Chunk<DataType>): number => (Array.isArray(data) ? data.length : data.byteLength);
+
+const dataSize = (data: CacheData): number => (data as ArrayBuffer).byteLength ?? chunkSize(data as Chunk<DataType>);
 
 /** Default: 250MB. Should be large enough to be useful but safe for most any computer that can run the app */
 const CACHE_MAX_SIZE_DEFAULT = 250_000_000;
