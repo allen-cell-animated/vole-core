@@ -24,7 +24,6 @@ import {
   unitNameToSymbol,
 } from "./VolumeLoaderUtils.js";
 import ChunkPrefetchIterator from "./zarr_utils/ChunkPrefetchIterator.js";
-import WrappedStore from "./zarr_utils/WrappedStore.js";
 import {
   getScale,
   getSourceChannelNames,
@@ -463,6 +462,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const chunkDimsUnordered = level.shape.map((dim, idx) => Math.ceil(dim / level.chunks[idx]));
       return this.orderByTCZYX(chunkDimsUnordered, 1);
     });
+
     // `ChunkPrefetchIterator` yields chunk coordinates in order of roughly how likely they are to be loaded next
     const prefetchIterator = new ChunkPrefetchIterator(
       chunkCoords,

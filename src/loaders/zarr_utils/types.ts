@@ -93,7 +93,7 @@ export type OMEZarrMetadata = {
 };
 
 export type CachingArrayOpts = {
-  subscriber: SubscriberId;
+  subscriber?: SubscriberId;
   reportChunk?: (coords: number[], subscriber: SubscriberId) => void;
   isPrefetch?: boolean;
 };
