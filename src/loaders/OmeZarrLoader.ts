@@ -174,6 +174,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
         .open(root, { kind: "group" })
         .catch(wrapVolumeLoadError(`Failed to open OME-Zarr data at ${url}`, VolumeLoadErrorType.NOT_FOUND));
 
+      // OME-Zarr v0.5+ metadata has a similar shape to v0.4 (for our purposes), but is stored under the `ome` key
       const meta = (group.attrs as { ome?: unknown }).ome ?? group.attrs;
 
       // Pick scene (multiscale)
