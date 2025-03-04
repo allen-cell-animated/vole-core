@@ -907,6 +907,10 @@ export class View3d {
     window.removeEventListener("keydown", this.handleKeydown);
   }
 
+  hitTest(offsetX: number, offsetY: number): number {
+    return this.canvas3d.hitTest(offsetX, offsetY);
+  }
+
   private setupGui(container: HTMLElement): Pane {
     const pane = new Pane({ title: "Advanced Settings", container });
     const paneStyle: Partial<CSSStyleDeclaration> = {
