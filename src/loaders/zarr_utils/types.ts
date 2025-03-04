@@ -95,6 +95,7 @@ export type OMEZarrMetadata = {
 export type CachingArrayOpts = {
   subscriber: SubscriberId;
   reportChunk?: (coords: number[], subscriber: SubscriberId) => void;
+  isPrefetch?: boolean;
 };
 
 export type NumericZarrArray = zarr.Array<zarr.NumberDataType, AsyncReadable<RequestInit & CachingArrayOpts>>;

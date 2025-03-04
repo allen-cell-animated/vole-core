@@ -3,7 +3,8 @@ import type { AsyncReadable } from "@zarrita/storage";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
 import { pathIsToMetadata } from "./utils.js";
-import { CachingArrayOpts } from "./types.js";
+import type { CachingArrayOpts } from "./types.js";
+import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
 
 type AsyncReadableExt<Opts> = AsyncReadable<Opts & CachingArrayOpts>;
 
@@ -11,9 +12,14 @@ export default function wrapArray<
   T extends DataType,
   Opts = unknown,
   Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
->(array: ZarrArray<T, Store>, cache: VolumeCache, basePath: string): ZarrArray<T, AsyncReadableExt<Opts>> {
+>(
+  array: ZarrArray<T, Store>,
+  basePath: string,
+  cache?: VolumeCache,
+  queue?: SubscribableRequestQueue
+): ZarrArray<T, AsyncReadableExt<Opts>> {
   const keyBase = basePath + array.path + (array.path.endsWith("/") ? "" : "/");
-  console.log(basePath, array.path);
+
   const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
     if (pathIsToMetadata(array.path)) {
       // TODO do we ever hit this...? or are we always getting actual chunks?
@@ -25,13 +31,19 @@ export default function wrapArray<
     }
 
     const fullKey = keyBase + coords.join(",");
-    const cacheResult = cache.get(fullKey);
+    const cacheResult = cache?.get(fullKey);
     if (cacheResult && isChunk(cacheResult)) {
       return cacheResult;
     }
 
-    const result = await array.getChunk(coords, opts);
-    cache.insert(fullKey, result);
+    let result: Chunk<T>;
+    if (queue && opts?.reportChunk) {
+      result = await queue.addRequest(fullKey, opts?.subscriber, () => array.getChunk(coords, opts), opts.isPrefetch);
+    } else {
+      result = await array.getChunk(coords, opts);
+    }
+
+    cache?.insert(fullKey, result);
     return result;
   };
 

@@ -168,7 +168,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // Create one `ZarrSource` per URL
     const sourceProms = urlsArr.map(async (url, i) => {
-      const store = new WrappedStore<RequestInit>(new FetchStore(url), queue);
+      const store = new FetchStore(url);
       const root = zarr.root(store);
 
       const group = await zarr
@@ -190,7 +190,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const lvlProms = multiscaleMetadata.datasets.map(({ path }) =>
         zarr
           .open(root.resolve(path), { kind: "array" })
-          .then((array) => (cache ? wrapArray(array, cache, url) : array))
+          .then((array) => wrapArray(array, url, cache, queue))
           .catch(
             wrapVolumeLoadError(
               `Failed to open scale level ${path} of OME-Zarr data at ${url}`,
