@@ -174,15 +174,17 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
         .open(root, { kind: "group" })
         .catch(wrapVolumeLoadError(`Failed to open OME-Zarr data at ${url}`, VolumeLoadErrorType.NOT_FOUND));
 
+      const meta = (group.attrs as { ome?: unknown }).ome ?? group.attrs;
+
       // Pick scene (multiscale)
       let scene = scenesArr[Math.min(i, scenesArr.length - 1)];
-      if (scene > group.attrs.multiscales?.length) {
+      if (scene > meta.multiscales?.length) {
         console.warn(`WARNING: OMEZarrLoader: scene ${scene} is invalid. Using scene 0.`);
         scene = 0;
       }
 
-      validateOMEZarrMetadata(group.attrs, scene, urlsArr.length > 1 ? `Zarr source ${i}` : "Zarr");
-      const { multiscales, omero } = group.attrs as OMEZarrMetadata;
+      validateOMEZarrMetadata(meta, scene, urlsArr.length > 1 ? `Zarr source ${i}` : "Zarr");
+      const { multiscales, omero } = meta as OMEZarrMetadata;
       const multiscaleMetadata = multiscales[scene];
 
       // Open all scale levels of multiscale
