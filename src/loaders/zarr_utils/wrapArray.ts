@@ -1,5 +1,4 @@
-import { Array as ZarrArray, type Chunk, type DataType } from "@zarrita/core";
-import type { AsyncReadable } from "@zarrita/storage";
+import type { Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
 import { pathIsToMetadata } from "./utils.js";

@@ -1,5 +1,5 @@
 import { errorConstructors } from "serialize-error";
-import { NodeNotFoundError, KeyError } from "@zarrita/core";
+import { NodeNotFoundError, KeyError } from "zarrita";
 // geotiff doesn't export its error types...
 
 /** Groups possible load errors into a few broad categories which we can give similar guidance to the user about. */
