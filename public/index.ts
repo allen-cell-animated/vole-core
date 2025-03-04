@@ -1153,6 +1153,17 @@ function main() {
   view3D = new View3d({ parentElement: el });
   view3D.loaderContext = loaderContext;
 
+  el.addEventListener("mousemove", (e: Event) => {
+    const event = e as MouseEvent;
+    const intersectedObject = view3D.hitTest(event.offsetX, event.offsetY);
+    console.log(intersectedObject);
+    if (intersectedObject !== -1) {
+      el.style.cursor = "pointer";
+    } else {
+      el.style.cursor = "default";
+    }
+  });
+
   const testDataSelect = document.getElementById("testData");
   testDataSelect?.addEventListener("change", ({ currentTarget }) => {
     const selected = (currentTarget as HTMLOptionElement)?.value;

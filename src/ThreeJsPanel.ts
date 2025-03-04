@@ -1,6 +1,7 @@
 import {
   AxesHelper,
   Color,
+  DataTexture,
   Vector3,
   Object3D,
   Event,
@@ -16,7 +17,9 @@ import {
   DepthTexture,
   WebGLRenderTarget,
   NearestFilter,
+  Texture,
   UnsignedByteType,
+  Vector2,
   RGBAFormat,
 } from "three";
 
@@ -27,6 +30,7 @@ import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRig
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import HitTestHelper from "./HitTestHelper.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
@@ -82,6 +86,8 @@ export class ThreeJsPanel {
   private controlEndHandler?: EventListener<Event, "end", TrackballControls>;
   private controlChangeHandler?: EventListener<Event, "change", TrackballControls>;
   private controlStartHandler?: EventListener<Event, "start", TrackballControls>;
+
+  private hitTestHelper: HitTestHelper;
 
   public showAxis: boolean;
   private axisScale: number;
@@ -254,6 +260,8 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
+
+    this.hitTestHelper = new HitTestHelper();
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -806,6 +814,32 @@ export class ThreeJsPanel {
     if (onend) {
       this.controlEndHandler = onend;
       this.controls.addEventListener("end", this.controlEndHandler);
+    }
+  }
+
+  hitTest(offsetX: number, offsetY: number): number {
+    const size = new Vector2();
+    this.renderer.getSize(size);
+    // read from instance buffer pixel!
+    const x = offsetX;
+    const y = size.y - offsetY;
+
+    // read from the instance buffer
+    // TODO prepare the buffer that has the pick ids in it!!!!!
+    const tex: Texture = new DataTexture(); //this.gbuffer.textures[AGENTBUFFER];
+    const tw = tex.image.width;
+    const th = tex.image.height;
+
+    const pixel = this.hitTestHelper.hitTest(this.renderer, tex, x / tw, y / th);
+    // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
+
+    if (pixel[3] === -1) {
+      return -1;
+    } else {
+      // look up the object from its instance.
+      // and round it off to nearest integer
+      const instance = Math.round(pixel[1]);
+      return instance;
     }
   }
 }
