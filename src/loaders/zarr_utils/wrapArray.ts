@@ -18,7 +18,8 @@ export default function wrapArray<
   cache?: VolumeCache,
   queue?: SubscribableRequestQueue
 ): ZarrArray<T, AsyncReadableExt<Opts>> {
-  const keyBase = basePath + array.path + (array.path.endsWith("/") ? "" : "/");
+  const path = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
+  const keyBase = path + array.path + (array.path.endsWith("/") ? "" : "/");
 
   const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
     if (pathIsToMetadata(array.path)) {
@@ -37,7 +38,7 @@ export default function wrapArray<
     }
 
     let result: Chunk<T>;
-    if (queue && opts?.reportChunk) {
+    if (queue && opts?.subscriber) {
       result = await queue.addRequest(fullKey, opts?.subscriber, () => array.getChunk(coords, opts), opts.isPrefetch);
     } else {
       result = await array.getChunk(coords, opts);

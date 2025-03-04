@@ -431,17 +431,15 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
   private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId) {
     // Calling `get` and doing nothing with the result still triggers a cache check, fetch, and insertion
-    const key = scaleLevel.path + "/" + coords.join(",");
-    this.requestQueue.addRequest(key, subscriber, async () => {
-      const prefetchPromise = scaleLevel.getChunk(this.orderByDimension(coords), { subscriber });
-      await prefetchPromise.catch(
+    scaleLevel
+      .getChunk(this.orderByDimension(coords), { subscriber, isPrefetch: true })
+      .catch(
         wrapVolumeLoadError(
           `Unable to prefetch chunk with coords ${coords.join(", ")}`,
           VolumeLoadErrorType.LOAD_DATA_FAILED,
           CHUNK_REQUEST_CANCEL_REASON
         )
       );
-    });
   }
 
   /** Reads a list of chunk keys requested by a `loadVolumeData` call and sets up appropriate prefetch requests. */
