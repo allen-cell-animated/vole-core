@@ -11,7 +11,9 @@ export default function wrapArray<
   T extends DataType,
   Opts = unknown,
   Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
->(array: ZarrArray<T, Store>, cache: VolumeCache): ZarrArray<T, AsyncReadableExt<Opts>> {
+>(array: ZarrArray<T, Store>, cache: VolumeCache, basePath: string): ZarrArray<T, AsyncReadableExt<Opts>> {
+  const keyBase = basePath + array.path + (array.path.endsWith("/") ? "" : "/");
+  console.log(basePath, array.path);
   const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
     if (pathIsToMetadata(array.path)) {
       // TODO do we ever hit this...? or are we always getting actual chunks?
@@ -22,8 +24,7 @@ export default function wrapArray<
       opts.reportChunk(coords, opts.subscriber);
     }
 
-    const trailingSlash = array.path.endsWith("/") ? "" : "/";
-    const fullKey = array.path + trailingSlash + coords.join(",");
+    const fullKey = keyBase + coords.join(",");
     const cacheResult = cache.get(fullKey);
     if (cacheResult && isChunk(cacheResult)) {
       return cacheResult;

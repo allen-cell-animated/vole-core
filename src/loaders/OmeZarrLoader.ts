@@ -42,7 +42,7 @@ import type {
   NumericZarrArray,
 } from "./zarr_utils/types.js";
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
-import wrapArray from "./zarr_utils/CachingArray.js";
+import wrapArray from "./zarr_utils/wrapArray.js";
 import { validateOMEZarrMetadata } from "./zarr_utils/validation.js";
 
 const CHUNK_REQUEST_CANCEL_REASON = "chunk request cancelled";
@@ -190,7 +190,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const lvlProms = multiscaleMetadata.datasets.map(({ path }) =>
         zarr
           .open(root.resolve(path), { kind: "array" })
-          .then((array) => (cache ? wrapArray(array, cache) : array))
+          .then((array) => (cache ? wrapArray(array, cache, url) : array))
           .catch(
             wrapVolumeLoadError(
               `Failed to open scale level ${path} of OME-Zarr data at ${url}`,
