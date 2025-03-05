@@ -68,16 +68,16 @@ export type OMEMultiscale = {
 
 /** https://ngff.openmicroscopy.org/latest/#omero-md */
 export type OmeroTransitionalMetadata = {
-  id: number;
-  name: string;
-  version: string;
+  id?: number;
+  name?: string;
+  version?: string;
   channels: {
-    active: boolean;
-    coefficient: number;
+    active?: boolean;
+    coefficient?: number;
     color: string;
-    family: string;
-    inverted: boolean;
-    label: string;
+    family?: string;
+    inverted?: boolean;
+    label?: string;
     window: {
       end: number;
       max: number;
@@ -89,7 +89,7 @@ export type OmeroTransitionalMetadata = {
 
 export type OMEZarrMetadata = {
   multiscales: OMEMultiscale[];
-  omero: OmeroTransitionalMetadata;
+  omero?: OmeroTransitionalMetadata;
 };
 
 export type WrappedArrayOpts = {
