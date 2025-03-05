@@ -431,7 +431,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     return Promise.resolve({ imageInfo: imgdata, loadSpec: fullExtentLoadSpec });
   }
 
-  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId) {
+  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId): void {
     // Calling `get` and doing nothing with the result still triggers a cache check, fetch, and insertion
     scaleLevel
       .getChunk(this.orderByDimension(coords), { subscriber, isPrefetch: true })
