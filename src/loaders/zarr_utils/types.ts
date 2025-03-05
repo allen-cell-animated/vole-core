@@ -92,13 +92,13 @@ export type OMEZarrMetadata = {
   omero: OmeroTransitionalMetadata;
 };
 
-export type CachingArrayOpts = {
+export type WrappedArrayOpts = {
   subscriber?: SubscriberId;
   reportChunk?: (coords: number[], subscriber: SubscriberId) => void;
   isPrefetch?: boolean;
 };
 
-export type NumericZarrArray = zarr.Array<zarr.NumberDataType, AsyncReadable<RequestInit & CachingArrayOpts>>;
+export type NumericZarrArray = zarr.Array<zarr.NumberDataType, AsyncReadable<RequestInit & WrappedArrayOpts>>;
 
 /** A record with everything we need to access and use a single remote source of multiscale OME-Zarr data. */
 export type ZarrSource = {

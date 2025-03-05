@@ -2,10 +2,10 @@ import { Array as ZarrArray, type Chunk, type DataType } from "@zarrita/core";
 import type { AsyncReadable } from "@zarrita/storage";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
-import type { CachingArrayOpts } from "./types.js";
+import type { WrappedArrayOpts } from "./types.js";
 import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
 
-type AsyncReadableExt<Opts> = AsyncReadable<Opts & CachingArrayOpts>;
+type AsyncReadableExt<Opts> = AsyncReadable<Opts & WrappedArrayOpts>;
 
 export default function wrapArray<
   T extends DataType,
