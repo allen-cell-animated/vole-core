@@ -1,26 +1,26 @@
 import {
   AxesHelper,
+  BoxGeometry,
   Color,
-  DataTexture,
-  Vector3,
-  Object3D,
+  DepthTexture,
   Event,
   EventListener,
+  FloatType,
   Mesh,
-  BoxGeometry,
   MeshBasicMaterial,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
-  NormalBlending,
-  WebGLRenderer,
-  Scene,
-  DepthTexture,
-  WebGLRenderTarget,
   NearestFilter,
+  NormalBlending,
+  RGBAFormat,
+  Scene,
   Texture,
   UnsignedByteType,
   Vector2,
-  RGBAFormat,
+  Vector3,
+  WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
 import TrackballControls from "./TrackballControls.js";
@@ -36,6 +36,8 @@ import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
+
+const OBJECTBUFFER = 0;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -60,6 +62,8 @@ export class ThreeJsPanel {
 
   private meshRenderTarget: WebGLRenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
+
+  private pickBuffer: WebGLRenderTarget;
 
   public animateFuncs: ((
     renderer: WebGLRenderer,
@@ -133,6 +137,20 @@ export class ThreeJsPanel {
     });
     this.meshRenderTarget.depthTexture = new DepthTexture(this.canvas.width, this.canvas.height);
 
+    // buffers:
+    this.pickBuffer = new WebGLRenderTarget(this.canvas.width, this.canvas.height, {
+      count: 1, //3,
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      format: RGBAFormat,
+      type: FloatType,
+      generateMipmaps: false,
+    });
+    // Name our G-Buffer attachments for debugging
+    this.pickBuffer.textures[OBJECTBUFFER].name = "objectinfo";
+    //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
+    //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
+
     this.scaleBarContainerElement = document.createElement("div");
     this.orthoScaleBarElement = document.createElement("div");
     this.showOrthoScaleBar = true;
@@ -187,6 +205,7 @@ export class ThreeJsPanel {
     if (parentElement) {
       this.renderer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
       this.meshRenderTarget.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
+      this.pickBuffer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
     }
 
     this.timer = new Timing();
@@ -638,6 +657,7 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
+    this.pickBuffer.setSize(w, h);
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
@@ -826,7 +846,7 @@ export class ThreeJsPanel {
 
     // read from the instance buffer
     // TODO prepare the buffer that has the pick ids in it!!!!!
-    const tex: Texture = new DataTexture(); //this.gbuffer.textures[AGENTBUFFER];
+    const tex: Texture = this.pickBuffer.textures[OBJECTBUFFER];
     const tw = tex.image.width;
     const th = tex.image.height;
 
