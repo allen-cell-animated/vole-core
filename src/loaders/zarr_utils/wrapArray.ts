@@ -2,7 +2,6 @@ import { Array as ZarrArray, type Chunk, type DataType } from "@zarrita/core";
 import type { AsyncReadable } from "@zarrita/storage";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
-import { pathIsToMetadata } from "./utils.js";
 import type { CachingArrayOpts } from "./types.js";
 import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
 
@@ -22,11 +21,6 @@ export default function wrapArray<
   const keyBase = path + array.path + (array.path.endsWith("/") ? "" : "/");
 
   const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
-    if (pathIsToMetadata(array.path)) {
-      // TODO do we ever hit this...? or are we always getting actual chunks?
-      console.log(array.path);
-      return array.getChunk(coords, opts);
-    }
     if (opts?.subscriber && opts.reportChunk) {
       opts.reportChunk(coords, opts.subscriber);
     }
