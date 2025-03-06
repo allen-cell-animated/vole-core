@@ -29,17 +29,10 @@ import {
   orderByTCZYX,
   remapAxesToTCZYX,
 } from "./zarr_utils/utils.js";
-import type {
-  OMEZarrMetadata,
-  PrefetchDirection,
-  SubscriberId,
-  TCZYX,
-  ZarrSource,
-  NumericZarrArray,
-} from "./zarr_utils/types.js";
+import type { PrefetchDirection, SubscriberId, TCZYX, ZarrSource, NumericZarrArray } from "./zarr_utils/types.js";
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
 import wrapArray from "./zarr_utils/wrapArray.js";
-import { validateOMEZarrMetadata } from "./zarr_utils/validation.js";
+import { assertMetadataHasMultiscales, toOMEZarrMetaV4, validateOMEZarrMetadata } from "./zarr_utils/validation.js";
 
 const CHUNK_REQUEST_CANCEL_REASON = "chunk request cancelled";
 
@@ -171,7 +164,9 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
         .open(root, { kind: "group" })
         .catch(wrapVolumeLoadError(`Failed to open OME-Zarr data at ${url}`, VolumeLoadErrorType.NOT_FOUND));
 
-      const meta = (group.attrs as { ome?: unknown }).ome ?? group.attrs;
+      const sourceName = urlsArr.length > 1 ? `Zarr source ${i}` : "Zarr";
+      const meta = toOMEZarrMetaV4(group.attrs);
+      assertMetadataHasMultiscales(meta, sourceName);
 
       // Pick scene (multiscale)
       let scene = scenesArr[Math.min(i, scenesArr.length - 1)];
@@ -180,8 +175,9 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
         scene = 0;
       }
 
-      validateOMEZarrMetadata(meta, scene, urlsArr.length > 1 ? `Zarr source ${i}` : "Zarr");
-      const { multiscales, omero } = meta as OMEZarrMetadata;
+      validateOMEZarrMetadata(meta, scene, sourceName);
+
+      const { multiscales, omero } = meta;
       const multiscaleMetadata = multiscales[scene];
 
       // Open all scale levels of multiscale
@@ -427,7 +423,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     return Promise.resolve({ imageInfo: imgdata, loadSpec: fullExtentLoadSpec });
   }
 
-  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId) {
+  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId): void {
     // Calling `get` and doing nothing with the result still triggers a cache check, fetch, and insertion
     scaleLevel
       .getChunk(this.orderByDimension(coords), { subscriber, isPrefetch: true })
