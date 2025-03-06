@@ -47,7 +47,7 @@ export function assertMetadataHasMultiscales(meta: unknown, name = "zarr"): asse
 }
 
 /**
- * Validates that the `OMEZarrMetadata` record `data` has the minimal amount of data required to open a volume. Since
+ * Validates that the `OMEZarrMetadata` record `meta` has the minimal amount of data required to open a volume. Since
  * we only ever open one multiscale, we only validate the multiscale metadata record at index `multiscaleIdx` here.
  * `name` is used in error messages to identify the source of the metadata.
  */
