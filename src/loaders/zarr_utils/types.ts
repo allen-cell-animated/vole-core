@@ -1,4 +1,4 @@
-import * as zarr from "@zarrita/core";
+import * as zarr from "zarrita";
 import { AsyncReadable } from "@zarrita/storage";
 
 import type SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";

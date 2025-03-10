@@ -1,5 +1,5 @@
-import type { AbsolutePath, AsyncReadable, AsyncWriteable } from "@zarrita/storage";
-import * as zarr from "@zarrita/core";
+import type { AbsolutePath, AsyncReadable, AsyncWritable } from "zarrita";
+import * as zarr from "zarrita";
 
 import {
   NumericZarrArray,
@@ -54,7 +54,7 @@ const createMockMultiscaleMetadata = (scales: number[][], paths?: string[]): OME
   })),
 });
 
-class MockStore implements AsyncReadable, AsyncWriteable {
+class MockStore implements AsyncReadable, AsyncWritable {
   async set(_key: AbsolutePath, _value: Uint8Array): Promise<void> {
     return undefined;
   }

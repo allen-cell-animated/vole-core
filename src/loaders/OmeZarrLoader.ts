@@ -1,10 +1,7 @@
 import { Box3, Vector3 } from "three";
 
-import * as zarr from "@zarrita/core";
-import { get as zarrGet, slice, Slice } from "@zarrita/indexing";
-// Importing `FetchStore` from its home subpackage (@zarrita/storage) causes errors.
-// Getting it from the top-level package means we don't get its type. This is also a bug, but it's more acceptable.
-import { FetchStore } from "zarrita";
+import * as zarr from "zarrita";
+const { slice } = zarr;
 
 import type { ImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
@@ -160,7 +157,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // Create one `ZarrSource` per URL
     const sourceProms = urlsArr.map(async (url, i) => {
-      const store = new FetchStore(url);
+      const store = new zarr.FetchStore(url);
       const root = zarr.root(store);
 
       const group = await zarr
@@ -558,16 +555,19 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const unorderedSpec = [loadSpec.time, sourceCh, slice(min.z, max.z), slice(min.y, max.y), slice(min.x, max.x)];
 
       const level = this.sources[sourceIdx].scaleLevels[multiscaleLevel];
-      const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | Slice>, sourceIdx);
+      const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
-      const result = await zarrGet(level, sliceSpec, { opts: { subscriber, reportChunk } }).catch(
-        wrapVolumeLoadError(
-          "Could not load OME-Zarr volume data",
-          VolumeLoadErrorType.LOAD_DATA_FAILED,
-          CHUNK_REQUEST_CANCEL_REASON
-        )
-      );
+      console.log(level);
+      const result = await zarr
+        .get(level, sliceSpec, { opts: { subscriber, reportChunk } })
+        .catch(
+          wrapVolumeLoadError(
+            "Could not load OME-Zarr volume data",
+            VolumeLoadErrorType.LOAD_DATA_FAILED,
+            CHUNK_REQUEST_CANCEL_REASON
+          )
+        );
 
       if (result?.data === undefined) {
         return;
