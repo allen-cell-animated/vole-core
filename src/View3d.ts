@@ -912,6 +912,15 @@ export class View3d {
     window.removeEventListener("keydown", this.handleKeydown);
   }
 
+  setSelectedID(id: number): void {
+    const needRedraw = this.image?.setSelectedID(id);
+    if (needRedraw) {
+      console.log("redraw for new id");
+      this.image?.fuse();
+      this.redraw();
+    }
+  }
+
   hitTest(offsetX: number, offsetY: number): number {
     return this.canvas3d.hitTest(offsetX, offsetY);
   }

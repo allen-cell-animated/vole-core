@@ -80,6 +80,7 @@ export default class VolumeDrawable {
         chIndex: index,
         lut: new Uint8Array(LUT_ARRAY_LENGTH),
         rgbColor: rgbColor,
+        selectedID: -1,
       };
     });
 
@@ -437,6 +438,18 @@ export default class VolumeDrawable {
     return this.meshVolume.hasIsosurface(channel);
   }
 
+  setSelectedID(id: number): boolean {
+    if (this.fusion.length > 0) {
+      console.log("has fusion");
+      // TODO this is hardcoded for a particular channel for testing
+      if (id !== this.fusion[0].selectedID) {
+        this.fusion[0].selectedID = id;
+        return true;
+      }
+    }
+    return false;
+  }
+
   fuse(): void {
     if (!this.volume) {
       return;
@@ -516,6 +529,7 @@ export default class VolumeDrawable {
         this.channelColors[newChannelIndex][1],
         this.channelColors[newChannelIndex][2],
       ],
+      selectedID: -1,
     };
 
     this.settings.diffuse[newChannelIndex] = [

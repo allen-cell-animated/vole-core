@@ -1163,8 +1163,10 @@ function main() {
     if (intersectedObject !== -1) {
       el.style.cursor = "pointer";
       console.log("picked " + intersectedObject);
+      view3D.setSelectedID(intersectedObject);
     } else {
       el.style.cursor = "default";
+      view3D.setSelectedID(-1);
     }
   });
 

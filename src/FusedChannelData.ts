@@ -110,6 +110,7 @@ export default class FusedChannelData {
   private setupFuseMaterial(fragShaderSrc: string) {
     return new ShaderMaterial({
       uniforms: {
+        selectedID: { value: -1 },
         lutSampler: {
           value: null,
         },
@@ -201,6 +202,10 @@ export default class FusedChannelData {
         // must clone the material to keep a unique set of uniforms
         const mat = this.getShader(channels[chIndex].dtype).clone();
         mat.uniforms.lutSampler.value = channels[chIndex].lutTexture;
+        mat.uniforms.selectedID.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
+        if (combination[i].selectedID !== undefined) {
+          console.log("selectedID " + combination[i].selectedID);
+        }
         // the lut texture is spanning only the data range of the channel, not the datatype range
         mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
