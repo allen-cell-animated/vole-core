@@ -59,6 +59,7 @@ export class ThreeJsPanel {
   public containerdiv: HTMLDivElement;
   private canvas: HTMLCanvasElement;
   public scene: Scene;
+  public pickScene: Scene;
 
   private meshRenderTarget: WebGLRenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
@@ -150,6 +151,8 @@ export class ThreeJsPanel {
     this.pickBuffer.textures[OBJECTBUFFER].name = "objectinfo";
     //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
     //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
+    this.pickScene = new Scene();
+    this.pickScene.background = new Color(0x000000);
 
     this.scaleBarContainerElement = document.createElement("div");
     this.orthoScaleBarElement = document.createElement("div");
@@ -718,6 +721,13 @@ export class ThreeJsPanel {
     this.controls.update();
     this.camera.updateProjectionMatrix();
   }
+  fillPickBuffer(): void {
+    this.camera.layers.set(VOLUME_LAYER);
+    this.renderer.setRenderTarget(this.pickBuffer);
+    this.renderer.autoClear = false;
+    this.renderer.render(this.pickScene, this.camera);
+    this.renderer.autoClear = true;
+  }
 
   render(): void {
     // update the axis helper in case the view was rotated
@@ -731,6 +741,8 @@ export class ThreeJsPanel {
         this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
       }
     }
+
+    this.fillPickBuffer();
 
     // RENDERING
     // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on

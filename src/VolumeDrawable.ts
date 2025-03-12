@@ -15,6 +15,7 @@ import { Pane } from "tweakpane";
 import MeshVolume from "./MeshVolume.js";
 import RayMarchedAtlasVolume from "./RayMarchedAtlasVolume.js";
 import PathTracedVolume from "./PathTracedVolume.js";
+import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
 import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel } from "./types.js";
@@ -45,9 +46,11 @@ export default class VolumeDrawable {
   private channelOptions: VolumeChannelDisplayOptions[];
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
+  public pickSceneRoot: Object3D;
   private meshVolume: MeshVolume;
 
   private volumeRendering: VolumeRenderImpl;
+  private pickRendering: PickVolume;
   private renderMode: RenderMode;
 
   private renderUpdateListener?: (iteration: number) => void;
@@ -81,6 +84,7 @@ export default class VolumeDrawable {
     });
 
     this.sceneRoot = new Object3D(); //create an empty container
+    this.pickSceneRoot = new Object3D(); //create an empty container
 
     this.meshVolume = new MeshVolume(this.volume);
 
@@ -96,16 +100,21 @@ export default class VolumeDrawable {
         this.renderMode = RenderMode.RAYMARCH;
         this.volumeRendering = new RayMarchedAtlasVolume(this.volume, this.settings);
     }
+    this.pickRendering = new PickVolume(this.volume, this.settings);
 
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     if (options.renderMode === RenderMode.RAYMARCH || options.renderMode === RenderMode.SLICE) {
       this.sceneRoot.add(this.meshVolume.get3dObject());
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
+    if (options.renderMode === RenderMode.RAYMARCH) {
+      this.pickSceneRoot.add(this.pickRendering.get3dObject());
+    }
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);
+    this.pickSceneRoot.position.set(0, 0, 0);
 
     this.updateScale();
 
@@ -236,6 +245,7 @@ export default class VolumeDrawable {
       this.settings.secondaryRayStepSize = secondary;
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
   }
 
   updateScale(): void {
@@ -245,6 +255,8 @@ export default class VolumeDrawable {
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
+    this.pickRendering.updateVolumeDimensions();
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
   }
 
   setOrthoScale(value: number): void {
@@ -253,6 +265,7 @@ export default class VolumeDrawable {
     }
     this.settings.orthoScale = value;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.VIEW);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.VIEW);
   }
 
   setResolution(x: number, y: number): void {
@@ -261,6 +274,7 @@ export default class VolumeDrawable {
       this.meshVolume.setResolution(x, y);
       this.settings.resolution = resolution;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
+      this.pickRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
     }
   }
 
@@ -290,6 +304,7 @@ export default class VolumeDrawable {
       this.meshVolume.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
   }
 
   private modeStringToAxis(mode: string): Axis {
@@ -325,6 +340,7 @@ export default class VolumeDrawable {
     if (this.settings.viewAxis !== axis) {
       this.settings.viewAxis = axis;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.VIEW);
+      this.pickRendering.updateSettings(this.settings, SettingsFlags.VIEW);
     }
   }
 
@@ -336,6 +352,7 @@ export default class VolumeDrawable {
     }
     this.settings.isOrtho = isOrtho;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.VIEW);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.VIEW);
   }
 
   setInterpolationEnabled(active: boolean): void {
@@ -344,6 +361,7 @@ export default class VolumeDrawable {
     }
     this.settings.useInterpolation = active;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
   }
 
   setOrthoThickness(value: number): void {
@@ -366,6 +384,7 @@ export default class VolumeDrawable {
     this.settings.gammaLevel = glevel;
     this.settings.gammaMax = gmax;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.CAMERA);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.CAMERA);
   }
 
   setFlipAxes(flipX: -1 | 1, flipY: -1 | 1, flipZ: -1 | 1): void {
@@ -374,6 +393,7 @@ export default class VolumeDrawable {
       this.settings.flipAxes = flipAxes;
       this.meshVolume.setFlipAxes(flipX, flipY, flipZ);
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
+      this.pickRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
     }
   }
 
@@ -383,6 +403,7 @@ export default class VolumeDrawable {
     }
     this.settings.maxProjectMode = isMaxProject;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.VIEW);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.VIEW);
   }
 
   onAnimate(
@@ -401,6 +422,7 @@ export default class VolumeDrawable {
     if (this.renderMode !== RenderMode.PATHTRACE) {
       this.meshVolume.doRender();
     }
+    this.pickRendering.doRender(renderer, camera, depthTexture);
   }
 
   getViewMode(): Axis {
@@ -420,6 +442,7 @@ export default class VolumeDrawable {
       return;
     }
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
+    // pickRendering.updateActiveChannels(fusion, volume.channels); ?????
   }
 
   setRenderUpdateListener(callback?: (iteration: number) => void): void {
@@ -438,11 +461,15 @@ export default class VolumeDrawable {
   updateMaterial(): void {
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
+    this.pickRendering.updateActiveChannels(this.fusion, this.volume.channels);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
   }
 
   updateLuts(): void {
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
+    this.pickRendering.updateActiveChannels(this.fusion, this.volume.channels);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
   }
 
   setVoxelSize(values: Vector3): void {
@@ -453,6 +480,7 @@ export default class VolumeDrawable {
   cleanup(): void {
     this.meshVolume.cleanup();
     this.volumeRendering.cleanup();
+    this.pickRendering.cleanup();
   }
 
   getChannel(channelIndex: number): Channel {
@@ -513,6 +541,7 @@ export default class VolumeDrawable {
     // if all are nulled out, then hide the volume element from the scene.
     this.settings.visible = !this.fusion.every((elem) => elem.rgbColor === 0);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.VIEW);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.VIEW);
 
     // add or remove this channel from the list of required channels to load
     this.updateChannelDataRequired(channelIndex);
@@ -575,6 +604,7 @@ export default class VolumeDrawable {
   setDensity(density: number): void {
     this.settings.density = density;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
   }
 
   /**
@@ -587,6 +617,7 @@ export default class VolumeDrawable {
   setBrightness(brightness: number): void {
     this.settings.brightness = brightness;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.CAMERA);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.CAMERA);
   }
 
   getBrightness(): number {
@@ -600,21 +631,25 @@ export default class VolumeDrawable {
     this.settings.maskChannelIndex = channelIndex;
     this.updateChannelDataRequired(channelIndex);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MASK_DATA);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MASK_DATA);
   }
 
   setMaskAlpha(maskAlpha: number): void {
     this.settings.maskAlpha = maskAlpha;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MASK_ALPHA);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MASK_ALPHA);
   }
 
   setShowBoundingBox(showBoundingBox: boolean): void {
     this.settings.showBoundingBox = showBoundingBox;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.BOUNDING_BOX);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.BOUNDING_BOX);
   }
 
   setBoundingBoxColor(color: [number, number, number]): void {
     this.settings.boundingBoxColor = color;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.BOUNDING_BOX);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.BOUNDING_BOX);
   }
 
   getIntensity(c: number, x: number, y: number, z: number): number {
@@ -641,6 +676,7 @@ export default class VolumeDrawable {
 
   onResetCamera(): void {
     this.volumeRendering.viewpointMoved();
+    this.pickRendering.viewpointMoved();
   }
 
   onCameraChanged(fov: number, focalDistance: number, apertureSize: number): void {
@@ -655,6 +691,7 @@ export default class VolumeDrawable {
     this.settings.bounds.bmax = new Vector3(xmax - 0.5, ymax - 0.5, zmax - 0.5);
     this.meshVolume.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.ROI);
   }
 
   updateLights(state: Light[]): void {
@@ -666,6 +703,7 @@ export default class VolumeDrawable {
   setPixelSamplingRate(value: number): void {
     this.settings.pixelSamplingRate = value;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
   }
 
   setVolumeRendering(newRenderMode: RenderMode): void {
@@ -679,9 +717,13 @@ export default class VolumeDrawable {
       this.sceneRoot.remove(this.meshVolume.get3dObject());
     }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
+    if (this.renderMode === RenderMode.RAYMARCH) {
+      this.pickSceneRoot.remove(this.pickRendering.get3dObject());
+    }
 
     // destroy old resources.
     this.volumeRendering.cleanup();
+    this.pickRendering.cleanup();
 
     // create new
     switch (newRenderMode) {
@@ -700,6 +742,7 @@ export default class VolumeDrawable {
         this.volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
         break;
     }
+    this.pickRendering = new PickVolume(this.volume, this.settings);
 
     if (newRenderMode === RenderMode.RAYMARCH || newRenderMode === RenderMode.SLICE) {
       if (this.renderUpdateListener) {
@@ -710,6 +753,9 @@ export default class VolumeDrawable {
 
     // add new 3d object to scene
     this.sceneRoot.add(this.volumeRendering.get3dObject());
+    if (newRenderMode === RenderMode.RAYMARCH) {
+      this.pickSceneRoot.add(this.pickRendering.get3dObject());
+    }
     this.renderMode = newRenderMode;
     this.fuse();
   }
@@ -718,12 +764,14 @@ export default class VolumeDrawable {
     this.settings.translation.copy(xyz);
     this.meshVolume.setTranslation(this.settings.translation);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
   }
 
   setRotation(eulerXYZ: Euler): void {
     this.settings.rotation.copy(eulerXYZ);
     this.meshVolume.setRotation(this.settings.rotation);
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
   }
 
   setScale(xyz: Vector3): void {
@@ -767,6 +815,7 @@ export default class VolumeDrawable {
     if (this.settings.zSlice !== slice && slice < sizez && slice >= 0) {
       this.settings.zSlice = slice;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
+      this.pickRendering.updateSettings(this.settings, SettingsFlags.ROI);
       return true;
     }
     return false;

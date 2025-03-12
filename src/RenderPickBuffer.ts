@@ -1,14 +1,13 @@
-import { Vector3 } from "three";
-import { Texture } from "three";
+import { Texture, Vector2, Vector3 } from "three";
 
 import RenderToBuffer from "./RenderToBuffer";
-import slicePickUI from "./constants/shaders/slicePick.frag";
+import raycastPickUI from "./constants/shaders/volumePick.frag";
 import Volume from "./Volume";
 
 export default class RenderPickBuffer {
   pass: RenderToBuffer;
   constructor(volume: Volume, channelIndex: number, slice: number) {
-    this.pass = new RenderToBuffer(slicePickUI, {
+    this.pass = new RenderToBuffer(raycastPickUI, {
       textureRes: { value: [100, 100] },
       ATLAS_DIMS: { value: [100, 100] },
       AABB_CLIP_MIN: { value: new Vector3() },
@@ -32,9 +31,9 @@ export default class RenderPickBuffer {
     u.SLICES.value = volumeSize.z;
     u.Z_SLICE.value = slice;
 
-    u.flipVolume.value = this.settings.flipAxes);
+    u.flipVolume.value = new Vector3(1, 1, 1);
 
-    const bounds = this.settings.bounds;
+    const bounds = { bmin: new Vector3(0, 0, 0), bmax: new Vector3(1, 1, 1) };
     const { normRegionSize, normRegionOffset } = volume;
     const offsetToCenter = normRegionSize.clone().divideScalar(2).add(normRegionOffset).subScalar(0.5);
     const bmin = bounds.bmin.clone().sub(offsetToCenter).divide(normRegionSize).clampScalar(-0.5, 0.5);
