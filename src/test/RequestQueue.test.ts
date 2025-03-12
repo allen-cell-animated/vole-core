@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 
 import { Vector3 } from "three";
-import { TypedArray } from "@zarrita/core";
+import type { TypedArray } from "zarrita";
 
 import RequestQueue, { Request } from "../utils/RequestQueue";
 import { LoadSpec, loadSpecToString } from "../loaders/IVolumeLoader";

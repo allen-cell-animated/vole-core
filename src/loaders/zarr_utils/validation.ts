@@ -1,6 +1,14 @@
 import { VolumeLoadError, VolumeLoadErrorType } from "../VolumeLoadError.js";
 import { OMEZarrMetadata } from "./types.js";
 
+/**
+ * If `meta` is the top-level metadata of a zarr node formatted according to the OME-Zarr spec version 0.5, returns
+ * the object formatted according to v0.4 of the spec. For our purposes this just means flattening out the `ome` key.
+ *
+ * Return type is `unknown` because this does no actual validation; use `validateOMEZarrMetadata` for that.
+ */
+export const toOMEZarrMetaV4 = (meta: unknown): unknown => (meta as { ome?: unknown }).ome ?? meta;
+
 function isObjectWithProp<P extends string>(obj: unknown, prop: P): obj is Record<P, unknown> {
   return typeof obj === "object" && obj !== null && prop in obj;
 }
@@ -29,22 +37,27 @@ function assertPropIsArray<P extends string>(
   }
 }
 
+/** Intermediate stage of validation, before we've picked a single multiscale to validate */
+export type MultiscaleRecord = { multiscales: unknown[] };
+
+export function assertMetadataHasMultiscales(meta: unknown, name = "zarr"): asserts meta is MultiscaleRecord {
+  // data is an object with a key "multiscales", which is a non-empty array
+  assertMetadataHasProp(meta, "multiscales", name);
+  assertPropIsArray(meta, "multiscales", name);
+}
+
 /**
- * Validates that the `OMEZarrMetadata` record `data` has the minimal amount of data required to open a volume. Since
+ * Validates that the `OMEZarrMetadata` record `meta` has the minimal amount of data required to open a volume. Since
  * we only ever open one multiscale, we only validate the multiscale metadata record at index `multiscaleIdx` here.
  * `name` is used in error messages to identify the source of the metadata.
  */
 export function validateOMEZarrMetadata(
-  data: unknown,
+  meta: MultiscaleRecord,
   multiscaleIdx = 0,
   name = "zarr"
-): asserts data is OMEZarrMetadata {
-  // data is an object with a key "multiscales", which is an array
-  assertMetadataHasProp(data, "multiscales", name);
-  assertPropIsArray(data, "multiscales", name);
-
+): asserts meta is OMEZarrMetadata {
   // check that a multiscale metadata entry exists at `multiscaleIdx`
-  const multiscaleMeta = data.multiscales[multiscaleIdx];
+  const multiscaleMeta = meta.multiscales[multiscaleIdx];
   if (!multiscaleMeta) {
     throw new VolumeLoadError(`${name} metadata does not have requested multiscale level ${multiscaleIdx}`, {
       type: VolumeLoadErrorType.INVALID_METADATA,
