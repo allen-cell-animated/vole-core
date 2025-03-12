@@ -106,16 +106,6 @@ bool intersectBox(in vec3 r_o, in vec3 r_d, in vec3 boxMin, in vec3 boxMax,
   return(smallest_tmax > largest_tmin);
 }
 
-vec4 accumulate(vec4 col, float s, vec4 C) {
-  float stepScale = (1.0 - powf((1.0-col.w),s));
-  col.w = stepScale;
-  col.xyz *= col.w;
-  col = clamp(col,0.0,1.0);
-
-  C = (1.0-C.w)*col + C;
-  return C;
-}
-
 vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
                      float tnear,   float tfar,
                      float clipNear, float clipFar,
@@ -165,10 +155,9 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
     numSteps = i;
 
     if (t > tfar || t > tnear+clipFar ) break;
-    //if (C.w > 1.0 ) break;
   }
 
-  return vec4(float(C), float(C), float(C), float(C));
+  return vec4(float(C));
 }
 
 void main() {
@@ -247,7 +236,6 @@ void main() {
                           clipNear, clipFar,
                           textureAtlas);
 
-  //C = clamp(C, 0.0, 1.0);
   gl_FragColor = C;
   return;
 }
