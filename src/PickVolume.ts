@@ -1,15 +1,9 @@
 import {
-  Box3,
-  Box3Helper,
   BoxGeometry,
-  BufferAttribute,
   BufferGeometry,
-  Color,
   DataTexture,
   DepthTexture,
   Group,
-  LineBasicMaterial,
-  LineSegments,
   Material,
   Matrix4,
   Mesh,
@@ -18,7 +12,6 @@ import {
   ShaderMaterial,
   Texture,
   Vector2,
-  Vector3,
   WebGLRenderer,
 } from "three";
 
@@ -30,6 +23,7 @@ import {
 import { Volume } from "./index.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
+import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 
@@ -133,9 +127,11 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.MATERIAL) {
+      // nothing
     }
 
     if (dirtyFlags & SettingsFlags.CAMERA) {
+      // nothing
     }
 
     if (dirtyFlags & SettingsFlags.ROI) {
@@ -155,8 +151,10 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.MASK_ALPHA) {
+      // nothing
     }
     if (dirtyFlags & SettingsFlags.MASK_DATA) {
+      // nothing
     }
   }
 
@@ -213,7 +211,8 @@ export default class PickVolume implements VolumeRenderImpl {
     // set up texture from segmentation channel!!!!
     // we need to know the channel index for this.
     // ...channel.dataTexture...
-    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
+    // TODO TODO TODO FIXME
+    //    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
 
     this.pickTransformNode.updateMatrixWorld(true);
 
@@ -245,7 +244,7 @@ export default class PickVolume implements VolumeRenderImpl {
   }
 
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
-  public updateActiveChannels(channelcolors: FuseChannel[], channeldata: Channel[]): void {
+  public updateActiveChannels(_channelcolors: FuseChannel[], _channeldata: Channel[]): void {
     // TODO can we use this as a way to get segmentation channel?
     // update to fused texture
     //this.setUniform("textureAtlas", this.channelData.getFusedTexture());
