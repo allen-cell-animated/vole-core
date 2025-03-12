@@ -119,9 +119,9 @@ vec4 accumulate(vec4 col, float s, vec4 C) {
 vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
                      float tnear,   float tfar,
                      float clipNear, float clipFar,
-                     sampler2D textureAtlas
+                     usampler2D textureAtlas
                      ) {
-  uint C = 0;
+  uint C = 0u;
   // march along ray from front to back, accumulating color
 
   // estimate step length
@@ -156,7 +156,7 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
     if (maxProject != 0) {
       C = max(col, C);
     } else {
-      if (col > 0) {
+      if (col > 0u) {
         C = col;
         break;
       }
@@ -165,10 +165,10 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
     numSteps = i;
 
     if (t > tfar || t > tnear+clipFar ) break;
-    if (C.w > 1.0 ) break;
+    //if (C.w > 1.0 ) break;
   }
 
-  return C;
+  return vec4(float(C));
 }
 
 void main() {
