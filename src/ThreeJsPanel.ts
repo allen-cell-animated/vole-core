@@ -872,7 +872,6 @@ export class ThreeJsPanel {
 
     const pixel = this.hitTestHelper.hitTest(this.renderer, tex, x / tw, y / th);
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
-    console.log(pixel[0], pixel[1], pixel[2], pixel[3]);
 
     if (pixel[3] === -1 || pixel[3] === 0) {
       return -1;

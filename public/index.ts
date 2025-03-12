@@ -1160,9 +1160,9 @@ function main() {
   el.addEventListener("mousemove", (e: Event) => {
     const event = e as MouseEvent;
     const intersectedObject = view3D.hitTest(event.offsetX, event.offsetY);
-    console.log("picked " + intersectedObject);
     if (intersectedObject !== -1) {
       el.style.cursor = "pointer";
+      console.log("picked " + intersectedObject);
     } else {
       el.style.cursor = "default";
     }

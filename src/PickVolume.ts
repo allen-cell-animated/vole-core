@@ -174,7 +174,6 @@ export default class PickVolume implements VolumeRenderImpl {
       uniforms: pickUniforms,
       vertexShader: pickVertexShaderSrc,
       fragmentShader: pickFragmentShaderSrc,
-      transparent: true, // TODO is this necessary?
       depthTest: true,
       depthWrite: false,
     });
