@@ -168,7 +168,7 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
     //if (C.w > 1.0 ) break;
   }
 
-  return vec4(float(C));
+  return vec4(float(C), float(C), float(C), float(C));
 }
 
 void main() {
@@ -247,7 +247,7 @@ void main() {
                           clipNear, clipFar,
                           textureAtlas);
 
-  C = clamp(C, 0.0, 1.0);
+  //C = clamp(C, 0.0, 1.0);
   gl_FragColor = C;
   return;
 }

@@ -152,7 +152,6 @@ export class ThreeJsPanel {
     //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
     //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
     this.pickScene = new Scene();
-    this.pickScene.background = new Color(0x000000);
 
     this.scaleBarContainerElement = document.createElement("div");
     this.orthoScaleBarElement = document.createElement("div");
@@ -721,12 +720,21 @@ export class ThreeJsPanel {
     this.controls.update();
     this.camera.updateProjectionMatrix();
   }
+
   fillPickBuffer(): void {
     this.camera.layers.set(VOLUME_LAYER);
     this.renderer.setRenderTarget(this.pickBuffer);
-    this.renderer.autoClear = false;
-    this.renderer.render(this.pickScene, this.camera);
     this.renderer.autoClear = true;
+
+    const prevClearColor = new Color();
+    this.renderer.getClearColor(prevClearColor);
+    const prevClearAlpha = this.renderer.getClearAlpha();
+    this.renderer.setClearColor(0x000000, 0);
+
+    this.renderer.render(this.pickScene, this.camera);
+
+    this.renderer.autoClear = true;
+    this.renderer.setClearColor(prevClearColor, prevClearAlpha);
   }
 
   render(): void {
@@ -864,8 +872,9 @@ export class ThreeJsPanel {
 
     const pixel = this.hitTestHelper.hitTest(this.renderer, tex, x / tw, y / th);
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
+    console.log(pixel[0], pixel[1], pixel[2], pixel[3]);
 
-    if (pixel[3] === -1) {
+    if (pixel[3] === -1 || pixel[3] === 0) {
       return -1;
     } else {
       // look up the object from its instance.

@@ -79,6 +79,10 @@ export default class HitTestHelper {
     (this.hitTestMesh.material as ShaderMaterial).uniforms.objectIdTexture.value = idBuffer;
     (this.hitTestMesh.material as ShaderMaterial).uniforms.pixel.value = new Vector2(x, y);
 
+    // WHY ARE WE NOT SIMPLY READING FROM THE pickBuffer WITHOUT A EXTRA DRAW CALL?
+    // BECAUSE readRenderTargetPixels requires a render target?
+    // BUT there is a rendertarget with the pickbuffer bound!
+
     // "draw" the pixel into our hit test buffer
     renderer.setRenderTarget(this.hitTestBuffer);
     renderer.render(this.hitTestScene, this.hitTestCamera);

@@ -34,6 +34,10 @@ const MAX_PREFETCH_CHUNKS = 25;
 const PLAYBACK_INTERVAL = 80;
 
 const TEST_DATA: Record<string, TestDataSpec> = {
+  testpick: {
+    type: VolumeFileFormat.ZARR,
+    url: "https://allencell.s3.amazonaws.com/aics/nuc-morph-dataset/hipsc_fov_nuclei_timelapse_dataset/hipsc_fov_nuclei_timelapse_data_used_for_analysis/baseline_colonies_fov_timelapse_dataset/20200323_09_small/seg.ome.zarr",
+  },
   timeSeries: {
     type: VolumeFileFormat.JSON,
     url: "https://animatedcell-test-data.s3.us-west-2.amazonaws.com/timelapse/test_parent_T49.ome_%%_atlas.json",
@@ -1156,7 +1160,7 @@ function main() {
   el.addEventListener("mousemove", (e: Event) => {
     const event = e as MouseEvent;
     const intersectedObject = view3D.hitTest(event.offsetX, event.offsetY);
-    console.log(intersectedObject);
+    console.log("picked " + intersectedObject);
     if (intersectedObject !== -1) {
       el.style.cursor = "pointer";
     } else {

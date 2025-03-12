@@ -212,7 +212,7 @@ export default class PickVolume implements VolumeRenderImpl {
     // we need to know the channel index for this.
     // ...channel.dataTexture...
     // TODO TODO TODO FIXME
-    //    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
+    this.setUniform("textureAtlas", this.volume.getChannel(0).dataTexture);
 
     this.pickTransformNode.updateMatrixWorld(true);
 
