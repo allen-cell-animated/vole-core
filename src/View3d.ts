@@ -915,7 +915,6 @@ export class View3d {
   setSelectedID(id: number): void {
     const needRedraw = this.image?.setSelectedID(id);
     if (needRedraw) {
-      console.log("redraw for new id");
       this.image?.fuse();
       this.redraw();
     }

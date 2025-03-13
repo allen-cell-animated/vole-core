@@ -440,7 +440,6 @@ export default class VolumeDrawable {
 
   setSelectedID(id: number): boolean {
     if (this.fusion.length > 0) {
-      console.log("has fusion");
       // TODO this is hardcoded for a particular channel for testing
       if (id !== this.fusion[0].selectedID) {
         this.fusion[0].selectedID = id;
