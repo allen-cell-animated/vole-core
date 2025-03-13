@@ -217,23 +217,20 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     uniforms: ReturnType<typeof rayMarchingShaderUniforms>
   ): [BoxGeometry, Mesh<BufferGeometry, Material>] {
     const geom = new BoxGeometry(1.0, 1.0, 1.0);
-    const mesh: Mesh<BufferGeometry, Material> = new Mesh(geom);
-    mesh.name = "Volume";
 
     // shader,vtx and frag.
-    const vtxsrc = rayMarchingVertexShaderSrc;
-    const fgmtsrc = rayMarchingFragmentShaderSrc;
 
     const threeMaterial = new ShaderMaterial({
       uniforms: uniforms,
-      vertexShader: vtxsrc,
-      fragmentShader: fgmtsrc,
+      vertexShader: rayMarchingVertexShaderSrc,
+      fragmentShader: rayMarchingFragmentShaderSrc,
       transparent: true,
       depthTest: true,
       depthWrite: false,
     });
+    const mesh: Mesh<BufferGeometry, Material> = new Mesh(geom, threeMaterial);
+    mesh.name = "Volume";
 
-    mesh.material = threeMaterial;
     return [geom, mesh];
   }
 

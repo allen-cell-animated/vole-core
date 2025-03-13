@@ -1,23 +1,26 @@
 import {
   AxesHelper,
+  BoxGeometry,
   Color,
-  Vector3,
-  Object3D,
+  DepthTexture,
   Event,
   EventListener,
+  FloatType,
   Mesh,
-  BoxGeometry,
   MeshBasicMaterial,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
-  NormalBlending,
-  WebGLRenderer,
-  Scene,
-  DepthTexture,
-  WebGLRenderTarget,
   NearestFilter,
-  UnsignedByteType,
+  NormalBlending,
   RGBAFormat,
+  Scene,
+  Texture,
+  UnsignedByteType,
+  Vector2,
+  Vector3,
+  WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
 import TrackballControls from "./TrackballControls.js";
@@ -27,11 +30,14 @@ import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRig
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import HitTestHelper from "./HitTestHelper.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
+
+const OBJECTBUFFER = 0;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -53,9 +59,12 @@ export class ThreeJsPanel {
   public containerdiv: HTMLDivElement;
   private canvas: HTMLCanvasElement;
   public scene: Scene;
+  public pickScene: Scene;
 
   private meshRenderTarget: WebGLRenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
+
+  private pickBuffer: WebGLRenderTarget;
 
   public animateFuncs: ((
     renderer: WebGLRenderer,
@@ -82,6 +91,8 @@ export class ThreeJsPanel {
   private controlEndHandler?: EventListener<Event, "end", TrackballControls>;
   private controlChangeHandler?: EventListener<Event, "change", TrackballControls>;
   private controlStartHandler?: EventListener<Event, "start", TrackballControls>;
+
+  private hitTestHelper: HitTestHelper;
 
   public showAxis: boolean;
   private axisScale: number;
@@ -126,6 +137,21 @@ export class ThreeJsPanel {
       image: { value: this.meshRenderTarget.texture },
     });
     this.meshRenderTarget.depthTexture = new DepthTexture(this.canvas.width, this.canvas.height);
+
+    // buffers:
+    this.pickBuffer = new WebGLRenderTarget(this.canvas.width, this.canvas.height, {
+      count: 1, //3,
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      format: RGBAFormat,
+      type: FloatType,
+      generateMipmaps: false,
+    });
+    // Name our G-Buffer attachments for debugging
+    this.pickBuffer.textures[OBJECTBUFFER].name = "objectinfo";
+    //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
+    //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
+    this.pickScene = new Scene();
 
     this.scaleBarContainerElement = document.createElement("div");
     this.orthoScaleBarElement = document.createElement("div");
@@ -181,6 +207,7 @@ export class ThreeJsPanel {
     if (parentElement) {
       this.renderer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
       this.meshRenderTarget.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
+      this.pickBuffer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
     }
 
     this.timer = new Timing();
@@ -254,6 +281,8 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
+
+    this.hitTestHelper = new HitTestHelper();
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -630,6 +659,7 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
+    this.pickBuffer.setSize(w, h);
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
@@ -691,6 +721,22 @@ export class ThreeJsPanel {
     this.camera.updateProjectionMatrix();
   }
 
+  fillPickBuffer(): void {
+    this.camera.layers.set(VOLUME_LAYER);
+    this.renderer.setRenderTarget(this.pickBuffer);
+    this.renderer.autoClear = true;
+
+    const prevClearColor = new Color();
+    this.renderer.getClearColor(prevClearColor);
+    const prevClearAlpha = this.renderer.getClearAlpha();
+    this.renderer.setClearColor(0x000000, 0);
+
+    this.renderer.render(this.pickScene, this.camera);
+
+    this.renderer.autoClear = true;
+    this.renderer.setClearColor(prevClearColor, prevClearAlpha);
+  }
+
   render(): void {
     // update the axis helper in case the view was rotated
     if (!isOrthographicCamera(this.camera)) {
@@ -703,6 +749,8 @@ export class ThreeJsPanel {
         this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
       }
     }
+
+    this.fillPickBuffer();
 
     // RENDERING
     // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
@@ -806,6 +854,32 @@ export class ThreeJsPanel {
     if (onend) {
       this.controlEndHandler = onend;
       this.controls.addEventListener("end", this.controlEndHandler);
+    }
+  }
+
+  hitTest(offsetX: number, offsetY: number): number {
+    const size = new Vector2();
+    this.renderer.getSize(size);
+    // read from instance buffer pixel!
+    const x = offsetX;
+    const y = size.y - offsetY;
+
+    // read from the instance buffer
+    // TODO prepare the buffer that has the pick ids in it!!!!!
+    const tex: Texture = this.pickBuffer.textures[OBJECTBUFFER];
+    const tw = tex.image.width;
+    const th = tex.image.height;
+
+    const pixel = this.hitTestHelper.hitTest(this.renderer, tex, x / tw, y / th);
+    // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
+
+    if (pixel[3] === -1 || pixel[3] === 0) {
+      return -1;
+    } else {
+      // look up the object from its instance.
+      // and round it off to nearest integer
+      const instance = Math.round(pixel[1]);
+      return instance;
     }
   }
 }
