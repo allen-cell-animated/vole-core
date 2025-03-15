@@ -1,4 +1,11 @@
 import {
+  Color,
+  DataTexture,
+  LinearFilter,
+  NearestFilter,
+  RedFormat,
+  RGBAFormat,
+  FloatType,
   Vector3,
   Object3D,
   Euler,
@@ -18,7 +25,7 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel } from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, FuseColorizeFeature } from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -83,6 +90,7 @@ export default class VolumeDrawable {
         selectedID: -1,
       };
     });
+    this.fusion[0].feature = this.makeFakeColorizeData();
 
     this.sceneRoot = new Object3D(); //create an empty container
     this.pickSceneRoot = new Object3D(); //create an empty container
@@ -515,6 +523,51 @@ export default class VolumeDrawable {
 
     // let the outside world have a chance
     this.onChannelDataReadyCallback?.();
+  }
+
+  makeFakeColorizeData(): FuseColorizeFeature {
+    ////////////////////
+    const getSquarestTextureDimensions = (data: Float32Array): [number, number] => {
+      const width = Math.ceil(Math.sqrt(data.length));
+      const height = Math.ceil(data.length / width);
+
+      return [width, height];
+    };
+    const idsToFeatureValue = new Float32Array(256 * 256);
+    // fill with random between 0 and 1
+    for (let i = 0; i < idsToFeatureValue.length; i++) {
+      idsToFeatureValue[i] = Math.random();
+    }
+
+    const featTex = new DataTexture(
+      idsToFeatureValue,
+      ...getSquarestTextureDimensions(idsToFeatureValue),
+      RedFormat,
+      FloatType
+    );
+    featTex.internalFormat = "R32F";
+    featTex.needsUpdate = true;
+
+    const colorStops = ["#440154", "#3a528b", "#20908c", "#5ec961", "#fde724"];
+    const colorColorStops = colorStops.map((color) => new Color(color));
+    const dataArr = colorColorStops.flatMap((col) => [col.r, col.g, col.b, 1]);
+    const colormapTex = new DataTexture(new Float32Array(dataArr), colorColorStops.length, 1, RGBAFormat, FloatType);
+    // if (this.type === ColorRampType.HARD_STOP) {
+    //   this.texture.minFilter = NearestFilter;
+    //   this.texture.magFilter = NearestFilter;
+    // } else {
+    colormapTex.minFilter = LinearFilter;
+    colormapTex.magFilter = LinearFilter;
+    // }
+    colormapTex.internalFormat = "RGBA32F";
+    colormapTex.needsUpdate = true;
+
+    return {
+      idsToFeatureValue: featTex,
+      featureValueToColor: colormapTex,
+      featureMin: 0.0,
+      featureMax: 1.0,
+    };
   }
 
   onChannelAdded(newChannelIndex: number): void {
