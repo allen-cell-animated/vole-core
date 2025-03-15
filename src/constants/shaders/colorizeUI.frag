@@ -17,7 +17,7 @@ uniform uint selectedID;
 uniform usampler2D srcTexture;
 
 uint getId(ivec2 uv) {
-    return texelFetch(srcTexture, vUv, 0).r;
+    return texelFetch(srcTexture, uv, 0).r;
 }
 
 vec4 getFloatFromTex(sampler2D tex, int index) {
@@ -37,8 +37,8 @@ vec4 getColorRamp(float val) {
   return texture(colorRamp, vec2(adjustedVal, 0.5));
 }
 vec4 getColorFromDrawMode(uint drawMode, vec3 defaultColor) {
+  const uint DRAW_MODE_HIDE = 0u;
     vec3 backgroundColor = vec3(0.0, 0.0, 0.0);
-    vec3 defaultColor = vec3(0.5,0.5,0.5);
   if (drawMode == DRAW_MODE_HIDE) {
     return vec4(backgroundColor, 0.0);
   } else {
@@ -52,10 +52,12 @@ float getFeatureVal(uint id) {
 }
 uint getOutlierVal(uint id) {
   // Data buffer starts at 0, non-background segmentation IDs start at 1
-    return getUintFromTex(outlierData, int(id) - 1).r;
+    //return getUintFromTex(outlierData, int(id) - 1).r;
+    return 0u;
 }
 bool getIsInRange(uint id) {
-    return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
+    //return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
+    return true;
 }
 bool getIsOutlier(float featureVal, uint outlierVal) {
     return isinf(featureVal) || outlierVal != 0u;
@@ -90,6 +92,11 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // otherwise color with the color ramp as usual.
   bool isInRange = getIsInRange(id);
   bool isOutlier = getIsOutlier(featureVal, outlierVal);
+
+    vec3 outlierColor = vec3(0.5,0.5,0.5);
+    vec3 outOfRangeColor = vec3(0.5,0.5,0.5);
+    uint outlierDrawMode = 0u;
+    uint outOfRangeDrawMode = 0u;
 
   // Features outside the filtered/thresholded range will all be treated the same (use `outOfRangeDrawColor`).
   // Features inside the range can either be outliers or standard values, and are colored accordingly.
