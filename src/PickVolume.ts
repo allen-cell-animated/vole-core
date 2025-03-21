@@ -1,18 +1,24 @@
 import {
   BoxGeometry,
   BufferGeometry,
+  Color,
   DataTexture,
   DepthTexture,
+  FloatType,
   Group,
   Material,
   Matrix4,
   Mesh,
+  NearestFilter,
   OrthographicCamera,
   PerspectiveCamera,
+  RGBAFormat,
+  Scene,
   ShaderMaterial,
   Texture,
   Vector2,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
 import {
@@ -34,8 +40,11 @@ export default class PickVolume implements VolumeRenderImpl {
   private geometry: BoxGeometry;
   private pickMesh: Mesh<BufferGeometry, Material>;
   private pickTransformNode: Group;
+  private pickScene: Scene;
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
+  public needRedraw = false;
+  private pickBuffer: WebGLRenderTarget;
 
   /**
    * Creates a new RayMarchedAtlasVolume.
@@ -53,12 +62,35 @@ export default class PickVolume implements VolumeRenderImpl {
     this.pickTransformNode.name = "PickVolumeContainerNode";
     this.pickTransformNode.add(this.pickMesh);
 
+    this.pickScene = new Scene();
+    this.pickScene.name = "PickVolumeScene";
+    this.pickScene.add(this.pickTransformNode);
+
     this.emptyPositionTex = new DataTexture(new Uint8Array(Array(16).fill(0)), 2, 2);
+
+    // buffers:
+    this.pickBuffer = new WebGLRenderTarget(2, 2, {
+      count: 1, //3,
+      minFilter: NearestFilter,
+      magFilter: NearestFilter,
+      format: RGBAFormat,
+      type: FloatType,
+      generateMipmaps: false,
+    });
+    // Name our G-Buffer attachments for debugging
+    const OBJECTBUFFER = 0;
+    this.pickBuffer.textures[OBJECTBUFFER].name = "objectinfo";
+    //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
+    //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
 
     this.settings = settings;
     this.updateSettings(settings, SettingsFlags.ALL);
     // TODO this is doing *more* redundant work! Fix?
     this.updateVolumeDimensions();
+  }
+
+  public getPickBuffer(): WebGLRenderTarget {
+    return this.pickBuffer;
   }
 
   public updateVolumeDimensions(): void {
@@ -84,7 +116,7 @@ export default class PickVolume implements VolumeRenderImpl {
   }
 
   public viewpointMoved(): void {
-    return;
+    this.needRedraw = true;
   }
 
   public updateSettings(newSettings: VolumeRenderSettings, dirtyFlags?: number | SettingsFlags) {
@@ -95,6 +127,7 @@ export default class PickVolume implements VolumeRenderImpl {
     this.settings = newSettings;
 
     if (dirtyFlags & SettingsFlags.VIEW) {
+      this.needRedraw = true;
       this.pickMesh.visible = this.settings.visible;
       // Configure ortho
       this.setUniform("orthoScale", this.settings.orthoScale);
@@ -118,6 +151,7 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.TRANSFORM) {
+      this.needRedraw = true;
       // Set rotation and translation
       this.pickTransformNode.position.copy(this.settings.translation);
       this.pickTransformNode.rotation.copy(this.settings.rotation);
@@ -135,6 +169,7 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.ROI) {
+      this.needRedraw = true;
       // Normalize and set bounds
       const bounds = this.settings.bounds;
       const { normRegionSize, normRegionOffset } = this.volume;
@@ -147,7 +182,14 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.setUniform("iResolution", this.settings.resolution);
+      this.needRedraw = true;
+      const resolution = this.settings.resolution.clone();
+      const dpr = window.devicePixelRatio ? window.devicePixelRatio : 1.0;
+      const nx = Math.floor(resolution.x / dpr);
+      const ny = Math.floor(resolution.y / dpr);
+
+      this.setUniform("iResolution", new Vector2(nx, ny));
+      this.pickBuffer.setSize(nx, ny);
     }
 
     if (dirtyFlags & SettingsFlags.MASK_ALPHA) {
@@ -184,6 +226,10 @@ export default class PickVolume implements VolumeRenderImpl {
   }
 
   public cleanup(): void {
+    // do i need to empty out the pickscene?
+    this.pickScene.clear(); // remove all children from the scene
+    this.pickTransformNode.clear(); // remove all children from the transform node
+
     this.geometry.dispose();
     this.pickMesh.material.dispose();
   }
@@ -196,6 +242,12 @@ export default class PickVolume implements VolumeRenderImpl {
     if (!this.pickMesh.visible) {
       return;
     }
+    if (!this.needRedraw) {
+      return;
+    }
+    console.log("PickVolume.doRender()");
+    this.needRedraw = false;
+
     this.setUniform("iResolution", this.settings.resolution);
     this.setUniform("textureRes", this.settings.resolution);
 
@@ -222,7 +274,22 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("inverseModelViewMatrix", mvm);
     this.setUniform("inverseProjMatrix", camera.projectionMatrixInverse);
 
+    const VOLUME_LAYER = 0;
     // draw into pick buffer...
+    camera.layers.set(VOLUME_LAYER);
+    renderer.setRenderTarget(this.pickBuffer);
+    renderer.autoClear = true;
+
+    const prevClearColor = new Color();
+    renderer.getClearColor(prevClearColor);
+    const prevClearAlpha = renderer.getClearAlpha();
+    renderer.setClearColor(0x000000, 0);
+
+    renderer.render(this.pickScene, camera);
+
+    renderer.autoClear = true;
+    renderer.setClearColor(prevClearColor, prevClearAlpha);
+    renderer.setRenderTarget(null);
   }
 
   public get3dObject(): Group {

@@ -1,4 +1,11 @@
 import {
+  Color,
+  DataTexture,
+  LinearFilter,
+  NearestFilter,
+  RedFormat,
+  RGBAFormat,
+  FloatType,
   Vector3,
   Object3D,
   Euler,
@@ -18,7 +25,7 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel } from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, FuseColorizeFeature } from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -46,7 +53,6 @@ export default class VolumeDrawable {
   private channelOptions: VolumeChannelDisplayOptions[];
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
-  public pickSceneRoot: Object3D;
   private meshVolume: MeshVolume;
 
   private volumeRendering: VolumeRenderImpl;
@@ -83,9 +89,9 @@ export default class VolumeDrawable {
         selectedID: -1,
       };
     });
+    this.fusion[0].feature = this.makeFakeColorizeData();
 
     this.sceneRoot = new Object3D(); //create an empty container
-    this.pickSceneRoot = new Object3D(); //create an empty container
 
     this.meshVolume = new MeshVolume(this.volume);
 
@@ -108,14 +114,10 @@ export default class VolumeDrawable {
       this.sceneRoot.add(this.meshVolume.get3dObject());
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
-    if (options.renderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.add(this.pickRendering.get3dObject());
-    }
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);
-    this.pickSceneRoot.position.set(0, 0, 0);
 
     this.updateScale();
 
@@ -127,6 +129,9 @@ export default class VolumeDrawable {
     // this.volumeRendering.setZSlice(this.zSlice);
   }
 
+  public getPickBuffer() {
+    return this.pickRendering.getPickBuffer();
+  }
   /**
    * Updates whether a channel's data must be loaded for rendering,
    * based on if its volume or isosurface is enabled, or whether it is needed for masking.
@@ -423,6 +428,13 @@ export default class VolumeDrawable {
     if (this.renderMode !== RenderMode.PATHTRACE) {
       this.meshVolume.doRender();
     }
+  }
+
+  fillPickBuffer(
+    renderer: WebGLRenderer,
+    camera: PerspectiveCamera | OrthographicCamera,
+    depthTexture?: DepthTexture | Texture | null
+  ): void {
     this.pickRendering.doRender(renderer, camera, depthTexture);
   }
 
@@ -515,6 +527,51 @@ export default class VolumeDrawable {
 
     // let the outside world have a chance
     this.onChannelDataReadyCallback?.();
+  }
+
+  makeFakeColorizeData(): FuseColorizeFeature {
+    ////////////////////
+    const getSquarestTextureDimensions = (data: Float32Array): [number, number] => {
+      const width = Math.ceil(Math.sqrt(data.length));
+      const height = Math.ceil(data.length / width);
+
+      return [width, height];
+    };
+    const idsToFeatureValue = new Float32Array(256 * 256);
+    // fill with random between 0 and 1
+    for (let i = 0; i < idsToFeatureValue.length; i++) {
+      idsToFeatureValue[i] = Math.random();
+    }
+
+    const featTex = new DataTexture(
+      idsToFeatureValue,
+      ...getSquarestTextureDimensions(idsToFeatureValue),
+      RedFormat,
+      FloatType
+    );
+    featTex.internalFormat = "R32F";
+    featTex.needsUpdate = true;
+
+    const colorStops = ["#440154", "#3a528b", "#20908c", "#5ec961", "#fde724"];
+    const colorColorStops = colorStops.map((color) => new Color(color));
+    const dataArr = colorColorStops.flatMap((col) => [col.r, col.g, col.b, 1]);
+    const colormapTex = new DataTexture(new Float32Array(dataArr), colorColorStops.length, 1, RGBAFormat, FloatType);
+    // if (this.type === ColorRampType.HARD_STOP) {
+    //   this.texture.minFilter = NearestFilter;
+    //   this.texture.magFilter = NearestFilter;
+    // } else {
+    colormapTex.minFilter = LinearFilter;
+    colormapTex.magFilter = LinearFilter;
+    // }
+    colormapTex.internalFormat = "RGBA32F";
+    colormapTex.needsUpdate = true;
+
+    return {
+      idsToFeatureValue: featTex,
+      featureValueToColor: colormapTex,
+      featureMin: 0.0,
+      featureMax: 1.0,
+    };
   }
 
   onChannelAdded(newChannelIndex: number): void {
@@ -679,6 +736,7 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       (this.volumeRendering as PathTracedVolume).onChangeControls();
     }
+    this.pickRendering.viewpointMoved();
   }
 
   onEndControls(): void {
@@ -696,6 +754,7 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       (this.volumeRendering as PathTracedVolume).updateCamera(fov, focalDistance, apertureSize);
     }
+    this.pickRendering.viewpointMoved();
   }
 
   // values are in 0..1 range
@@ -730,9 +789,6 @@ export default class VolumeDrawable {
       this.sceneRoot.remove(this.meshVolume.get3dObject());
     }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
-    if (this.renderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.remove(this.pickRendering.get3dObject());
-    }
 
     // destroy old resources.
     this.volumeRendering.cleanup();
@@ -766,9 +822,7 @@ export default class VolumeDrawable {
 
     // add new 3d object to scene
     this.sceneRoot.add(this.volumeRendering.get3dObject());
-    if (newRenderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.add(this.pickRendering.get3dObject());
-    }
+
     this.renderMode = newRenderMode;
     this.fuse();
   }
