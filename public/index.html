@@ -72,6 +72,22 @@
         <label for="gammaMax">Gamma Max</label>
         <input id="gammaMax" type="number" min="0" max="255" step="1" value="255"/>    
     </p>
+    <p style="margin:2px;">
+        <button id="colorize">Colorize</button>
+        <input id="segchannel" type="number" min="0" max="10" step="1" value="0"/>
+        <select name="Colormap" id="colorMap">
+            <option value="viridis" selected>viridis</option>
+            <option value="other">other</option>
+        </select>
+        <select name="Feature" id="feature">
+            <option value="f1" selected>f1</option>
+            <option value="f2">f2</option>
+        </select>
+        <input id="featmin" type="range" min="0" max="100" step="1" value="0"/>
+        <input id="featmax" type="range" min="0" max="100" step="1" value="100"/>
+
+    </p>
+
 </body>
 <script type="module" src="index.ts"></script>
 
