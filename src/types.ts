@@ -53,7 +53,7 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
-export interface FuseColorizeFeature {
+export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
   featureMin: number;
@@ -69,7 +69,7 @@ export interface FuseChannel {
   selectedID: number;
 
   // if we are colorizing by feature, all the following inputs are needed
-  feature?: FuseColorizeFeature;
+  feature?: ColorizeFeature;
 }
 
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */

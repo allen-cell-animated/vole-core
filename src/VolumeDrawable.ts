@@ -25,7 +25,7 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, FuseColorizeFeature } from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -658,7 +658,7 @@ export default class VolumeDrawable {
     this.pickRendering.updateSettings(this.settings, SettingsFlags.MASK_DATA);
   }
 
-  setChannelColorizeFeature(channelIndex: number, featureInfo: FuseColorizeFeature | null): void {
+  setChannelColorizeFeature(channelIndex: number, featureInfo: ColorizeFeature | null): void {
     // TODO only one channel can ever have this?
     if (!featureInfo) {
       this.fusion[channelIndex].feature = undefined;

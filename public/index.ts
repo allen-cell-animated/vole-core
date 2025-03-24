@@ -24,7 +24,7 @@ import {
 import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
 import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8, FuseColorizeFeature } from "../src/types";
+import { DATARANGE_UINT8, ColorizeFeature } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
@@ -1157,7 +1157,7 @@ function gammaSliderToImageValues(sliderValues: [number, number, number]): [numb
   return [min, max, scale];
 }
 
-function getStateColorizeFeature(): FuseColorizeFeature | null {
+function getStateColorizeFeature(): ColorizeFeature | null {
   if (myState.colorizeEnabled) {
     const feature = colorizerfeatures[myState.feature];
     const colormap = colorizercolormaps[myState.colormap].tex;
