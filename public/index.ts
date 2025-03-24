@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import GUI from "lil-gui";
 
+import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer";
 import {
   CreateLoaderOptions,
   ImageInfo,
@@ -23,7 +24,7 @@ import {
 import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
 import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8 } from "../src/types";
+import { DATARANGE_UINT8, FuseColorizeFeature } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
@@ -175,6 +176,13 @@ const myState: State = {
 
   currentImageStore: "",
   currentImageName: "",
+
+  colorizeEnabled: false,
+  colorizeChannel: 0,
+  feature: "feature1",
+  colormap: "viridis",
+  featureMin: 0.0,
+  featureMax: 1.0,
 };
 
 const getNumberOfTimesteps = (): number => myState.totalFrames || myState.volume.imageInfo.times;
@@ -1149,6 +1157,66 @@ function gammaSliderToImageValues(sliderValues: [number, number, number]): [numb
   return [min, max, scale];
 }
 
+function getStateColorizeFeature(): FuseColorizeFeature | null {
+  if (myState.colorizeEnabled) {
+    const feature = colorizerfeatures[myState.feature];
+    const colormap = colorizercolormaps[myState.colormap].tex;
+    return {
+      idsToFeatureValue: feature.featureTex,
+      featureValueToColor: colormap,
+      featureMin: myState.featureMin,
+      featureMax: myState.featureMax,
+    };
+  } else {
+    return null;
+  }
+}
+
+function setupColorizeControls() {
+  const colorizeButton = document.getElementById("colorize") as HTMLButtonElement;
+  colorizeButton?.addEventListener("click", () => {
+    myState.colorizeEnabled = !myState.colorizeEnabled;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const segChannelInput = document.getElementById("segchannel") as HTMLInputElement;
+  segChannelInput?.addEventListener("change", () => {
+    const channelIndex = Number(segChannelInput.value);
+    myState.colorizeChannel = channelIndex;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const colormapInput = document.getElementById("colormap") as HTMLSelectElement;
+  colormapInput?.addEventListener("change", () => {
+    const colormap = colormapInput.value;
+    myState.colormap = colormap;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureInput = document.getElementById("feature") as HTMLSelectElement;
+  featureInput?.addEventListener("change", () => {
+    const feature = featureInput.value;
+    myState.feature = feature;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureMinInput = document.getElementById("featmin") as HTMLInputElement;
+  featureMinInput?.addEventListener("change", () => {
+    const featureMin = Number(featureMinInput.value) / 100.0;
+    console.log("featureMin: " + featureMin);
+    myState.featureMin = featureMin;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureMaxInput = document.getElementById("featmax") as HTMLInputElement;
+  featureMaxInput?.addEventListener("change", () => {
+    const featureMax = Number(featureMaxInput.value) / 100.0;
+    console.log("featureMax: " + featureMax);
+    myState.featureMax = featureMax;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+}
+
 function main() {
   const el = document.getElementById("vol-e");
   if (!el) {
@@ -1418,6 +1486,8 @@ function main() {
     const g = gammaSliderToImageValues([gammaMin.valueAsNumber, gammaScale.valueAsNumber, gammaMax.valueAsNumber]);
     view3D.setGamma(myState.volume, g[0], g[1], g[2]);
   });
+
+  setupColorizeControls();
   setupGui();
 
   loadTestData(TEST_DATA[(testDataSelect as HTMLSelectElement)?.value]);

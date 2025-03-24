@@ -78,6 +78,13 @@ export interface State {
 
   currentImageStore: string;
   currentImageName: string;
+
+  colorizeEnabled: boolean;
+  colorizeChannel: number;
+  colormap: string;
+  feature: string;
+  featureMin: number;
+  featureMax: number;
 }
 
 interface ChannelGuiOptions {

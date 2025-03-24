@@ -17,6 +17,7 @@ import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Volume from "./Volume.js";
 import {
+  type FuseColorizeFeature,
   type VolumeChannelDisplayOptions,
   type VolumeDisplayOptions,
   isOrthographicCamera,
@@ -280,6 +281,12 @@ export class View3d {
    */
   setVolumeChannelAsMask(volume: Volume, maskChannelIndex: number): void {
     this.image?.setChannelAsMask(maskChannelIndex);
+    this.redraw();
+  }
+
+  setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: FuseColorizeFeature | null): void {
+    this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
+    this.image?.fuse();
     this.redraw();
   }
 
