@@ -828,10 +828,10 @@ export class ThreeJsPanel {
     // read from the instance buffer
     // TODO prepare the buffer that has the pick ids in it!!!!!
     const tex: Texture = pickBuffer.textures[OBJECTBUFFER];
-    const tw = tex.image.width;
-    const th = tex.image.height;
+    const tw = pickBuffer.width;//tex.image.width;
+    const th = pickBuffer.height;//tex.image.height;
 
-    const pixel = this.hitTestHelper.hitTest(this.renderer, tex, x / tw, y / th);
+    const pixel = this.hitTestHelper.hitTest(this.renderer, pickBuffer, x / tw, y / th);
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
     if (pixel[3] === -1 || pixel[3] === 0) {
