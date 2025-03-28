@@ -146,6 +146,10 @@ export class View3d {
     return this.canvas3d.containerdiv;
   }
 
+  getCanvasDOMElement(): HTMLCanvasElement {
+    return this.canvas3d.renderer.domElement;
+  }
+
   getCameraState(): CameraState {
     return this.canvas3d.getCameraState();
   }
@@ -160,6 +164,10 @@ export class View3d {
    */
   redraw(): void {
     this.canvas3d.redraw();
+  }
+
+  render(): void {
+    this.canvas3d.render();
   }
 
   unsetImage(): VolumeDrawable | undefined {
@@ -259,10 +267,11 @@ export class View3d {
     this.loadErrorHandler = handler;
   }
 
-  setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): void {
+  async setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): Promise<void> {
     const timeClamped = Math.max(0, Math.min(time, volume.imageInfo.times - 1));
-    volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
+    const loadPromise = volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
     this.updateTimestepIndicator(volume);
+    await loadPromise;
   }
 
   /**
