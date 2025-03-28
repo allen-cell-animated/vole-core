@@ -161,13 +161,16 @@ export class View3d {
 
   /**
    * Force a redraw.
+   * @param synchronous If true, the redraw will be done synchronously. If false (default), the
+   * redraw will be done asynchronously via `requestAnimationFrame`. Redraws should be done async
+   * whenever possible for the best performance.
    */
-  redraw(): void {
-    this.canvas3d.redraw();
-  }
-
-  render(): void {
-    this.canvas3d.render();
+  redraw(synchronous: boolean = false): void {
+    if (synchronous) {
+      this.canvas3d.onAnimationLoop();
+    } else {
+      this.canvas3d.redraw();
+    }
   }
 
   unsetImage(): VolumeDrawable | undefined {
@@ -271,7 +274,7 @@ export class View3d {
     const timeClamped = Math.max(0, Math.min(time, volume.imageInfo.times - 1));
     const loadPromise = volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
     this.updateTimestepIndicator(volume);
-    await loadPromise;
+    return loadPromise;
   }
 
   /**
