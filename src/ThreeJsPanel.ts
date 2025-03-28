@@ -5,7 +5,6 @@ import {
   DepthTexture,
   Event,
   EventListener,
-  FloatType,
   Mesh,
   MeshBasicMaterial,
   Object3D,

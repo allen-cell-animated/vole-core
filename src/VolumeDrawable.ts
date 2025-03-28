@@ -1,11 +1,4 @@
 import {
-  Color,
-  DataTexture,
-  LinearFilter,
-  NearestFilter,
-  RedFormat,
-  RGBAFormat,
-  FloatType,
   Vector3,
   Object3D,
   Euler,
