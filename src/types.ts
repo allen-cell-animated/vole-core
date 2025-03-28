@@ -56,6 +56,8 @@ export const ARRAY_CONSTRUCTORS = {
 export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
+  inRangeIds: DataTexture;
+  outlierData: DataTexture;
   featureMin: number;
   featureMax: number;
 }

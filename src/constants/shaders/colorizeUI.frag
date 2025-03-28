@@ -10,6 +10,8 @@ uniform sampler2D featureData;
 uniform float featureColorRampMin;
 uniform float featureColorRampMax;
 uniform sampler2D colorRamp;
+uniform usampler2D inRangeIds;
+uniform usampler2D outlierData;
 
 uniform uint selectedID;
 
@@ -52,12 +54,10 @@ float getFeatureVal(uint id) {
 }
 uint getOutlierVal(uint id) {
   // Data buffer starts at 0, non-background segmentation IDs start at 1
-    //return getUintFromTex(outlierData, int(id) - 1).r;
-    return 0u;
+    return getUintFromTex(outlierData, int(id) - 1).r;
 }
 bool getIsInRange(uint id) {
-    //return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
-    return true;
+    return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
 }
 bool getIsOutlier(float featureVal, uint outlierVal) {
     return isinf(featureVal) || outlierVal != 0u;

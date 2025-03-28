@@ -1164,6 +1164,8 @@ function getStateColorizeFeature(): ColorizeFeature | null {
     return {
       idsToFeatureValue: feature.featureTex,
       featureValueToColor: colormap,
+      outlierData: feature.outlierData,
+      inRangeIds: feature.inRangeIds,
       featureMin: myState.featureMin,
       featureMax: myState.featureMax,
     };

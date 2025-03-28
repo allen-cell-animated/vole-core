@@ -1,8 +1,8 @@
-import { Color, DataTexture, FloatType, RGBAFormat, RedFormat, LinearFilter } from "three";
+import { Color, DataTexture, FloatType, RGBAFormat, RedFormat, RedIntegerFormat, LinearFilter, UnsignedByteType } from "three";
 
-function getSquarestTextureDimensions(data: Float32Array): [number, number] {
-  const width = Math.ceil(Math.sqrt(data.length));
-  const height = Math.ceil(data.length / width);
+function getSquarestTextureDimensions(size: number): [number, number] {
+  const width = Math.ceil(Math.sqrt(size));
+  const height = Math.ceil(size / width);
 
   return [width, height];
 }
@@ -24,7 +24,7 @@ function loadColormap(colorStops: string[]): DataTexture {
   return colormapTex;
 }
 
-function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMax: number } {
+function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMax: number, outlierData: DataTexture, inRangeIds: DataTexture } {
   const idsToFeatureValue = new Float32Array(256 * 256);
   // fill with random between 0 and 1
   for (let i = 0; i < idsToFeatureValue.length; i++) {
@@ -32,15 +32,45 @@ function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMa
   }
   const featTex = new DataTexture(
     idsToFeatureValue,
-    ...getSquarestTextureDimensions(idsToFeatureValue),
+    ...getSquarestTextureDimensions(idsToFeatureValue.length),
     RedFormat,
     FloatType
   );
   featTex.internalFormat = "R32F";
   featTex.needsUpdate = true;
 
+  // create outlier data texture (same size as feature texture)
+  const outlierData = new Uint8Array(256 * 256);
+  for (let i = 0; i < outlierData.length; i++) {
+    outlierData[i] = Math.random() < 0.01 ? 1 : 0; // 1% chance of being an outlier
+  }
+  const outlierTex = new DataTexture(
+    outlierData,
+    ...getSquarestTextureDimensions(outlierData.length),
+    RedIntegerFormat,
+    UnsignedByteType,
+  );
+  outlierTex.internalFormat = "R8UI";
+  outlierTex.needsUpdate = true;
+
+  // create inRangeIds texture (same size as feature texture)
+  const inRangeIds = new Uint8Array(256 * 256);
+  for (let i = 0; i < inRangeIds.length; i++) {
+    inRangeIds[i] = Math.random() < 0.8 ? 1 : 0; // 80% chance of being in range
+  }
+  const inRangeTex = new DataTexture(
+    inRangeIds,
+    ...getSquarestTextureDimensions(inRangeIds.length),
+    RedIntegerFormat,
+    UnsignedByteType,
+  );
+  inRangeTex.internalFormat = "R8UI";
+  inRangeTex.needsUpdate = true;
+
   return {
     featureTex: featTex,
+    outlierData: outlierTex,
+    inRangeIds: inRangeTex,
     featureMin: 0.0,
     featureMax: 1.0,
   };

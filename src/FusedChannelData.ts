@@ -134,6 +134,8 @@ export default class FusedChannelData {
         featureData: {
           value: null,
         },
+        outlierData: { value: null },
+        inRangeIds: { value: null },
         srcTexture: {
           value: null,
         },
@@ -230,6 +232,8 @@ export default class FusedChannelData {
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
         if (isColorize) {
           mat.uniforms.featureData.value = combination[i].feature?.idsToFeatureValue;
+          mat.uniforms.outlierData.value = combination[i].feature?.outlierData;
+          mat.uniforms.inRangeIds.value = combination[i].feature?.inRangeIds;
           mat.uniforms.featureColorRampMin.value = combination[i].feature?.featureMin;
           mat.uniforms.featureColorRampMax.value = combination[i].feature?.featureMax;
           mat.uniforms.colorRamp.value = combination[i].feature?.featureValueToColor;
