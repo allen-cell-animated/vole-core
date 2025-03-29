@@ -1,4 +1,4 @@
-import { Camera, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -53,6 +53,15 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
+export interface ColorizeFeature {
+  idsToFeatureValue: DataTexture;
+  featureValueToColor: DataTexture;
+  inRangeIds: DataTexture;
+  outlierData: DataTexture;
+  featureMin: number;
+  featureMax: number;
+}
+
 export interface FuseChannel {
   chIndex: number;
   lut: Uint8Array;
@@ -60,6 +69,9 @@ export interface FuseChannel {
   rgbColor: [number, number, number] | number;
   // the selected id will have its intensity auto-mapped to a pick color
   selectedID: number;
+
+  // if we are colorizing by feature, all the following inputs are needed
+  feature?: ColorizeFeature;
 }
 
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */

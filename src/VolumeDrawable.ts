@@ -18,7 +18,7 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel } from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -46,7 +46,6 @@ export default class VolumeDrawable {
   private channelOptions: VolumeChannelDisplayOptions[];
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
-  public pickSceneRoot: Object3D;
   private meshVolume: MeshVolume;
 
   private volumeRendering: VolumeRenderImpl;
@@ -85,7 +84,6 @@ export default class VolumeDrawable {
     });
 
     this.sceneRoot = new Object3D(); //create an empty container
-    this.pickSceneRoot = new Object3D(); //create an empty container
 
     this.meshVolume = new MeshVolume(this.volume);
 
@@ -108,14 +106,10 @@ export default class VolumeDrawable {
       this.sceneRoot.add(this.meshVolume.get3dObject());
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
-    if (options.renderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.add(this.pickRendering.get3dObject());
-    }
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);
-    this.pickSceneRoot.position.set(0, 0, 0);
 
     this.updateScale();
 
@@ -127,6 +121,9 @@ export default class VolumeDrawable {
     // this.volumeRendering.setZSlice(this.zSlice);
   }
 
+  public getPickBuffer() {
+    return this.pickRendering.getPickBuffer();
+  }
   /**
    * Updates whether a channel's data must be loaded for rendering,
    * based on if its volume or isosurface is enabled, or whether it is needed for masking.
@@ -423,6 +420,13 @@ export default class VolumeDrawable {
     if (this.renderMode !== RenderMode.PATHTRACE) {
       this.meshVolume.doRender();
     }
+  }
+
+  fillPickBuffer(
+    renderer: WebGLRenderer,
+    camera: PerspectiveCamera | OrthographicCamera,
+    depthTexture?: DepthTexture | Texture | null
+  ): void {
     this.pickRendering.doRender(renderer, camera, depthTexture);
   }
 
@@ -647,6 +651,17 @@ export default class VolumeDrawable {
     this.pickRendering.updateSettings(this.settings, SettingsFlags.MASK_DATA);
   }
 
+  setChannelColorizeFeature(channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    // TODO only one channel can ever have this?
+    if (!featureInfo) {
+      this.fusion[channelIndex].feature = undefined;
+    } else {
+      this.fusion[channelIndex].feature = featureInfo;
+    }
+    this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
+    this.pickRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
+  }
+
   setMaskAlpha(maskAlpha: number): void {
     this.settings.maskAlpha = maskAlpha;
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MASK_ALPHA);
@@ -679,6 +694,7 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       (this.volumeRendering as PathTracedVolume).onChangeControls();
     }
+    this.pickRendering.viewpointMoved();
   }
 
   onEndControls(): void {
@@ -696,6 +712,7 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       (this.volumeRendering as PathTracedVolume).updateCamera(fov, focalDistance, apertureSize);
     }
+    this.pickRendering.viewpointMoved();
   }
 
   // values are in 0..1 range
@@ -730,9 +747,6 @@ export default class VolumeDrawable {
       this.sceneRoot.remove(this.meshVolume.get3dObject());
     }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
-    if (this.renderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.remove(this.pickRendering.get3dObject());
-    }
 
     // destroy old resources.
     this.volumeRendering.cleanup();
@@ -766,9 +780,7 @@ export default class VolumeDrawable {
 
     // add new 3d object to scene
     this.sceneRoot.add(this.volumeRendering.get3dObject());
-    if (newRenderMode === RenderMode.RAYMARCH) {
-      this.pickSceneRoot.add(this.pickRendering.get3dObject());
-    }
+
     this.renderMode = newRenderMode;
     this.fuse();
   }

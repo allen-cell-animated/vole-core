@@ -17,6 +17,7 @@ import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Volume from "./Volume.js";
 import {
+  type ColorizeFeature,
   type VolumeChannelDisplayOptions,
   type VolumeDisplayOptions,
   isOrthographicCamera,
@@ -53,7 +54,6 @@ export class View3d {
 
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
-  private pickScene: Scene;
   private backgroundColor: Color;
   private pixelSamplingRate: number;
   private exposure: number;
@@ -83,7 +83,6 @@ export class View3d {
     this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
     this.redraw = this.redraw.bind(this);
     this.scene = new Scene();
-    this.pickScene = new Scene();
     this.backgroundColor = new Color(0x000000);
     this.lights = [];
 
@@ -169,7 +168,6 @@ export class View3d {
       this.canvas3d.removeControlHandlers();
       this.canvas3d.animateFuncs = [];
       this.scene.remove(this.image.sceneRoot);
-      this.pickScene.remove(this.image.pickSceneRoot);
     }
     return this.image;
   }
@@ -286,6 +284,12 @@ export class View3d {
     this.redraw();
   }
 
+  setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
+    this.image?.fuse();
+    this.redraw();
+  }
+
   /**
    * Set voxel dimensions - controls volume scaling. For example, the physical measurements of the voxels from a biological data set
    * @param {Object} volume
@@ -358,7 +362,6 @@ export class View3d {
     this.image = img;
 
     this.scene.add(img.sceneRoot);
-    this.pickScene.add(img.pickSceneRoot);
 
     // new image picks up current settings
     this.image.setResolution(this.canvas3d.getWidth(), this.canvas3d.getHeight());
@@ -373,6 +376,7 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
+    this.canvas3d.animateFuncs.push(img.fillPickBuffer.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
@@ -408,7 +412,6 @@ export class View3d {
 
   buildScene(): void {
     this.scene = this.canvas3d.scene;
-    this.pickScene = this.canvas3d.pickScene;
 
     // background color
     this.canvas3d.setClearColor(this.backgroundColor, 1.0);
@@ -921,7 +924,10 @@ export class View3d {
   }
 
   hitTest(offsetX: number, offsetY: number): number {
-    return this.canvas3d.hitTest(offsetX, offsetY);
+    if (!this.image) {
+      return -1;
+    }
+    return this.canvas3d.hitTest(offsetX, offsetY, this.image.getPickBuffer());
   }
 
   private setupGui(container: HTMLElement): Pane {
