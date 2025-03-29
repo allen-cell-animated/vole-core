@@ -74,26 +74,23 @@ export default class HitTestHelper {
 
     const pixel = new Float32Array(4).fill(-1);
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
-    if (false) {
-      // tell the shader which texture to use, and which pixel to read from
-      (this.hitTestMesh.material as ShaderMaterial).uniforms.objectIdTexture.value = idBuffer.textures[0];
-      (this.hitTestMesh.material as ShaderMaterial).uniforms.pixel.value = new Vector2(x, y);
 
-      // WHY ARE WE NOT SIMPLY READING FROM THE pickBuffer WITHOUT A EXTRA DRAW CALL?
-      // BECAUSE readRenderTargetPixels requires a render target?
-      // BUT there is a rendertarget with the pickbuffer bound!
+    // tell the shader which texture to use, and which pixel to read from
+    (this.hitTestMesh.material as ShaderMaterial).uniforms.objectIdTexture.value = idBuffer.textures[0];
+    (this.hitTestMesh.material as ShaderMaterial).uniforms.pixel.value = new Vector2(x, y);
 
-      // "draw" the pixel into our hit test buffer
-      renderer.setRenderTarget(this.hitTestBuffer);
-      renderer.render(this.hitTestScene, this.hitTestCamera);
-      renderer.setRenderTarget(null);
+    // WHY ARE WE NOT SIMPLY READING FROM THE pickBuffer WITHOUT A EXTRA DRAW CALL?
+    // BECAUSE readRenderTargetPixels requires a render target?
+    // BUT there is a rendertarget with the pickbuffer bound!
 
-      // read the pixel out
-      renderer.readRenderTargetPixels(this.hitTestBuffer, 0, 0, 1, 1, pixel);
+    // "draw" the pixel into our hit test buffer
+    renderer.setRenderTarget(this.hitTestBuffer);
+    renderer.render(this.hitTestScene, this.hitTestCamera);
+    renderer.setRenderTarget(null);
 
-    }
+    // read the pixel out
+    renderer.readRenderTargetPixels(this.hitTestBuffer, 0, 0, 1, 1, pixel);
 
-    renderer.readRenderTargetPixels(idBuffer, x * idBuffer.width, y * idBuffer.height, 1, 1, pixel);
     if (pixel[0] !== 0) {
       console.log(pixel);
     }

@@ -831,7 +831,10 @@ export class ThreeJsPanel {
     const tw = pickBuffer.width;//tex.image.width;
     const th = pickBuffer.height;//tex.image.height;
 
-    const pixel = this.hitTestHelper.hitTest(this.renderer, pickBuffer, x / tw, y / th);
+    const pixel = new Float32Array(4).fill(-1);
+    this.renderer.readRenderTargetPixels(pickBuffer, x, y, 1, 1, pixel);
+
+    //const pixel = this.hitTestHelper.hitTest(this.renderer, pickBuffer, x / tw, y / th);
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
     if (pixel[3] === -1 || pixel[3] === 0) {
