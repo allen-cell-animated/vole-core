@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import GUI from "lil-gui";
 
+import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer";
 import {
   CreateLoaderOptions,
   ImageInfo,
@@ -23,7 +24,7 @@ import {
 import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
 import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8 } from "../src/types";
+import { DATARANGE_UINT8, ColorizeFeature } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
@@ -34,6 +35,10 @@ const MAX_PREFETCH_CHUNKS = 25;
 const PLAYBACK_INTERVAL = 80;
 
 const TEST_DATA: Record<string, TestDataSpec> = {
+  testpick: {
+    type: VolumeFileFormat.ZARR,
+    url: "https://allencell.s3.amazonaws.com/aics/nuc-morph-dataset/hipsc_fov_nuclei_timelapse_dataset/hipsc_fov_nuclei_timelapse_data_used_for_analysis/baseline_colonies_fov_timelapse_dataset/20200323_09_small/seg.ome.zarr",
+  },
   timeSeries: {
     type: VolumeFileFormat.JSON,
     url: "https://animatedcell-test-data.s3.us-west-2.amazonaws.com/timelapse/test_parent_T49.ome_%%_atlas.json",
@@ -171,6 +176,13 @@ const myState: State = {
 
   currentImageStore: "",
   currentImageName: "",
+
+  colorizeEnabled: false,
+  colorizeChannel: 0,
+  feature: "feature1",
+  colormap: "viridis",
+  featureMin: 0.0,
+  featureMax: 1.0,
 };
 
 const getNumberOfTimesteps = (): number => myState.totalFrames || myState.volume.imageInfo.times;
@@ -1145,6 +1157,68 @@ function gammaSliderToImageValues(sliderValues: [number, number, number]): [numb
   return [min, max, scale];
 }
 
+function getStateColorizeFeature(): ColorizeFeature | null {
+  if (myState.colorizeEnabled) {
+    const feature = colorizerfeatures[myState.feature];
+    const colormap = colorizercolormaps[myState.colormap].tex;
+    return {
+      idsToFeatureValue: feature.featureTex,
+      featureValueToColor: colormap,
+      outlierData: feature.outlierData,
+      inRangeIds: feature.inRangeIds,
+      featureMin: myState.featureMin,
+      featureMax: myState.featureMax,
+    };
+  } else {
+    return null;
+  }
+}
+
+function setupColorizeControls() {
+  const colorizeButton = document.getElementById("colorize") as HTMLButtonElement;
+  colorizeButton?.addEventListener("click", () => {
+    myState.colorizeEnabled = !myState.colorizeEnabled;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const segChannelInput = document.getElementById("segchannel") as HTMLInputElement;
+  segChannelInput?.addEventListener("change", () => {
+    const channelIndex = Number(segChannelInput.value);
+    myState.colorizeChannel = channelIndex;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const colormapInput = document.getElementById("colormap") as HTMLSelectElement;
+  colormapInput?.addEventListener("change", () => {
+    const colormap = colormapInput.value;
+    myState.colormap = colormap;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureInput = document.getElementById("feature") as HTMLSelectElement;
+  featureInput?.addEventListener("change", () => {
+    const feature = featureInput.value;
+    myState.feature = feature;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureMinInput = document.getElementById("featmin") as HTMLInputElement;
+  featureMinInput?.addEventListener("change", () => {
+    const featureMin = Number(featureMinInput.value) / 100.0;
+    console.log("featureMin: " + featureMin);
+    myState.featureMin = featureMin;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+
+  const featureMaxInput = document.getElementById("featmax") as HTMLInputElement;
+  featureMaxInput?.addEventListener("change", () => {
+    const featureMax = Number(featureMaxInput.value) / 100.0;
+    console.log("featureMax: " + featureMax);
+    myState.featureMax = featureMax;
+    view3D.setChannelColorizeFeature(myState.volume, myState.colorizeChannel, getStateColorizeFeature());
+  });
+}
+
 function main() {
   const el = document.getElementById("vol-e");
   if (!el) {
@@ -1152,6 +1226,19 @@ function main() {
   }
   view3D = new View3d({ parentElement: el });
   view3D.loaderContext = loaderContext;
+
+  el.addEventListener("mousemove", (e: Event) => {
+    const event = e as MouseEvent;
+    const intersectedObject = view3D.hitTest(event.offsetX, event.offsetY);
+    if (intersectedObject !== -1) {
+      el.style.cursor = "pointer";
+      console.log("picked " + intersectedObject);
+      view3D.setSelectedID(intersectedObject);
+    } else {
+      el.style.cursor = "default";
+      view3D.setSelectedID(-1);
+    }
+  });
 
   const testDataSelect = document.getElementById("testData");
   testDataSelect?.addEventListener("change", ({ currentTarget }) => {
@@ -1401,6 +1488,8 @@ function main() {
     const g = gammaSliderToImageValues([gammaMin.valueAsNumber, gammaScale.valueAsNumber, gammaMax.valueAsNumber]);
     view3D.setGamma(myState.volume, g[0], g[1], g[2]);
   });
+
+  setupColorizeControls();
   setupGui();
 
   loadTestData(TEST_DATA[(testDataSelect as HTMLSelectElement)?.value]);

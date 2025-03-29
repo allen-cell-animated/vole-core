@@ -1,23 +1,25 @@
 import {
   AxesHelper,
+  BoxGeometry,
   Color,
-  Vector3,
-  Object3D,
+  DepthTexture,
   Event,
   EventListener,
   Mesh,
-  BoxGeometry,
   MeshBasicMaterial,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
-  NormalBlending,
-  WebGLRenderer,
-  Scene,
-  DepthTexture,
-  WebGLRenderTarget,
   NearestFilter,
-  UnsignedByteType,
+  NormalBlending,
   RGBAFormat,
+  Scene,
+  Texture,
+  UnsignedByteType,
+  Vector2,
+  Vector3,
+  WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
 import TrackballControls from "./TrackballControls.js";
@@ -27,11 +29,14 @@ import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRig
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import HitTestHelper from "./HitTestHelper.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
+
+const OBJECTBUFFER = 0;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -82,6 +87,8 @@ export class ThreeJsPanel {
   private controlEndHandler?: EventListener<Event, "end", TrackballControls>;
   private controlChangeHandler?: EventListener<Event, "change", TrackballControls>;
   private controlStartHandler?: EventListener<Event, "start", TrackballControls>;
+
+  private hitTestHelper: HitTestHelper;
 
   public showAxis: boolean;
   private axisScale: number;
@@ -254,6 +261,8 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
+
+    this.hitTestHelper = new HitTestHelper();
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -806,6 +815,35 @@ export class ThreeJsPanel {
     if (onend) {
       this.controlEndHandler = onend;
       this.controls.addEventListener("end", this.controlEndHandler);
+    }
+  }
+
+  hitTest(offsetX: number, offsetY: number, pickBuffer: WebGLRenderTarget): number {
+    const size = new Vector2();
+    this.renderer.getSize(size);
+    // read from instance buffer pixel!
+    const x = offsetX;
+    const y = size.y - offsetY;
+
+    // read from the instance buffer
+    // TODO prepare the buffer that has the pick ids in it!!!!!
+    const tex: Texture = pickBuffer.textures[OBJECTBUFFER];
+    const tw = pickBuffer.width;//tex.image.width;
+    const th = pickBuffer.height;//tex.image.height;
+
+    const pixel = new Float32Array(4).fill(-1);
+    this.renderer.readRenderTargetPixels(pickBuffer, x, y, 1, 1, pixel);
+
+    //const pixel = this.hitTestHelper.hitTest(this.renderer, pickBuffer, x / tw, y / th);
+    // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
+
+    if (pixel[3] === -1 || pixel[3] === 0) {
+      return -1;
+    } else {
+      // look up the object from its instance.
+      // and round it off to nearest integer
+      const instance = Math.round(pixel[1]);
+      return instance;
     }
   }
 }

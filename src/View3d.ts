@@ -17,6 +17,7 @@ import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Volume from "./Volume.js";
 import {
+  type ColorizeFeature,
   type VolumeChannelDisplayOptions,
   type VolumeDisplayOptions,
   isOrthographicCamera,
@@ -283,6 +284,12 @@ export class View3d {
     this.redraw();
   }
 
+  setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
+    this.image?.fuse();
+    this.redraw();
+  }
+
   /**
    * Set voxel dimensions - controls volume scaling. For example, the physical measurements of the voxels from a biological data set
    * @param {Object} volume
@@ -369,6 +376,7 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
+    this.canvas3d.animateFuncs.push(img.fillPickBuffer.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
@@ -905,6 +913,21 @@ export class View3d {
 
   removeEventListeners(): void {
     window.removeEventListener("keydown", this.handleKeydown);
+  }
+
+  setSelectedID(id: number): void {
+    const needRedraw = this.image?.setSelectedID(id);
+    if (needRedraw) {
+      this.image?.fuse();
+      this.redraw();
+    }
+  }
+
+  hitTest(offsetX: number, offsetY: number): number {
+    if (!this.image) {
+      return -1;
+    }
+    return this.canvas3d.hitTest(offsetX, offsetY, this.image.getPickBuffer());
   }
 
   private setupGui(container: HTMLElement): Pane {
