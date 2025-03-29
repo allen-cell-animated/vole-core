@@ -91,9 +91,6 @@ export default class HitTestHelper {
     // read the pixel out
     renderer.readRenderTargetPixels(this.hitTestBuffer, 0, 0, 1, 1, pixel);
 
-    if (pixel[0] !== 0) {
-      console.log(pixel);
-    }
     return pixel;
   }
 }
