@@ -146,6 +146,10 @@ export class View3d {
     return this.canvas3d.containerdiv;
   }
 
+  getCanvasDOMElement(): HTMLCanvasElement {
+    return this.canvas3d.renderer.domElement;
+  }
+
   getCameraState(): CameraState {
     return this.canvas3d.getCameraState();
   }
@@ -157,9 +161,16 @@ export class View3d {
 
   /**
    * Force a redraw.
+   * @param synchronous If true, the redraw will be done synchronously. If false (default), the
+   * redraw will be done asynchronously via `requestAnimationFrame`. Redraws should be done async
+   * whenever possible for the best performance.
    */
-  redraw(): void {
-    this.canvas3d.redraw();
+  redraw(synchronous: boolean = false): void {
+    if (synchronous) {
+      this.canvas3d.onAnimationLoop();
+    } else {
+      this.canvas3d.redraw();
+    }
   }
 
   unsetImage(): VolumeDrawable | undefined {
@@ -259,10 +270,11 @@ export class View3d {
     this.loadErrorHandler = handler;
   }
 
-  setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): void {
+  setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): Promise<void> {
     const timeClamped = Math.max(0, Math.min(time, volume.imageInfo.times - 1));
-    volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
+    const loadPromise = volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
     this.updateTimestepIndicator(volume);
+    return loadPromise;
   }
 
   /**
