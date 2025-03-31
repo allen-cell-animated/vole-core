@@ -442,11 +442,11 @@ export default class VolumeDrawable {
     return this.meshVolume.hasIsosurface(channel);
   }
 
-  setSelectedID(id: number): boolean {
+  setSelectedID(channelIndex: number, id: number): boolean {
     if (this.fusion.length > 0) {
-      // TODO this is hardcoded for a particular channel for testing
-      if (id !== this.fusion[0].selectedID) {
-        this.fusion[0].selectedID = id;
+      // TODO does it make sense to do this for a particular channel?
+      if (id !== this.fusion[channelIndex].selectedID) {
+        this.fusion[channelIndex].selectedID = id;
         return true;
       }
     }

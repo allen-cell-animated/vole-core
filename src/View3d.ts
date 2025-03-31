@@ -915,8 +915,8 @@ export class View3d {
     window.removeEventListener("keydown", this.handleKeydown);
   }
 
-  setSelectedID(id: number): void {
-    const needRedraw = this.image?.setSelectedID(id);
+  setSelectedID(volume: Volume, channel: number, id: number): void {
+    const needRedraw = this.image?.setSelectedID(channel, id);
     if (needRedraw) {
       this.image?.fuse();
       this.redraw();
