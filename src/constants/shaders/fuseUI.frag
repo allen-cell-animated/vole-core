@@ -7,7 +7,7 @@ precision highp sampler3D;
 uniform sampler2D lutSampler;
 
 uniform vec2 lutMinMax;
-uniform uint selectedID;
+uniform uint highlightedId;
 
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
@@ -16,7 +16,7 @@ void main()
 {
     ivec2 vUv = ivec2(int(gl_FragCoord.x), int(gl_FragCoord.y));
     uint intensity = texelFetch(srcTexture, vUv, 0).r;
-    if (intensity == (selectedID)) {
+    if (intensity == (highlightedId)) {
         gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
         return;
     }

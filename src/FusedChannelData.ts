@@ -113,7 +113,7 @@ export default class FusedChannelData {
   private setupFuseMaterial(fragShaderSrc: string) {
     return new ShaderMaterial({
       uniforms: {
-        selectedID: { value: -1 },
+        highlightedId: { value: -1 },
         lutSampler: {
           value: null,
         },
@@ -130,7 +130,7 @@ export default class FusedChannelData {
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
     return new ShaderMaterial({
       uniforms: {
-        highlightedID: { value: -1 },
+        highlightedId: { value: -1 },
         featureData: {
           value: null,
         },
@@ -234,8 +234,8 @@ export default class FusedChannelData {
         // add a draw call per channel here.
         // must clone the material to keep a unique set of uniforms
         const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
-        mat.uniforms.selectedID.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
+        mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
         if (isColorize) {
           mat.uniforms.featureData.value = combination[i].feature?.idsToFeatureValue;
           mat.uniforms.outlierData.value = combination[i].feature?.outlierData;

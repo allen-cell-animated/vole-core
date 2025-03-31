@@ -92,7 +92,7 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
 //       return vec4(outlineColor, 1.0);
 //     }
 //   }
-    if (id == selectedID) {
+    if (id == highlightedId) {
         return vec4(outlineColor, 1.0);
     }
 

@@ -972,6 +972,9 @@ function onVolumeCreated(name: string, volume: Volume) {
   if (name === "testpick") {
     view3D.enablePicking(myState.volume, true, 0);
   }
+  else {
+    view3D.enablePicking(myState.volume, false);
+  }
 
   updateTimeUI();
   updateScenesUI();
