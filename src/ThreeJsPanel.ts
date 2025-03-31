@@ -821,11 +821,8 @@ export class ThreeJsPanel {
     const y = size.y - offsetY;
 
     // read from the instance buffer
-    // TODO prepare the buffer that has the pick ids in it!!!!!
-    const tex: Texture = pickBuffer.textures[OBJECTBUFFER];
-    const tw = pickBuffer.width;//tex.image.width;
-    const th = pickBuffer.height;//tex.image.height;
-
+    // ASSUMPTION: the instance buffer is the same size as the canvas.
+    // if the assumption is violated, then we need to have some relative scaling to transform the x,y
     const pixel = new Float32Array(4).fill(-1);
     this.renderer.readRenderTargetPixels(pickBuffer, x, y, 1, 1, pixel);
     // For future reference, Simularium stores the following: 
