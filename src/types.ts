@@ -1,4 +1,4 @@
-import { Camera, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, Color, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -60,6 +60,12 @@ export interface ColorizeFeature {
   outlierData: DataTexture;
   featureMin: number;
   featureMax: number;
+  outlineColor: Color;
+  outlierColor: Color;
+  outOfRangeColor: Color;
+  outlierDrawMode: number;
+  outOfRangeDrawMode: number;
+  hideOutOfRange: boolean;
 }
 
 export interface FuseChannel {

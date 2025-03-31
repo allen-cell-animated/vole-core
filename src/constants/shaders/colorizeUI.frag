@@ -13,7 +13,20 @@ uniform sampler2D colorRamp;
 uniform usampler2D inRangeIds;
 uniform usampler2D outlierData;
 
-uniform uint selectedID;
+uniform vec3 outlineColor;
+
+/** MUST be synchronized with the DrawMode enum in ColorizeCanvas! */
+const uint DRAW_MODE_HIDE = 0u;
+const uint DRAW_MODE_COLOR = 1u;
+
+uniform vec3 outlierColor;
+uniform uint outlierDrawMode;
+uniform vec3 outOfRangeColor;
+uniform uint outOfRangeDrawMode;
+
+uniform uint highlightedId;
+
+uniform bool hideOutOfRange;
 
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
@@ -40,7 +53,7 @@ vec4 getColorRamp(float val) {
 }
 vec4 getColorFromDrawMode(uint drawMode, vec3 defaultColor) {
   const uint DRAW_MODE_HIDE = 0u;
-    vec3 backgroundColor = vec3(0.0, 0.0, 0.0);
+  vec3 backgroundColor = vec3(0.0, 0.0, 0.0);
   if (drawMode == DRAW_MODE_HIDE) {
     return vec4(backgroundColor, 0.0);
   } else {
@@ -80,7 +93,7 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
 //     }
 //   }
     if (id == selectedID) {
-        return vec4(1.0, 1.0, 1.0, 1.0);
+        return vec4(outlineColor, 1.0);
     }
 
 
@@ -92,11 +105,6 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // otherwise color with the color ramp as usual.
   bool isInRange = getIsInRange(id);
   bool isOutlier = getIsOutlier(featureVal, outlierVal);
-
-    vec3 outlierColor = vec3(0.5,0.5,0.5);
-    vec3 outOfRangeColor = vec3(0.5,0.5,0.5);
-    uint outlierDrawMode = 0u;
-    uint outOfRangeDrawMode = 0u;
 
   // Features outside the filtered/thresholded range will all be treated the same (use `outOfRangeDrawColor`).
   // Features inside the range can either be outliers or standard values, and are colored accordingly.

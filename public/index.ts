@@ -1,4 +1,4 @@
-import { Vector3 } from "three";
+import { Color, Vector3 } from "three";
 import GUI from "lil-gui";
 
 import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer";
@@ -1168,6 +1168,12 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       inRangeIds: feature.inRangeIds,
       featureMin: myState.featureMin,
       featureMax: myState.featureMax,
+      outlineColor: new Color(0xffffff),
+      outlierColor: new Color(0x444444),
+      outOfRangeColor: new Color(0x444444),
+      outlierDrawMode: 0,
+      outOfRangeDrawMode: 0,
+      hideOutOfRange: false
     };
   } else {
     return null;

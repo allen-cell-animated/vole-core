@@ -130,7 +130,7 @@ export default class FusedChannelData {
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
     return new ShaderMaterial({
       uniforms: {
-        selectedID: { value: -1 },
+        highlightedID: { value: -1 },
         featureData: {
           value: null,
         },
@@ -144,6 +144,12 @@ export default class FusedChannelData {
         colorRamp: {
           value: null,
         },
+        outlineColor: { value: new Color(0xffffff) },
+        outlierColor: { value: new Color(0x444444) },
+        outOfRangeColor: { value: new Color(0x444444) },
+        outlierDrawMode: { value: 0 },
+        outOfRangeDrawMode: { value: 0 },
+        hideOutOfRange: { value: false },
       },
       fragmentShader: fragShaderSrc,
       ...this.fuseMaterialProps,
@@ -237,6 +243,12 @@ export default class FusedChannelData {
           mat.uniforms.featureColorRampMin.value = combination[i].feature?.featureMin;
           mat.uniforms.featureColorRampMax.value = combination[i].feature?.featureMax;
           mat.uniforms.colorRamp.value = combination[i].feature?.featureValueToColor;
+          mat.uniforms.outlineColor.value = combination[i].feature?.outlineColor;
+          mat.uniforms.outlierColor.value = combination[i].feature?.outlierColor;
+          mat.uniforms.outOfRangeColor.value = combination[i].feature?.outOfRangeColor;
+          mat.uniforms.outlierDrawMode.value = combination[i].feature?.outlierDrawMode;
+          mat.uniforms.outOfRangeDrawMode.value = combination[i].feature?.outOfRangeDrawMode;
+          mat.uniforms.hideOutOfRange.value = combination[i].feature?.hideOutOfRange;
         } else {
           // the lut texture is spanning only the data range of the channel, not the datatype range
           mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);

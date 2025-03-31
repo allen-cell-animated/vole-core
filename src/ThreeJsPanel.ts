@@ -29,7 +29,6 @@ import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRig
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
-import HitTestHelper from "./HitTestHelper.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
@@ -87,8 +86,6 @@ export class ThreeJsPanel {
   private controlEndHandler?: EventListener<Event, "end", TrackballControls>;
   private controlChangeHandler?: EventListener<Event, "change", TrackballControls>;
   private controlStartHandler?: EventListener<Event, "start", TrackballControls>;
-
-  private hitTestHelper: HitTestHelper;
 
   public showAxis: boolean;
   private axisScale: number;
@@ -261,8 +258,6 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
-
-    this.hitTestHelper = new HitTestHelper();
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -833,8 +828,7 @@ export class ThreeJsPanel {
 
     const pixel = new Float32Array(4).fill(-1);
     this.renderer.readRenderTargetPixels(pickBuffer, x, y, 1, 1, pixel);
-
-    //const pixel = this.hitTestHelper.hitTest(this.renderer, pickBuffer, x / tw, y / th);
+    // For future reference, Simularium stores the following: 
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
     if (pixel[3] === -1 || pixel[3] === 0) {
