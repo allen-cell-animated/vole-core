@@ -945,9 +945,10 @@ function onChannelDataArrived(v: Volume, channelIndex: number) {
   view3D.redraw();
 }
 
-function onVolumeCreated(volume: Volume) {
+function onVolumeCreated(name: string, volume: Volume) {
   const myJson = volume.imageInfo;
   myState.volume = volume;
+  myState.currentImageName = name;
 
   view3D.removeAllVolumes();
   view3D.addVolume(myState.volume);
@@ -965,6 +966,11 @@ function onVolumeCreated(volume: Volume) {
     view3D.setVolumeTranslation(myState.volume, myState.volume.voxelsToWorldSpace(alignTransform.translation));
     view3D.setVolumeRotation(myState.volume, alignTransform.rotation);
     view3D.setVolumeScale(myState.volume, alignTransform.scale);
+  }
+
+  // hardcoded a special volume to know it's segmentation channel for pick testing
+  if (name === "testpick") {
+    view3D.enablePicking(myState.volume, true, 0);
   }
 
   updateTimeUI();
@@ -1115,25 +1121,25 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
   return [result];
 }
 
-async function loadVolume(loadSpec: LoadSpec, loader: IVolumeLoader): Promise<void> {
+async function loadVolume(name: string, loadSpec: LoadSpec, loader: IVolumeLoader): Promise<void> {
   const fullDims = await loader.loadDims(loadSpec);
   console.log(fullDims);
 
   const volume = await loader.createVolume(loadSpec, onChannelDataArrived);
-  onVolumeCreated(volume);
+  onVolumeCreated(name, volume);
   loader.loadVolumeData(volume);
 
   // Set default zSlice
   goToZSlice(Math.floor(volume.imageInfo.subregionSize.z / 2));
 }
 
-async function loadTestData(testdata: TestDataSpec) {
+async function loadTestData(name: string, testdata: TestDataSpec) {
   myState.loader = await createLoader(testdata);
 
   const loadSpec = new LoadSpec();
   myState.totalFrames = testdata.times;
   const loader = myState.loader[Math.max(myState.scene, myState.loader.length - 1)];
-  loadVolume(loadSpec, loader);
+  loadVolume(name, loadSpec, loader);
 }
 
 function gammaSliderToImageValues(sliderValues: [number, number, number]): [number, number, number] {
@@ -1251,7 +1257,7 @@ function main() {
     const selected = (currentTarget as HTMLOptionElement)?.value;
     const testdata = TEST_DATA[selected];
     if (testdata) {
-      loadTestData(testdata);
+      loadTestData(selected, testdata);
     }
   });
 
@@ -1392,7 +1398,7 @@ function main() {
   sceneInput?.addEventListener("change", () => {
     if (myState.loader.length > 1 && myState.scene !== sceneInput.valueAsNumber) {
       myState.scene = sceneInput.valueAsNumber;
-      loadVolume(new LoadSpec(), myState.loader[myState.scene]);
+      loadVolume(myState.currentImageName, new LoadSpec(), myState.loader[myState.scene]);
     }
   });
 
@@ -1498,7 +1504,7 @@ function main() {
   setupColorizeControls();
   setupGui();
 
-  loadTestData(TEST_DATA[(testDataSelect as HTMLSelectElement)?.value]);
+  loadTestData((testDataSelect as HTMLSelectElement)?.value, TEST_DATA[(testDataSelect as HTMLSelectElement)?.value]);
 }
 
 document.body.onload = () => {

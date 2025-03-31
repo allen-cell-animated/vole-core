@@ -923,6 +923,12 @@ export class View3d {
     }
   }
 
+  enablePicking(volume: Volume, enabled: boolean, channelIndex: number): void {
+    if (this.image) {
+      this.image.enablePicking(enabled, channelIndex);
+    }
+  }
+
   hitTest(offsetX: number, offsetY: number): number {
     if (!this.image) {
       return -1;

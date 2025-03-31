@@ -45,6 +45,7 @@ export default class PickVolume implements VolumeRenderImpl {
   private emptyPositionTex: DataTexture;
   public needRedraw = false;
   private pickBuffer: WebGLRenderTarget;
+  private channelToPick = 0;
 
   /**
    * Creates a new PickVolume.
@@ -87,6 +88,10 @@ export default class PickVolume implements VolumeRenderImpl {
     this.updateSettings(settings, SettingsFlags.ALL);
     // TODO this is doing *more* redundant work! Fix?
     this.updateVolumeDimensions();
+  }
+
+  public setChannelToPick(channel: number) {
+    this.channelToPick = channel;
   }
 
   public getPickBuffer(): WebGLRenderTarget {
@@ -262,7 +267,7 @@ export default class PickVolume implements VolumeRenderImpl {
     // we need to know the channel index for this.
     // ...channel.dataTexture...
     // TODO TODO TODO FIXME
-    this.setUniform("textureAtlas", this.volume.getChannel(0).dataTexture);
+    this.setUniform("textureAtlas", this.volume.getChannel(this.channelToPick).dataTexture);
 
     this.geometryTransformNode.updateMatrixWorld(true);
 

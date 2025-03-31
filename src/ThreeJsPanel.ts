@@ -810,7 +810,11 @@ export class ThreeJsPanel {
     }
   }
 
-  hitTest(offsetX: number, offsetY: number, pickBuffer: WebGLRenderTarget): number {
+  hitTest(offsetX: number, offsetY: number, pickBuffer: WebGLRenderTarget | undefined): number {
+    if (!pickBuffer) {
+      return -1;
+    }
+
     const size = new Vector2();
     this.renderer.getSize(size);
     // read from instance buffer pixel!
