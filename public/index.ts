@@ -1239,10 +1239,10 @@ function main() {
     if (intersectedObject !== -1) {
       el.style.cursor = "pointer";
       console.log("picked " + intersectedObject);
-      view3D.setSelectedID(myState.volume, 0, intersectedObject);
+      view3D.setSelectedID(myState.volume, myState.colorizeChannel, intersectedObject);
     } else {
       el.style.cursor = "default";
-      view3D.setSelectedID(myState.volume, 0, -1);
+      view3D.setSelectedID(myState.volume, myState.colorizeChannel, -1);
     }
   });
 
