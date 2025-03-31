@@ -284,6 +284,12 @@ export class View3d {
     this.redraw();
   }
 
+  /**
+   * @description Set the necessary data to colorize a segmentation channel, or turn off colorization.
+   * @param volume The volume to set the colorize feature for
+   * @param channelIndex The channel that will be colorized. This only makes sense for segmentation volumes.
+   * @param featureInfo A collection of all parameters necessary to colorize the channel. Pass null to turn off colorization.
+   */
   setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
     this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
     this.image?.fuse();
@@ -915,6 +921,12 @@ export class View3d {
     window.removeEventListener("keydown", this.handleKeydown);
   }
 
+  /**
+   * @description Set the selected ID for a given channel.  This is used to change the appearance of the volume where that id is.
+   * @param volume the image to set the selected ID on
+   * @param channel the channel index where the selected ID is
+   * @param id the selected id
+   */
   setSelectedID(volume: Volume, channel: number, id: number): void {
     const needRedraw = this.image?.setSelectedID(channel, id);
     if (needRedraw) {
@@ -923,12 +935,24 @@ export class View3d {
     }
   }
 
+  /**
+   * @description Enable or disable picking on a volume.  If enabled, the channelIndex is used to determine which channel to pick.
+   * @param volume the image to enable picking on
+   * @param enabled set true to enable, false to disable
+   * @param channelIndex if enabled is set to true, pass the pickable channel index here
+   */
   enablePicking(volume: Volume, enabled: boolean, channelIndex: number): void {
     if (this.image) {
       this.image.enablePicking(enabled, channelIndex);
     }
   }
 
+  /**
+   * @description This function is used to determine if a mouse event occurred over a volume object.
+   * @param offsetX mouse event x coordinate
+   * @param offsetY mouse event y coordinate
+   * @returns id of object that is under offsetX, offsetY. -1 if none
+   */
   hitTest(offsetX: number, offsetY: number): number {
     if (!this.image) {
       return -1;
