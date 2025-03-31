@@ -270,7 +270,7 @@ export class View3d {
     this.loadErrorHandler = handler;
   }
 
-  async setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): Promise<void> {
+  setTime(volume: Volume, time: number, onChannelLoaded?: PerChannelCallback): Promise<void> {
     const timeClamped = Math.max(0, Math.min(time, volume.imageInfo.times - 1));
     const loadPromise = volume.updateRequiredData({ time: timeClamped }, onChannelLoaded);
     this.updateTimestepIndicator(volume);
