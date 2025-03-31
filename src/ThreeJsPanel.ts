@@ -14,7 +14,6 @@ import {
   NormalBlending,
   RGBAFormat,
   Scene,
-  Texture,
   UnsignedByteType,
   Vector2,
   Vector3,
@@ -34,8 +33,6 @@ import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
-
-const OBJECTBUFFER = 0;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -820,11 +817,14 @@ export class ThreeJsPanel {
     const x = offsetX;
     const y = size.y - offsetY;
 
+    // if the pick buffer is a different size from our render canvas,
+    // then we have to transform the mouse event coordinates
+    const sx = Math.floor(x / size.x * pickBuffer.width);
+    const sy = Math.floor(y / size.y * pickBuffer.height);
+
     // read from the instance buffer
-    // ASSUMPTION: the instance buffer is the same size as the canvas.
-    // if the assumption is violated, then we need to have some relative scaling to transform the x,y
     const pixel = new Float32Array(4).fill(-1);
-    this.renderer.readRenderTargetPixels(pickBuffer, x, y, 1, 1, pixel);
+    this.renderer.readRenderTargetPixels(pickBuffer, sx, sy, 1, 1, pixel);
     // For future reference, Simularium stores the following: 
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
