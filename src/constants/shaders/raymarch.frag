@@ -159,8 +159,8 @@ bool intersectBox(in vec3 r_o, in vec3 r_d, in vec3 boxMin, in vec3 boxMax,
   vec3 tmax = max(ttop, tbot);
 
   // find the largest tmin and the smallest tmax
-  float largest_tmin  = max(max(tmin.x, tmin.y), max(tmin.x, tmin.z));
-  float smallest_tmax = min(min(tmax.x, tmax.y), min(tmax.x, tmax.z));
+  float largest_tmin  = max(max(tmin.x, tmin.y), tmin.z);
+  float smallest_tmax = min(min(tmax.x, tmax.y), tmax.z);
 
   tnear = largest_tmin;
   tfar = smallest_tmax;
