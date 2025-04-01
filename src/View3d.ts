@@ -941,7 +941,7 @@ export class View3d {
    * @param enabled set true to enable, false to disable
    * @param channelIndex if enabled is set to true, pass the pickable channel index here
    */
-  enablePicking(volume: Volume, enabled: boolean, channelIndex: number = 0): void {
+  enablePicking(volume: Volume, enabled: boolean, channelIndex = 0): void {
     if (this.image) {
       this.image.enablePicking(enabled, channelIndex);
     }
