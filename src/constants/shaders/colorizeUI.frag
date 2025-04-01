@@ -85,16 +85,10 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
     return vec4(0,0,0,0);
   }
 
-  // do an outline around highlighted object
-//   if (int(id) - 1 == highlightedId) {
-//     if (isEdge(sUv)) {
-//       // ignore opacity for edge color
-//       return vec4(outlineColor, 1.0);
-//     }
-//   }
-    if (id == highlightedId) {
-        return vec4(outlineColor, 1.0);
-    }
+  // color the highlighted object
+  if (id == highlightedId) {
+    return vec4(outlineColor, 1.0);
+  }
 
 
   float featureVal = getFeatureVal(id);

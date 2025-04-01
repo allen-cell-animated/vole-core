@@ -476,7 +476,8 @@ export default class VolumeDrawable {
       return;
     }
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
-    // pickRendering.updateActiveChannels(fusion, volume.channels); ?????
+    // pickRendering only really works with one channel so we don't need to call
+    // its updateActiveChannels method
   }
 
   setRenderUpdateListener(callback?: (iteration: number) => void): void {

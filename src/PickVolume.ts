@@ -71,7 +71,7 @@ export default class PickVolume implements VolumeRenderImpl {
 
     // buffers:
     this.pickBuffer = new WebGLRenderTarget(2, 2, {
-      count: 1, //3,
+      count: 1,
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
@@ -81,8 +81,6 @@ export default class PickVolume implements VolumeRenderImpl {
     // Name our G-Buffer attachments for debugging
     const OBJECTBUFFER = 0;
     this.pickBuffer.textures[OBJECTBUFFER].name = "objectinfo";
-    //this.pickBuffer.textures[NORMALBUFFER].name = "normal";
-    //this.pickBuffer.textures[POSITIONBUFFER].name = "position";
 
     this.settings = settings;
     this.updateSettings(settings, SettingsFlags.ALL);
@@ -315,10 +313,8 @@ export default class PickVolume implements VolumeRenderImpl {
 
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
   public updateActiveChannels(_channelcolors: FuseChannel[], _channeldata: Channel[]): void {
-    // TODO can we use this as a way to get segmentation channel?
-    // update to fused texture
-    //this.setUniform("textureAtlas", this.channelData.getFusedTexture());
-    //this.setUniform("textureAtlasMask", this.channelData.maskTexture);
+    // TODO consider if we can use this as a way to assing this.channelToPick?
+    // (e.g. put some kind of flag in FuseChannel)
   }
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {
