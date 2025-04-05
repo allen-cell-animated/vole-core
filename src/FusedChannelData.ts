@@ -26,6 +26,7 @@ import { renderToBufferVertShader } from "./constants/basicShaders.js";
 import fuseShaderSrcUI from "./constants/shaders/fuseUI.frag";
 import fuseShaderSrcF from "./constants/shaders/fuseF.frag";
 import fuseShaderSrcI from "./constants/shaders/fuseI.frag";
+import colorizeSrcUI from "./constants/shaders/colorizeUI.frag";
 import type { FuseChannel, NumberType } from "./types.js";
 
 // This is the owner of the fused RGBA volume texture atlas, and the mask texture atlas.
@@ -43,6 +44,7 @@ export default class FusedChannelData {
   private fuseMaterialF: ShaderMaterial;
   private fuseMaterialUI: ShaderMaterial;
   private fuseMaterialI: ShaderMaterial;
+  private fuseMaterialColorizeUI: ShaderMaterial;
 
   private fuseMaterialProps: Partial<ShaderMaterialParameters>;
   private fuseScene: Scene;
@@ -101,6 +103,7 @@ export default class FusedChannelData {
     this.fuseMaterialF = this.setupFuseMaterial(fuseShaderSrcF);
     this.fuseMaterialUI = this.setupFuseMaterial(fuseShaderSrcUI);
     this.fuseMaterialI = this.setupFuseMaterial(fuseShaderSrcI);
+    this.fuseMaterialColorizeUI = this.setupFuseColorizeMaterial(colorizeSrcUI);
     this.fuseMaterialF.needsUpdate = true;
     this.fuseMaterialUI.needsUpdate = true;
     this.fuseMaterialI.needsUpdate = true;
@@ -110,6 +113,7 @@ export default class FusedChannelData {
   private setupFuseMaterial(fragShaderSrc: string) {
     return new ShaderMaterial({
       uniforms: {
+        highlightedId: { value: -1 },
         lutSampler: {
           value: null,
         },
@@ -117,6 +121,35 @@ export default class FusedChannelData {
         srcTexture: {
           value: null,
         },
+      },
+      fragmentShader: fragShaderSrc,
+      ...this.fuseMaterialProps,
+    });
+  }
+
+  private setupFuseColorizeMaterial(fragShaderSrc: string) {
+    return new ShaderMaterial({
+      uniforms: {
+        highlightedId: { value: -1 },
+        featureData: {
+          value: null,
+        },
+        outlierData: { value: null },
+        inRangeIds: { value: null },
+        srcTexture: {
+          value: null,
+        },
+        featureColorRampMin: { value: 0 },
+        featureColorRampMax: { value: 1 },
+        colorRamp: {
+          value: null,
+        },
+        outlineColor: { value: new Color(0xffffff) },
+        outlierColor: { value: new Color(0x444444) },
+        outOfRangeColor: { value: new Color(0x444444) },
+        outlierDrawMode: { value: 0 },
+        outOfRangeDrawMode: { value: 0 },
+        hideOutOfRange: { value: false },
       },
       fragmentShader: fragShaderSrc,
       ...this.fuseMaterialProps,
@@ -132,14 +165,14 @@ export default class FusedChannelData {
     this.maskTexture.dispose();
   }
 
-  private getShader(dtype: NumberType): ShaderMaterial {
+  private getShader(dtype: NumberType, isColorize: boolean): ShaderMaterial {
     switch (dtype) {
       case "float32":
         return this.fuseMaterialF;
       case "uint8":
       case "uint16":
       case "uint32":
-        return this.fuseMaterialUI;
+        return isColorize ? this.fuseMaterialColorizeUI : this.fuseMaterialUI;
       case "int8":
       case "int16":
       case "int32":
@@ -197,13 +230,30 @@ export default class FusedChannelData {
         if (!channels[chIndex].loaded) {
           continue;
         }
+        const isColorize = combination[i].feature !== undefined;
         // add a draw call per channel here.
         // must clone the material to keep a unique set of uniforms
-        const mat = this.getShader(channels[chIndex].dtype).clone();
-        mat.uniforms.lutSampler.value = channels[chIndex].lutTexture;
-        // the lut texture is spanning only the data range of the channel, not the datatype range
-        mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
+        const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
+        mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
+        if (isColorize) {
+          mat.uniforms.featureData.value = combination[i].feature?.idsToFeatureValue;
+          mat.uniforms.outlierData.value = combination[i].feature?.outlierData;
+          mat.uniforms.inRangeIds.value = combination[i].feature?.inRangeIds;
+          mat.uniforms.featureColorRampMin.value = combination[i].feature?.featureMin;
+          mat.uniforms.featureColorRampMax.value = combination[i].feature?.featureMax;
+          mat.uniforms.colorRamp.value = combination[i].feature?.featureValueToColor;
+          mat.uniforms.outlineColor.value = combination[i].feature?.outlineColor;
+          mat.uniforms.outlierColor.value = combination[i].feature?.outlierColor;
+          mat.uniforms.outOfRangeColor.value = combination[i].feature?.outOfRangeColor;
+          mat.uniforms.outlierDrawMode.value = combination[i].feature?.outlierDrawMode;
+          mat.uniforms.outOfRangeDrawMode.value = combination[i].feature?.outOfRangeDrawMode;
+          mat.uniforms.hideOutOfRange.value = combination[i].feature?.hideOutOfRange;
+        } else {
+          // the lut texture is spanning only the data range of the channel, not the datatype range
+          mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
+          mat.uniforms.lutSampler.value = channels[chIndex].lutTexture;
+        }
         this.fuseScene.add(new Mesh(this.fuseGeometry, mat));
       }
     }

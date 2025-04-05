@@ -1,23 +1,24 @@
 import {
   AxesHelper,
+  BoxGeometry,
   Color,
-  Vector3,
-  Object3D,
+  DepthTexture,
   Event,
   EventListener,
   Mesh,
-  BoxGeometry,
   MeshBasicMaterial,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
-  NormalBlending,
-  WebGLRenderer,
-  Scene,
-  DepthTexture,
-  WebGLRenderTarget,
   NearestFilter,
-  UnsignedByteType,
+  NormalBlending,
   RGBAFormat,
+  Scene,
+  UnsignedByteType,
+  Vector2,
+  Vector3,
+  WebGLRenderer,
+  WebGLRenderTarget,
 } from "three";
 
 import TrackballControls from "./TrackballControls.js";
@@ -806,6 +807,38 @@ export class ThreeJsPanel {
     if (onend) {
       this.controlEndHandler = onend;
       this.controls.addEventListener("end", this.controlEndHandler);
+    }
+  }
+
+  hitTest(offsetX: number, offsetY: number, pickBuffer: WebGLRenderTarget | undefined): number {
+    if (!pickBuffer) {
+      return -1;
+    }
+
+    const size = new Vector2();
+    this.renderer.getSize(size);
+    // read from instance buffer pixel!
+    const x = offsetX;
+    const y = size.y - offsetY;
+
+    // if the pick buffer is a different size from our render canvas,
+    // then we have to transform the mouse event coordinates
+    const sx = Math.floor(x / size.x * pickBuffer.width);
+    const sy = Math.floor(y / size.y * pickBuffer.height);
+
+    // read from the instance buffer
+    const pixel = new Float32Array(4).fill(-1);
+    this.renderer.readRenderTargetPixels(pickBuffer, sx, sy, 1, 1, pixel);
+    // For future reference, Simularium stores the following: 
+    // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
+
+    if (pixel[3] === -1 || pixel[3] === 0) {
+      return -1;
+    } else {
+      // look up the object from its instance.
+      // and round it off to nearest integer
+      const instance = Math.round(pixel[1]);
+      return instance;
     }
   }
 }

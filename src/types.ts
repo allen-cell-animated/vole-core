@@ -1,4 +1,4 @@
-import { Camera, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, Color, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -53,11 +53,31 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
+export interface ColorizeFeature {
+  idsToFeatureValue: DataTexture;
+  featureValueToColor: DataTexture;
+  inRangeIds: DataTexture;
+  outlierData: DataTexture;
+  featureMin: number;
+  featureMax: number;
+  outlineColor: Color;
+  outlierColor: Color;
+  outOfRangeColor: Color;
+  outlierDrawMode: number;
+  outOfRangeDrawMode: number;
+  hideOutOfRange: boolean;
+}
+
 export interface FuseChannel {
   chIndex: number;
   lut: Uint8Array;
   // zero is a sentinel value to disable from fusion
   rgbColor: [number, number, number] | number;
+  // the selected id will have its intensity auto-mapped to a pick color
+  selectedID: number;
+
+  // if we are colorizing by feature, all the following inputs are needed
+  feature?: ColorizeFeature;
 }
 
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */
