@@ -150,6 +150,7 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
+        idOffset: { value: 0 },
       },
       fragmentShader: fragShaderSrc,
       ...this.fuseMaterialProps,
@@ -249,6 +250,10 @@ export default class FusedChannelData {
           mat.uniforms.outlierDrawMode.value = combination[i].feature?.outlierDrawMode;
           mat.uniforms.outOfRangeDrawMode.value = combination[i].feature?.outOfRangeDrawMode;
           mat.uniforms.hideOutOfRange.value = combination[i].feature?.hideOutOfRange;
+          // Offset IDs based on the current frame, for data without
+          // globally-unique IDs.
+          const idOffset = combination[i].feature?.timeToIdOffset[combination[i].time ?? 0] ?? 0;
+          mat.uniforms.idOffset.value = idOffset;
         } else {
           // the lut texture is spanning only the data range of the channel, not the datatype range
           mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);

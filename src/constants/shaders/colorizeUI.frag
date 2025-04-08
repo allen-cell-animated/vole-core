@@ -13,6 +13,12 @@ uniform sampler2D colorRamp;
 uniform usampler2D inRangeIds;
 uniform usampler2D outlierData;
 
+/** 
+ * Offsets raw IDs sampled from the volume data to get the global
+ * ID used to index into the feature and outlier data.
+*/
+uniform uint idOffset;
+
 uniform vec3 outlineColor;
 
 /** MUST be synchronized with the DrawMode enum in ColorizeCanvas! */
@@ -31,10 +37,6 @@ uniform bool hideOutOfRange;
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
 
-uint getId(ivec2 uv) {
-    return texelFetch(srcTexture, uv, 0).r;
-}
-
 vec4 getFloatFromTex(sampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
@@ -45,6 +47,15 @@ uvec4 getUintFromTex(usampler2D tex, int index) {
   ivec2 featurePos = ivec2(index % width, index / width);
   return texelFetch(tex, featurePos, 0);
 }
+
+uint getId(ivec2 uv) {
+  uint rawId = texelFetch(srcTexture, uv, 0).r;
+  if (rawId == 0u) {
+    return 0u;
+  }
+  return rawId + idOffset;
+}
+
 vec4 getColorRamp(float val) {
   float width = float(textureSize(colorRamp, 0).x);
   float range = (width - 1.0) / width;
@@ -63,17 +74,17 @@ vec4 getColorFromDrawMode(uint drawMode, vec3 defaultColor) {
 
 float getFeatureVal(uint id) {
   // Data buffer starts at 0, non-background segmentation IDs start at 1
-    return getFloatFromTex(featureData, int(id) - 1).r;
+  return getFloatFromTex(featureData, int(id) - 1).r;
 }
 uint getOutlierVal(uint id) {
   // Data buffer starts at 0, non-background segmentation IDs start at 1
-    return getUintFromTex(outlierData, int(id) - 1).r;
+  return getUintFromTex(outlierData, int(id) - 1).r;
 }
 bool getIsInRange(uint id) {
-    return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
+  return getUintFromTex(inRangeIds, int(id) - 1).r == 1u;
 }
 bool getIsOutlier(float featureVal, uint outlierVal) {
-    return isinf(featureVal) || outlierVal != 0u;
+  return isinf(featureVal) || outlierVal != 0u;
 }
 
 vec4 getObjectColor(ivec2 sUv, float opacity) {
@@ -82,14 +93,13 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
 
   // A segmentation id of 0 represents background
   if (id == 0u) {
-    return vec4(0,0,0,0);
+    return vec4(0, 0, 0, 0);
   }
 
   // color the highlighted object
   if (id == highlightedId) {
     return vec4(outlineColor, 1.0);
   }
-
 
   float featureVal = getFeatureVal(id);
   uint outlierVal = getOutlierVal(id);
@@ -116,8 +126,7 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   return color;
 }
 
-void main()
-{
-    ivec2 vUv = ivec2(int(gl_FragCoord.x), int(gl_FragCoord.y));
-    gl_FragColor = getObjectColor(vUv, 1.0);
+void main() {
+  ivec2 vUv = ivec2(int(gl_FragCoord.x), int(gl_FragCoord.y));
+  gl_FragColor = getObjectColor(vUv, 1.0);
 }
