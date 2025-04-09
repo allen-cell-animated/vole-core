@@ -253,6 +253,9 @@ export class View3d {
   onVolumeData(volume: Volume, channels: number[]): void {
     this.image?.updateScale();
     this.image?.onChannelLoaded(channels);
+    for (const channel of channels) {
+      this.image?.setChannelTime(channel, volume.loadSpec.time);
+    }
     if (volume.isLoaded() && this.tweakpane) {
       this.tweakpane.refresh();
     }

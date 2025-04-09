@@ -79,6 +79,7 @@ export default class VolumeDrawable {
       return {
         chIndex: index,
         lut: new Uint8Array(LUT_ARRAY_LENGTH),
+        time: this.volume.loadSpecRequired.time,
         rgbColor: rgbColor,
         selectedID: -1,
       };
@@ -433,8 +434,7 @@ export default class VolumeDrawable {
         this.pickRendering = new PickVolume(this.volume, this.settings);
       }
       this.pickRendering.setChannelToPick(channelIndex);
-    }
-    else {
+    } else {
       this.pickRendering?.cleanup();
       this.pickRendering = undefined;
     }
@@ -469,6 +469,13 @@ export default class VolumeDrawable {
       }
     }
     return false;
+  }
+
+  setChannelTime(channelIndex: number, time: number): void {
+    if (!this.fusion[channelIndex]) {
+      return;
+    }
+    this.fusion[channelIndex].time = time;
   }
 
   fuse(): void {
@@ -542,7 +549,6 @@ export default class VolumeDrawable {
 
   onChannelAdded(newChannelIndex: number): void {
     this.channelColors[newChannelIndex] = this.volume.channelColorsDefault[newChannelIndex];
-
     this.fusion[newChannelIndex] = {
       chIndex: newChannelIndex,
       lut: new Uint8Array[LUT_ARRAY_LENGTH](),

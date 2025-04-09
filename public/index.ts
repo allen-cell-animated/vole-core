@@ -971,8 +971,7 @@ function onVolumeCreated(name: string, volume: Volume) {
   // hardcoded a special volume to know it's segmentation channel for pick testing
   if (name === "testpick") {
     view3D.enablePicking(myState.volume, true, 0);
-  }
-  else {
+  } else {
     view3D.enablePicking(myState.volume, false);
   }
 
@@ -1182,7 +1181,8 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outOfRangeColor: new Color(0x444444),
       outlierDrawMode: 0,
       outOfRangeDrawMode: 0,
-      hideOutOfRange: false
+      hideOutOfRange: false,
+      timeToIdOffset: new Uint32Array([0]),
     };
   } else {
     return null;

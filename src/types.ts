@@ -56,6 +56,16 @@ export const ARRAY_CONSTRUCTORS = {
 export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
+  /**
+   * A mapping from the current frame number to the ID offset for that frame.
+   * This is used for data where the raw IDs are not globally-unique. Adding the
+   * offset to the raw ID gives the unique, global ID that can be used to index
+   * into the `idsToFeatureValue` and other colorize-related data textures.
+   *
+   * For each raw ID `i` at some time `t`, the global ID is `i +
+   * timeToIdOffset[t]`.
+   */
+  timeToIdOffset: Uint32Array;
   inRangeIds: DataTexture;
   outlierData: DataTexture;
   featureMin: number;
@@ -75,9 +85,9 @@ export interface FuseChannel {
   rgbColor: [number, number, number] | number;
   // the selected id will have its intensity auto-mapped to a pick color
   selectedID: number;
-
   // if we are colorizing by feature, all the following inputs are needed
   feature?: ColorizeFeature;
+  time?: number;
 }
 
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */
