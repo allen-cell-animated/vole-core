@@ -1,25 +1,23 @@
 
 #ifdef GL_ES
 precision highp float;
+precision highp usampler2D;
 #endif
 
 #define M_PI 3.14159265358979323846
 
 uniform vec2 iResolution;
 uniform vec2 textureRes;
-uniform float GAMMA_MIN;
-uniform float GAMMA_MAX;
-uniform float GAMMA_SCALE;
-uniform float BRIGHTNESS;
-uniform float DENSITY;
-uniform float maskAlpha;
+
+//uniform float maskAlpha;
 uniform vec2 ATLAS_DIMS;
 uniform vec3 AABB_CLIP_MIN;
 uniform float CLIP_NEAR;
 uniform vec3 AABB_CLIP_MAX;
 uniform float CLIP_FAR;
-uniform sampler2D textureAtlas;
-uniform sampler2D textureAtlasMask;
+// one raw channel atlas that has segmentation data
+uniform usampler2D textureAtlas;
+//uniform sampler2D textureAtlasMask;
 uniform sampler2D textureDepth;
 uniform int usingPositionTexture;
 uniform int BREAK_STEPS;
@@ -28,7 +26,6 @@ uniform float isOrtho;
 uniform float orthoThickness;
 uniform float orthoScale;
 uniform int maxProject;
-uniform bool interpolationEnabled;
 uniform vec3 flipVolume;
 uniform vec3 volumeScale;
 
@@ -49,17 +46,6 @@ float rand(vec2 co) {
   return fract(sin(dot(co, smallVal)) * bigVal);
 }
 
-vec4 luma2Alpha(vec4 color, float vmin, float vmax, float C) {
-  float x = dot(color.rgb, vec3(0.2125, 0.7154, 0.0721));
-  // float x = max(color[2], max(color[0],color[1]));
-  float xi = (x-vmin)/(vmax-vmin);
-  xi = clamp(xi,0.0,1.0);
-  float y = pow(xi,C);
-  y = clamp(y,0.0,1.0);
-  color[3] = y;
-  return color;
-}
-
 vec2 offsetFrontBack(float t) {
   int a = int(t);
   int ax = int(ATLAS_DIMS.x);
@@ -67,57 +53,8 @@ vec2 offsetFrontBack(float t) {
   return clamp(os, vec2(0.0), vec2(1.0) - vec2(1.0) / ATLAS_DIMS);
 }
 
-vec4 sampleAtlasLinear(sampler2D tex, vec4 pos) {
-  float bounds = float(pos[0] >= 0.0 && pos[0] <= 1.0 &&
-                       pos[1] >= 0.0 && pos[1] <= 1.0 &&
-                       pos[2] >= 0.0 && pos[2] <= 1.0 );
-  float nSlices = float(SLICES);
-  // get location within atlas tile
-  // TODO: get loc1 which follows ray to next slice along ray direction
-  // when flipvolume = 1:  pos
-  // when flipvolume = -1: 1-pos
-  vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / ATLAS_DIMS;
-
-  // loc ranges from 0 to 1/ATLAS_DIMS
-  // shrink loc0 to within one half edge texel - so as not to sample across edges of tiles.
-  loc0 = vec2(0.5) / textureRes + loc0 * (vec2(1.0) - ATLAS_DIMS / textureRes);
-  
-  // interpolate between two slices
-  float z = (pos.z)*(nSlices-1.0);
-  float z0 = floor(z);
-  float t = z-z0; //mod(z, 1.0);
-  float z1 = min(z0+1.0, nSlices-1.0);
-
-  // flipped:
-  if (flipVolume.z == -1.0) {
-    z0 = nSlices - z0 - 1.0;
-    z1 = nSlices - z1 - 1.0;
-    t = 1.0 - t;
-  }
-
-  // get slice offsets in texture atlas
-  vec2 o0 = offsetFrontBack(z0) + loc0;
-  vec2 o1 = offsetFrontBack(z1) + loc0;
-
-  vec4 slice0Color = texture2D(tex, o0);
-  vec4 slice1Color = texture2D(tex, o1);
-  // NOTE we could premultiply the mask in the fuse function,
-  // but that is slower to update the maskAlpha value than here in the shader.
-  // it is a memory vs perf tradeoff.  Do users really need to update the maskAlpha at realtime speed?
-  float slice0Mask = texture2D(textureAtlasMask, o0).x;
-  float slice1Mask = texture2D(textureAtlasMask, o1).x;
-  // or use max for conservative 0 or 1 masking?
-  float maskVal = mix(slice0Mask, slice1Mask, t);
-  // take mask from 0..1 to alpha..1
-  maskVal = mix(maskVal, 1.0, maskAlpha);
-  vec4 retval = mix(slice0Color, slice1Color, t);
-  // only mask the rgb, not the alpha(?)
-  retval.rgb *= maskVal;
-  return bounds*retval;
-}
-
-vec4 sampleAtlasNearest(sampler2D tex, vec4 pos) {
-  float bounds = float(pos[0] >= 0.0 && pos[0] <= 1.0 &&
+uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
+  uint bounds = uint(pos[0] >= 0.0 && pos[0] <= 1.0 &&
                        pos[1] >= 0.0 && pos[1] <= 1.0 &&
                        pos[2] >= 0.0 && pos[2] <= 1.0 );
   float nSlices = float(SLICES);
@@ -137,12 +74,12 @@ vec4 sampleAtlasNearest(sampler2D tex, vec4 pos) {
   }
 
   vec2 o = offsetFrontBack(z) + loc0;
-  vec4 voxelColor = texture2D(tex, o);
+  uint voxelColor = texture2D(tex, o).x;
 
   // Apply mask
-  float voxelMask = texture2D(textureAtlasMask, o).x;
-  voxelMask = mix(voxelMask, 1.0, maskAlpha);
-  voxelColor.rgb *= voxelMask;
+//   float voxelMask = texture2D(textureAtlasMask, o).x;
+//   voxelMask = mix(voxelMask, 1.0, maskAlpha);
+//   voxelColor.rgb *= voxelMask;
 
   return bounds*voxelColor;
 }
@@ -169,22 +106,12 @@ bool intersectBox(in vec3 r_o, in vec3 r_d, in vec3 boxMin, in vec3 boxMax,
   return(smallest_tmax > largest_tmin);
 }
 
-vec4 accumulate(vec4 col, float s, vec4 C) {
-  float stepScale = (1.0 - powf((1.0-col.w),s));
-  col.w = stepScale;
-  col.xyz *= col.w;
-  col = clamp(col,0.0,1.0);
-
-  C = (1.0-C.w)*col + C;
-  return C;
-}
-
 vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
                      float tnear,   float tfar,
                      float clipNear, float clipFar,
-                     sampler2D textureAtlas
+                     usampler2D textureAtlas
                      ) {
-  vec4 C = vec4(0.0);
+  uint C = 0u;
   // march along ray from front to back, accumulating color
 
   // estimate step length
@@ -205,10 +132,6 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
   float tdist = 0.0;
   int numSteps = 0;
   vec4 pos, col;
-  // We need to be able to scale the alpha contrib with number of ray steps,
-  // in order to make the final color invariant to the step size(?)
-  // use maxSteps (a constant) as the numerator... Not sure if this is sound.
-  float s = 0.5 * float(maxSteps) / csteps;
   for (int i = 0; i < maxSteps; i++) {
     pos = eye_o + eye_d*t;
     // !!! assume box bounds are -0.5 .. 0.5.  pos = (pos-min)/(max-min)
@@ -216,26 +139,25 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
     // AABB clip is independent of this and is only used to determine tnear and tfar.
     pos.xyz = (pos.xyz-(-0.5))/((0.5)-(-0.5)); //0.5 * (pos + 1.0); // map position from [boxMin, boxMax] to [0, 1] coordinates
 
-    vec4 col = interpolationEnabled ? sampleAtlasLinear(textureAtlas, pos) : sampleAtlasNearest(textureAtlas, pos);
+    uint col = sampleAtlasNearest(textureAtlas, pos);
+
+    // FOR INTERSECTION / PICKING, the FIRST nonzero intensity terminates the raymarch
 
     if (maxProject != 0) {
-      col.xyz *= BRIGHTNESS;
       C = max(col, C);
     } else {
-      col = luma2Alpha(col, GAMMA_MIN, GAMMA_MAX, GAMMA_SCALE);
-      col.xyz *= BRIGHTNESS;
-      // for practical use the density only matters for regular volume integration
-      col.w *= DENSITY;
-      C = accumulate(col, s, C);
+      if (col > 0u) {
+        C = col;
+        break;
+      }
     }
     t += tstep;
     numSteps = i;
 
     if (t > tfar || t > tnear+clipFar ) break;
-    if (C.w > 1.0 ) break;
   }
 
-  return C;
+  return vec4(float(C));
 }
 
 void main() {
@@ -314,7 +236,6 @@ void main() {
                           clipNear, clipFar,
                           textureAtlas);
 
-  C = clamp(C, 0.0, 1.0);
   gl_FragColor = C;
   return;
 }

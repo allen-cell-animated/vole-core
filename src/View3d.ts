@@ -17,6 +17,7 @@ import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Volume from "./Volume.js";
 import {
+  type ColorizeFeature,
   type VolumeChannelDisplayOptions,
   type VolumeDisplayOptions,
   isOrthographicCamera,
@@ -165,7 +166,7 @@ export class View3d {
    * redraw will be done asynchronously via `requestAnimationFrame`. Redraws should be done async
    * whenever possible for the best performance.
    */
-  redraw(synchronous: boolean = false): void {
+  redraw(synchronous = false): void {
     if (synchronous) {
       this.canvas3d.onAnimationLoop();
     } else {
@@ -296,6 +297,18 @@ export class View3d {
   }
 
   /**
+   * @description Set the necessary data to colorize a segmentation channel, or turn off colorization.
+   * @param volume The volume to set the colorize feature for
+   * @param channelIndex The channel that will be colorized. This only makes sense for segmentation volumes.
+   * @param featureInfo A collection of all parameters necessary to colorize the channel. Pass null to turn off colorization.
+   */
+  setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
+    this.image?.fuse();
+    this.redraw();
+  }
+
+  /**
    * Set voxel dimensions - controls volume scaling. For example, the physical measurements of the voxels from a biological data set
    * @param {Object} volume
    * @param {number} values Array of x,y,z floating point values for the physical voxel size scaling
@@ -381,6 +394,7 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
+    this.canvas3d.animateFuncs.push(img.fillPickBuffer.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
@@ -917,6 +931,45 @@ export class View3d {
 
   removeEventListeners(): void {
     window.removeEventListener("keydown", this.handleKeydown);
+  }
+
+  /**
+   * @description Set the selected ID for a given channel.  This is used to change the appearance of the volume where that id is.
+   * @param volume the image to set the selected ID on
+   * @param channel the channel index where the selected ID is
+   * @param id the selected id
+   */
+  setSelectedID(volume: Volume, channel: number, id: number): void {
+    const needRedraw = this.image?.setSelectedID(channel, id);
+    if (needRedraw) {
+      this.image?.fuse();
+      this.redraw();
+    }
+  }
+
+  /**
+   * @description Enable or disable picking on a volume.  If enabled, the channelIndex is used to determine which channel to pick.
+   * @param volume the image to enable picking on
+   * @param enabled set true to enable, false to disable
+   * @param channelIndex if enabled is set to true, pass the pickable channel index here
+   */
+  enablePicking(volume: Volume, enabled: boolean, channelIndex = 0): void {
+    if (this.image) {
+      this.image.enablePicking(enabled, channelIndex);
+    }
+  }
+
+  /**
+   * @description This function is used to determine if a mouse event occurred over a volume object.
+   * @param offsetX mouse event x coordinate
+   * @param offsetY mouse event y coordinate
+   * @returns id of object that is under offsetX, offsetY. -1 if none
+   */
+  hitTest(offsetX: number, offsetY: number): number {
+    if (!this.image) {
+      return -1;
+    }
+    return this.canvas3d.hitTest(offsetX, offsetY, this.image.getPickBuffer());
   }
 
   private setupGui(container: HTMLElement): Pane {
