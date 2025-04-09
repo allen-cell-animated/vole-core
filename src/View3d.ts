@@ -166,7 +166,7 @@ export class View3d {
    * redraw will be done asynchronously via `requestAnimationFrame`. Redraws should be done async
    * whenever possible for the best performance.
    */
-  redraw(synchronous: boolean = false): void {
+  redraw(synchronous = false): void {
     if (synchronous) {
       this.canvas3d.onAnimationLoop();
     } else {
