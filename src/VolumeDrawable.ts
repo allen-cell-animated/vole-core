@@ -471,13 +471,6 @@ export default class VolumeDrawable {
     return false;
   }
 
-  setChannelTime(channelIndex: number, time: number): void {
-    if (!this.fusion[channelIndex]) {
-      return;
-    }
-    this.fusion[channelIndex].time = time;
-  }
-
   fuse(): void {
     if (!this.volume) {
       return;
