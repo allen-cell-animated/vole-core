@@ -237,22 +237,23 @@ export default class FusedChannelData {
         const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
         mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
-        if (isColorize) {
-          mat.uniforms.featureData.value = combination[i].feature?.idsToFeatureValue;
-          mat.uniforms.outlierData.value = combination[i].feature?.outlierData;
-          mat.uniforms.inRangeIds.value = combination[i].feature?.inRangeIds;
-          mat.uniforms.featureColorRampMin.value = combination[i].feature?.featureMin;
-          mat.uniforms.featureColorRampMax.value = combination[i].feature?.featureMax;
-          mat.uniforms.colorRamp.value = combination[i].feature?.featureValueToColor;
-          mat.uniforms.outlineColor.value = combination[i].feature?.outlineColor;
-          mat.uniforms.outlierColor.value = combination[i].feature?.outlierColor;
-          mat.uniforms.outOfRangeColor.value = combination[i].feature?.outOfRangeColor;
-          mat.uniforms.outlierDrawMode.value = combination[i].feature?.outlierDrawMode;
-          mat.uniforms.outOfRangeDrawMode.value = combination[i].feature?.outOfRangeDrawMode;
-          mat.uniforms.hideOutOfRange.value = combination[i].feature?.hideOutOfRange;
+        const feature = combination[i].feature;
+        if (isColorize && feature) {
+          mat.uniforms.featureData.value = feature.idsToFeatureValue;
+          mat.uniforms.outlierData.value = feature.outlierData;
+          mat.uniforms.inRangeIds.value = feature.inRangeIds;
+          mat.uniforms.featureColorRampMin.value = feature.featureMin;
+          mat.uniforms.featureColorRampMax.value = feature.featureMax;
+          mat.uniforms.colorRamp.value = feature.featureValueToColor;
+          mat.uniforms.outlineColor.value = feature.outlineColor;
+          mat.uniforms.outlierColor.value = feature.outlierColor;
+          mat.uniforms.outOfRangeColor.value = feature.outOfRangeColor;
+          mat.uniforms.outlierDrawMode.value = feature.outlierDrawMode;
+          mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
+          mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
           // Offset IDs based on the current frame, for data without
           // globally-unique IDs.
-          const idOffset = combination[i].feature?.timeToIdOffset[combination[i].time ?? 0] ?? 0;
+          const idOffset = feature.timeToIdOffset[channels[chIndex].time] ?? 0;
           mat.uniforms.idOffset.value = idOffset;
         } else {
           // the lut texture is spanning only the data range of the channel, not the datatype range

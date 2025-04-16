@@ -64,6 +64,8 @@ export interface ColorizeFeature {
    *
    * For each raw ID `i` at some time `t`, the global ID is `i +
    * timeToIdOffset[t]`.
+   *
+   * If raw IDs are globally-unique, this array should be all zeros.
    */
   timeToIdOffset: Uint32Array;
   inRangeIds: DataTexture;
@@ -87,7 +89,6 @@ export interface FuseChannel {
   selectedID: number;
   // if we are colorizing by feature, all the following inputs are needed
   feature?: ColorizeFeature;
-  time?: number;
 }
 
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */
