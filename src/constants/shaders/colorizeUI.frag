@@ -37,6 +37,13 @@ uniform bool hideOutOfRange;
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
 
+uint getId(ivec2 uv) {
+  uint rawId = texelFetch(srcTexture, uv, 0).r;
+  if (rawId == 0u) {
+    return 0u;
+  }
+  return rawId + idOffset;
+}
 vec4 getFloatFromTex(sampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
@@ -47,15 +54,6 @@ uvec4 getUintFromTex(usampler2D tex, int index) {
   ivec2 featurePos = ivec2(index % width, index / width);
   return texelFetch(tex, featurePos, 0);
 }
-
-uint getId(ivec2 uv) {
-  uint rawId = texelFetch(srcTexture, uv, 0).r;
-  if (rawId == 0u) {
-    return 0u;
-  }
-  return rawId + idOffset;
-}
-
 vec4 getColorRamp(float val) {
   float width = float(textureSize(colorRamp, 0).x);
   float range = (width - 1.0) / width;
