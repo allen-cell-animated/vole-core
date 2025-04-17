@@ -79,7 +79,6 @@ export default class VolumeDrawable {
       return {
         chIndex: index,
         lut: new Uint8Array(LUT_ARRAY_LENGTH),
-        time: this.volume.loadSpecRequired.time,
         rgbColor: rgbColor,
         selectedID: -1,
       };
