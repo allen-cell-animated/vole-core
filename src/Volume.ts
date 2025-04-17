@@ -273,7 +273,8 @@ export default class Volume {
     atlaswidth: number,
     atlasheight: number,
     range: [number, number],
-    dtype: NumberType = "uint8"
+    dtype: NumberType = "uint8",
+    time = 0
   ): void {
     this.channels[channelIndex].setFromAtlas(
       atlasdata,
@@ -282,7 +283,8 @@ export default class Volume {
       dtype,
       range[0],
       range[1],
-      this.imageInfo.subregionSize
+      this.imageInfo.subregionSize,
+      time
     );
     this.onChannelLoaded([channelIndex]);
   }
@@ -297,7 +299,8 @@ export default class Volume {
     channelIndex: number,
     volumeData: TypedArray<NumberType>,
     range: [number, number],
-    dtype: NumberType = "uint8"
+    dtype: NumberType = "uint8",
+    time = 0
   ): void {
     const { subregionSize, atlasTileDims } = this.imageInfo;
     this.channels[channelIndex].setFromVolumeData(
@@ -309,7 +312,8 @@ export default class Volume {
       atlasTileDims.y * subregionSize.y,
       range[0],
       range[1],
-      dtype
+      dtype,
+      time
     );
     this.onChannelLoaded([channelIndex]);
   }

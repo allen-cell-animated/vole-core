@@ -179,10 +179,11 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
         const dtype = dtypes[i];
         const data = dataArrays[i];
         const range = ranges[i];
+        const time = volume.loadSpec.time;
         if (atlasDims) {
-          volume.setChannelDataFromAtlas(channelIndex, data, atlasDims[0], atlasDims[1], range, dtype);
+          volume.setChannelDataFromAtlas(channelIndex, data, atlasDims[0], atlasDims[1], range, dtype, time);
         } else {
-          volume.setChannelDataFromVolume(channelIndex, data, range, dtype);
+          volume.setChannelDataFromVolume(channelIndex, data, range, dtype, time);
         }
         onChannelLoaded?.(volume, channelIndex);
       }

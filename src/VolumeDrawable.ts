@@ -433,8 +433,7 @@ export default class VolumeDrawable {
         this.pickRendering = new PickVolume(this.volume, this.settings);
       }
       this.pickRendering.setChannelToPick(channelIndex);
-    }
-    else {
+    } else {
       this.pickRendering?.cleanup();
       this.pickRendering = undefined;
     }
@@ -542,7 +541,6 @@ export default class VolumeDrawable {
 
   onChannelAdded(newChannelIndex: number): void {
     this.channelColors[newChannelIndex] = this.volume.channelColorsDefault[newChannelIndex];
-
     this.fusion[newChannelIndex] = {
       chIndex: newChannelIndex,
       lut: new Uint8Array[LUT_ARRAY_LENGTH](),
