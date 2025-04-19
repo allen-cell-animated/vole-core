@@ -1,4 +1,4 @@
-import { Color, Vector3 } from "three";
+import { Color, DataTexture, Vector3 } from "three";
 import GUI from "lil-gui";
 
 import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer";
@@ -1182,7 +1182,7 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outlierDrawMode: 0,
       outOfRangeDrawMode: 0,
       hideOutOfRange: false,
-      timeToIdOffset: new Uint32Array([0]),
+      frameToGlobalIdLookup: new Map(),
     };
   } else {
     return null;

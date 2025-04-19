@@ -13,11 +13,15 @@ uniform sampler2D colorRamp;
 uniform usampler2D inRangeIds;
 uniform usampler2D outlierData;
 
-/** 
- * Offsets raw IDs sampled from the volume data to get the global
- * ID used to index into the feature and outlier data.
+/**
+ * LUT mapping from the segmentation ID (raw pixel value) to the
+ * global ID (index in data buffers like `featureData` and `outlierData`).
+ * 
+ * For a given segmentation ID `segId`, the global ID is given by:
+ * `segIdToGlobalId[segId - segIdOffset]`.
 */
-uniform uint idOffset;
+uniform usampler2D segIdToGlobalId;
+uniform uint segIdOffset;
 
 uniform vec3 outlineColor;
 
@@ -37,13 +41,6 @@ uniform bool hideOutOfRange;
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
 
-uint getId(ivec2 uv) {
-  uint rawId = texelFetch(srcTexture, uv, 0).r;
-  if (rawId == 0u) {
-    return 0u;
-  }
-  return rawId + idOffset;
-}
 vec4 getFloatFromTex(sampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
@@ -53,6 +50,17 @@ uvec4 getUintFromTex(usampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
   return texelFetch(tex, featurePos, 0);
+}
+uint getId(ivec2 uv) {
+  uint rawId = texelFetch(srcTexture, uv, 0).r;
+  if (rawId == 0u) {
+    return 0u;
+  }
+  uvec4 c = getUintFromTex(segIdToGlobalId, int(rawId - segIdOffset));
+  // Magic number `1` used to reserve `0` for background value. `1` MUST be
+  // subtracted again from the ID when accessing data buffers.
+  uint globalId = c.r + 1u;
+  return globalId;
 }
 vec4 getColorRamp(float val) {
   float width = float(textureSize(colorRamp, 0).x);
@@ -95,7 +103,7 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   }
 
   // color the highlighted object
-  if (id == highlightedId) {
+  if (id - 1u == highlightedId) {
     return vec4(outlineColor, 1.0);
   }
 
