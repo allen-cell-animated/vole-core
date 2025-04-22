@@ -28,6 +28,8 @@ uniform vec3 outlineColor;
 /** MUST be synchronized with the DrawMode enum in ColorizeCanvas! */
 const uint DRAW_MODE_HIDE = 0u;
 const uint DRAW_MODE_COLOR = 1u;
+const uint BACKGROUND_ID = 0xFFFFFFFFu;
+const uint MISSING_DATA_ID = 0u;
 
 uniform vec3 outlierColor;
 uniform uint outlierDrawMode;
@@ -54,12 +56,13 @@ uvec4 getUintFromTex(usampler2D tex, int index) {
 uint getId(ivec2 uv) {
   uint rawId = texelFetch(srcTexture, uv, 0).r;
   if (rawId == 0u) {
-    return 0u;
+    return BACKGROUND_ID;
   }
   uvec4 c = getUintFromTex(segIdToGlobalId, int(rawId - segIdOffset));
-  // Magic number `1` used to reserve `0` for background value. `1` MUST be
-  // subtracted again from the ID when accessing data buffers.
-  uint globalId = c.r + 1u;
+  // Note: IDs are offset by `1` to reserve `0` for segmentations that don't
+  // have associated data. `1` MUST be subtracted from the ID when accessing
+  // data buffers.
+  uint globalId = c.r;
   return globalId;
 }
 vec4 getColorRamp(float val) {
@@ -98,7 +101,7 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   uint id = getId(sUv);
 
   // A segmentation id of 0 represents background
-  if (id == 0u) {
+  if (id == BACKGROUND_ID) {
     return vec4(0, 0, 0, 0);
   }
 
@@ -115,12 +118,14 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // otherwise color with the color ramp as usual.
   bool isInRange = getIsInRange(id);
   bool isOutlier = getIsOutlier(featureVal, outlierVal);
+  // TODO: Add color controls for missing data
+  bool isMissingData = (id == MISSING_DATA_ID);
 
   // Features outside the filtered/thresholded range will all be treated the same (use `outOfRangeDrawColor`).
   // Features inside the range can either be outliers or standard values, and are colored accordingly.
   vec4 color;
   if (isInRange) {
-    if (isOutlier) {
+    if (isOutlier || isMissingData) {
       color = getColorFromDrawMode(outlierDrawMode, outlierColor);
     } else {
       color = getColorRamp(normFeatureVal);
