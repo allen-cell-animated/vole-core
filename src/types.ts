@@ -57,13 +57,19 @@ export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
   /**
-   * Maps from a frame number to an info object used to look up the global ID of
-   * a given segmentation ID (raw pixel value) on that frame. The info object
-   * contains a texture and a minimum segmentation ID for that frame, the latter
-   * of which is used to minimize the memory footprint of the lookup table.
+   * Maps from a frame number to an info object used to look up the global ID
+   * from a given segmentation ID (raw pixel value) on that frame. The info
+   * object contains a texture and a minimum segmentation ID for that frame, the
+   * latter of which is used to minimize the memory footprint of the lookup
+   * table.
    *
-   * For a frame at time `t`, the global ID of a segmentation `s` is given by:
-   * `lookup[t].texture.getAt(s - lookup[t].minSegId)`
+   * For a frame at time `t`, the global ID of a segmentation `segId` is given
+   * by:
+   * ```
+   * lookup[t].texture.getAt(segId - lookup[t].minSegId) - 1
+   * ```
+   * The result is `-1` if there is no global ID for that segmentation ID on
+   * that frame.
    *
    * The global ID can be used directly as an index into the
    * `idsToFeatureValue`, `inRangeIds`, and `outlierData` data textures to get

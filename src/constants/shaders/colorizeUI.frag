@@ -18,7 +18,7 @@ uniform usampler2D outlierData;
  * global ID (index in data buffers like `featureData` and `outlierData`).
  * 
  * For a given segmentation ID `segId`, the global ID is given by:
- * `segIdToGlobalId[segId - segIdOffset]`.
+ * `segIdToGlobalId[segId - segIdOffset] - 1`.
 */
 uniform usampler2D segIdToGlobalId;
 uniform uint segIdOffset;
