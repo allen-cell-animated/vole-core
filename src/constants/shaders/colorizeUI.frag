@@ -28,8 +28,8 @@ uniform vec3 outlineColor;
 /** MUST be synchronized with the DrawMode enum in ColorizeCanvas! */
 const uint DRAW_MODE_HIDE = 0u;
 const uint DRAW_MODE_COLOR = 1u;
-const uint BACKGROUND_ID = 0xFFFFFFFFu;
-const uint MISSING_DATA_ID = 0u;
+const uint BACKGROUND_ID = 0u;
+const uint MISSING_DATA_ID = 0xFFFFFFFFu;
 
 uniform vec3 outlierColor;
 uniform uint outlierDrawMode;
@@ -63,6 +63,9 @@ uint getId(ivec2 uv) {
   // have associated data. `1` MUST be subtracted from the ID when accessing
   // data buffers.
   uint globalId = c.r;
+  if (globalId == 0u) {
+    return MISSING_DATA_ID;
+  }
   return globalId;
 }
 vec4 getColorRamp(float val) {
@@ -105,7 +108,8 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
     return vec4(0, 0, 0, 0);
   }
 
-  // color the highlighted object
+  // color the highlighted object. Note, `highlightedId` is a 0-based index
+  // (global ID w/o offset), while `id` is a 1-based index.
   if (id - 1u == highlightedId) {
     return vec4(outlineColor, 1.0);
   }
@@ -118,14 +122,16 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // otherwise color with the color ramp as usual.
   bool isInRange = getIsInRange(id);
   bool isOutlier = getIsOutlier(featureVal, outlierVal);
-  // TODO: Add color controls for missing data
   bool isMissingData = (id == MISSING_DATA_ID);
 
   // Features outside the filtered/thresholded range will all be treated the same (use `outOfRangeDrawColor`).
   // Features inside the range can either be outliers or standard values, and are colored accordingly.
   vec4 color;
-  if (isInRange) {
-    if (isOutlier || isMissingData) {
+  if (isMissingData) { 
+    // TODO: Add color controls for missing data
+    color = getColorFromDrawMode(outlierDrawMode, outlierColor);
+  } else if (isInRange) {
+    if (isOutlier) {
       color = getColorFromDrawMode(outlierDrawMode, outlierColor);
     } else {
       color = getColorRamp(normFeatureVal);
