@@ -13,17 +13,23 @@ uniform sampler2D colorRamp;
 uniform usampler2D inRangeIds;
 uniform usampler2D outlierData;
 
-/** 
- * Offsets raw IDs sampled from the volume data to get the global
- * ID used to index into the feature and outlier data.
+/**
+ * LUT mapping from the segmentation ID (raw pixel value) to the
+ * global ID (index in data buffers like `featureData` and `outlierData`).
+ * 
+ * For a given segmentation ID `segId`, the global ID is given by:
+ * `segIdToGlobalId[segId - segIdOffset] - 1`.
 */
-uniform uint idOffset;
+uniform usampler2D segIdToGlobalId;
+uniform uint segIdOffset;
 
 uniform vec3 outlineColor;
 
 /** MUST be synchronized with the DrawMode enum in ColorizeCanvas! */
 const uint DRAW_MODE_HIDE = 0u;
 const uint DRAW_MODE_COLOR = 1u;
+const uint BACKGROUND_ID = 0u;
+const uint MISSING_DATA_ID = 0xFFFFFFFFu;
 
 uniform vec3 outlierColor;
 uniform uint outlierDrawMode;
@@ -37,13 +43,6 @@ uniform bool hideOutOfRange;
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
 
-uint getId(ivec2 uv) {
-  uint rawId = texelFetch(srcTexture, uv, 0).r;
-  if (rawId == 0u) {
-    return 0u;
-  }
-  return rawId + idOffset;
-}
 vec4 getFloatFromTex(sampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
@@ -53,6 +52,21 @@ uvec4 getUintFromTex(usampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
   return texelFetch(tex, featurePos, 0);
+}
+uint getId(ivec2 uv) {
+  uint rawId = texelFetch(srcTexture, uv, 0).r;
+  if (rawId == 0u) {
+    return BACKGROUND_ID;
+  }
+  uvec4 c = getUintFromTex(segIdToGlobalId, int(rawId - segIdOffset));
+  // Note: IDs are offset by `1` to reserve `0` for segmentations that don't
+  // have associated data. `1` MUST be subtracted from the ID when accessing
+  // data buffers.
+  uint globalId = c.r;
+  if (globalId == 0u) {
+    return MISSING_DATA_ID;
+  }
+  return globalId;
 }
 vec4 getColorRamp(float val) {
   float width = float(textureSize(colorRamp, 0).x);
@@ -90,12 +104,13 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   uint id = getId(sUv);
 
   // A segmentation id of 0 represents background
-  if (id == 0u) {
+  if (id == BACKGROUND_ID) {
     return vec4(0, 0, 0, 0);
   }
 
-  // color the highlighted object
-  if (id == highlightedId) {
+  // color the highlighted object. Note, `highlightedId` is a 0-based index
+  // (global ID w/o offset), while `id` is a 1-based index.
+  if (id - 1u == highlightedId) {
     return vec4(outlineColor, 1.0);
   }
 
@@ -107,11 +122,15 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // otherwise color with the color ramp as usual.
   bool isInRange = getIsInRange(id);
   bool isOutlier = getIsOutlier(featureVal, outlierVal);
+  bool isMissingData = (id == MISSING_DATA_ID);
 
   // Features outside the filtered/thresholded range will all be treated the same (use `outOfRangeDrawColor`).
   // Features inside the range can either be outliers or standard values, and are colored accordingly.
   vec4 color;
-  if (isInRange) {
+  if (isMissingData) { 
+    // TODO: Add color controls for missing data
+    color = getColorFromDrawMode(outlierDrawMode, outlierColor);
+  } else if (isInRange) {
     if (isOutlier) {
       color = getColorFromDrawMode(outlierDrawMode, outlierColor);
     } else {

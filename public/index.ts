@@ -1182,7 +1182,7 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outlierDrawMode: 0,
       outOfRangeDrawMode: 0,
       hideOutOfRange: false,
-      timeToIdOffset: new Uint32Array([0]),
+      frameToGlobalIdLookup: new Map(),
     };
   } else {
     return null;

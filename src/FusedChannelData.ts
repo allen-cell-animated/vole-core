@@ -150,7 +150,8 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        idOffset: { value: 0 },
+        segIdToGlobalId: { value: new DataTexture() },
+        segIdOffset: { value: 0 },
       },
       fragmentShader: fragShaderSrc,
       ...this.fuseMaterialProps,
@@ -251,10 +252,17 @@ export default class FusedChannelData {
           mat.uniforms.outlierDrawMode.value = feature.outlierDrawMode;
           mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
           mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
-          // Offset IDs based on the current frame, for data without
-          // globally-unique IDs.
-          const idOffset = feature.timeToIdOffset[channels[chIndex].time] ?? 0;
-          mat.uniforms.idOffset.value = idOffset;
+
+          const time = channels[chIndex].time;
+          let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(time);
+          if (!globalIdLookupInfo) {
+            console.warn(
+              `FusedChannelData.gpuFuse: No global ID lookup info for time ${time} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
+            );
+            globalIdLookupInfo = { texture: new DataTexture(Uint32Array[0]), minSegId: 1 };
+          }
+          mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
+          mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
         } else {
           // the lut texture is spanning only the data range of the channel, not the datatype range
           mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
