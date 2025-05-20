@@ -14,7 +14,8 @@ export function getSourceChannelNames(src: ZarrSource): string[] {
   if (src.omeroMetadata?.channels) {
     return src.omeroMetadata.channels.map(({ label }, idx) => label ?? `Channel ${idx + src.channelOffset}`);
   }
-  const length = src.scaleLevels[0].shape[src.axesTCZYX[1]];
+  const cIdx = src.axesTCZYX[1];
+  const length = cIdx < 0 ? 1 : src.scaleLevels[0].shape[cIdx];
   return Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
 }
 
