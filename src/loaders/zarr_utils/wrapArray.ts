@@ -1,4 +1,11 @@
-import type { Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
+import {
+  type AbsolutePath,
+  type Array as ZarrArray,
+  type AsyncReadable,
+  type Chunk,
+  type DataType,
+  FetchStore,
+} from "zarrita";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
 import type { WrappedArrayOpts } from "./types.js";
@@ -57,4 +64,21 @@ export default function wrapArray<
       return value;
     },
   });
+}
+
+// TODO rename file to reflect that we now have multiple wrappers for zarrita types (again)
+export class RelaxedFetchStore extends FetchStore {
+  async get(key: AbsolutePath, options: RequestInit = {}): Promise<Uint8Array | undefined> {
+    try {
+      return await super.get(key, options);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      if (e?.message?.startsWith("Unexpected response status 403")) {
+        // TODO remove
+        console.log("403");
+        return undefined;
+      }
+      throw e;
+    }
+  }
 }
