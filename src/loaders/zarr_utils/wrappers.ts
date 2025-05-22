@@ -73,8 +73,6 @@ export class RelaxedFetchStore extends FetchStore {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       if (e?.message?.startsWith("Unexpected response status 403")) {
-        // TODO remove
-        console.log("403");
         return undefined;
       }
       throw e;
