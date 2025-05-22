@@ -1,11 +1,5 @@
-import {
-  type AbsolutePath,
-  type Array as ZarrArray,
-  type AsyncReadable,
-  type Chunk,
-  type DataType,
-  FetchStore,
-} from "zarrita";
+import type { AbsolutePath, Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
+import { FetchStore } from "zarrita";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
 import type { WrappedArrayOpts } from "./types.js";
@@ -66,8 +60,13 @@ export default function wrapArray<
   });
 }
 
-// TODO rename file to reflect that we now have multiple wrappers for zarrita types (again)
 export class RelaxedFetchStore extends FetchStore {
+  constructor(baseUrl: string, options?: RequestInit) {
+    super(baseUrl, options);
+  }
+
+  // Solution for https://github.com/manzt/zarrita.js/pull/212
+  // taken from https://github.com/vitessce/vitessce/pull/2069
   async get(key: AbsolutePath, options: RequestInit = {}): Promise<Uint8Array | undefined> {
     try {
       return await super.get(key, options);
