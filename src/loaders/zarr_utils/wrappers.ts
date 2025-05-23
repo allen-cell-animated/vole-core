@@ -1,4 +1,5 @@
-import type { Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
+import type { AbsolutePath, Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
+import { FetchStore } from "zarrita";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
 import type { WrappedArrayOpts } from "./types.js";
@@ -57,4 +58,24 @@ export default function wrapArray<
       return value;
     },
   });
+}
+
+export class RelaxedFetchStore extends FetchStore {
+  constructor(baseUrl: string, options?: RequestInit) {
+    super(baseUrl, options);
+  }
+
+  // Solution for https://github.com/manzt/zarrita.js/pull/212
+  // taken from https://github.com/vitessce/vitessce/pull/2069
+  async get(key: AbsolutePath, options: RequestInit = {}): Promise<Uint8Array | undefined> {
+    try {
+      return await super.get(key, options);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
+      if (e?.message?.startsWith("Unexpected response status 403")) {
+        return undefined;
+      }
+      throw e;
+    }
+  }
 }
