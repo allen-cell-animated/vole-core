@@ -9,6 +9,9 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "noImplicitAny": false,
+    "paths": {
+      "three/addons/lines/*": ["./node_modules/@types/three/examples/jsm/lines/*"]
+    },
     "preserveConstEnums": true,
     "skipLibCheck": true,
     "sourceMap": true,

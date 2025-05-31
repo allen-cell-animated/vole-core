@@ -26,6 +26,7 @@ import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
+import MeshLine from "./MeshLine.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -48,6 +49,7 @@ export default class VolumeDrawable {
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
   private meshVolume: MeshVolume;
+  private meshLine: MeshLine;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -87,6 +89,7 @@ export default class VolumeDrawable {
     this.sceneRoot = new Object3D(); //create an empty container
 
     this.meshVolume = new MeshVolume(this.volume);
+    this.meshLine = new MeshLine(this.volume);
 
     options.renderMode = options.renderMode || RenderMode.RAYMARCH;
     switch (options.renderMode) {
@@ -107,6 +110,7 @@ export default class VolumeDrawable {
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     if (options.renderMode === RenderMode.RAYMARCH || options.renderMode === RenderMode.SLICE) {
       this.sceneRoot.add(this.meshVolume.get3dObject());
+      this.sceneRoot.add(this.meshLine.get3dObject());
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
@@ -253,6 +257,7 @@ export default class VolumeDrawable {
     const { normPhysicalSize, normRegionSize } = this.volume;
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.meshVolume.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
+    this.meshLine.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -273,6 +278,7 @@ export default class VolumeDrawable {
     const resolution = new Vector2(x, y);
     if (!this.settings.resolution.equals(resolution)) {
       this.meshVolume.setResolution(x, y);
+      this.meshLine.setResolution(x, y);
       this.settings.resolution = resolution;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.SAMPLING);
@@ -393,6 +399,7 @@ export default class VolumeDrawable {
     if (!this.settings.flipAxes.equals(flipAxes)) {
       this.settings.flipAxes = flipAxes;
       this.meshVolume.setFlipAxes(flipX, flipY, flipZ);
+      this.meshLine.setFlipAxes(flipX, flipY, flipZ);
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.TRANSFORM);
     }
@@ -422,6 +429,7 @@ export default class VolumeDrawable {
     this.volumeRendering.doRender(renderer, camera, depthTexture);
     if (this.renderMode !== RenderMode.PATHTRACE) {
       this.meshVolume.doRender();
+      this.meshLine.doRender();
     }
   }
 
@@ -513,6 +521,7 @@ export default class VolumeDrawable {
 
   cleanup(): void {
     this.meshVolume.cleanup();
+    this.meshLine.cleanup();
     this.volumeRendering.cleanup();
     this.pickRendering?.cleanup();
   }
