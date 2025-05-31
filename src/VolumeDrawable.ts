@@ -832,6 +832,14 @@ export default class VolumeDrawable {
     this.updateScale();
   }
 
+  setLineVertices(vertices: Float32Array): void {
+    this.meshLine.setLineVertices(vertices);
+  }
+
+  setLineVertexRange(start: number, end: number): void {
+    this.meshLine.setVertexRange(start, end);
+  }
+
   setupGui(pane: Pane): void {
     pane.addInput(this.settings, "translation").on("change", ({ value }) => this.setTranslation(value));
     pane.addInput(this.settings, "rotation").on("change", ({ value }) => this.setRotation(value));

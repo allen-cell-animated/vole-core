@@ -82,13 +82,21 @@ export default class MeshLine {
 
   setLineVertices(positions: Float32Array): void {
     // TODO: Scale based on volume size?
+    const { physicalSize } = this.volume;
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] = positions[i] / physicalSize.x - 0.5;
+      positions[i + 1] = positions[i + 1] / physicalSize.y - 0.5;
+      positions[i + 2] = positions[i + 2] / physicalSize.z - 0.5;
+    }
+    console.log("setLineVertices", positions);
     this.lineMesh.geometry.setPositions(positions);
     this.lineMesh.geometry.computeBoundingSphere();
   }
 
-  setVertexRange(range: number): void {
+  setVertexRange(start: number, end: number): void {
     if (this.lineMesh.geometry) {
-      this.lineMesh.geometry.setDrawRange(0, range);
+      this.lineMesh.geometry.setDrawRange(start, end - start);
+      this.lineMesh.geometry.computeBoundingSphere();
     }
   }
 }

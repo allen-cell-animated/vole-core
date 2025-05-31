@@ -947,6 +947,17 @@ export class View3d {
     }
   }
 
+  // TODO: Add comments. Positions should be in terms of original volume voxels.
+  setLineVertices(positions: Float32Array) {
+    this.image?.setLineVertices(positions);
+    this.redraw();
+  }
+
+  setLineVertexRange(start: number, end: number) {
+    this.image?.setLineVertexRange(start, end);
+    this.redraw();
+  }
+
   /**
    * @description Enable or disable picking on a volume.  If enabled, the channelIndex is used to determine which channel to pick.
    * @param volume the image to enable picking on
