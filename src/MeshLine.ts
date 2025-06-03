@@ -16,11 +16,11 @@ export default class MeshLine {
   constructor(volume: Volume) {
     this.volume = volume;
     const geometry = new LineGeometry();
-    geometry.setPositions([0.5, 0.5, -0.4, -0.5, -0.5, -0.4]);
-    const material = new LineMaterial({ color: "#f00", linewidth: 1, worldUnits: false });
+    const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
 
     this.lineMesh = new Line2(geometry, material);
     this.lineMesh.layers.set(MESH_LAYER);
+    this.lineMesh.frustumCulled = false;
 
     this.meshPivot = new Group();
     this.meshPivot.add(this.lineMesh);
@@ -80,23 +80,41 @@ export default class MeshLine {
     }
   }
 
-  setLineVertices(positions: Float32Array): void {
-    // TODO: Scale based on volume size?
+  private normalizeVertex(centroid: Float32Array): number[] {
     const { physicalSize } = this.volume;
-    for (let i = 0; i < positions.length; i += 3) {
-      positions[i] = positions[i] / physicalSize.x - 0.5;
-      positions[i + 1] = positions[i + 1] / physicalSize.y - 0.5;
-      positions[i + 2] = positions[i + 2] / physicalSize.z - 0.5;
+    const x = centroid[0] / physicalSize.x - 0.5;
+    const y = centroid[1] / physicalSize.y - 0.5;
+    const z = centroid[2] / physicalSize.z - 0.5;
+    return [x, y, z];
+  }
+
+  setLineVertices(vertexData: Float32Array): void {
+    // TODO: Scale based on volume size?
+    const numVertices = vertexData.length / 3;
+    if (numVertices <= 1) {
+      this.lineMesh.geometry.setPositions(new Float32Array(0));
     }
-    console.log("setLineVertices", positions);
-    this.lineMesh.geometry.setPositions(positions);
+    const scaledVertices = new Float32Array(numVertices * 3 * 2 - 6);
+    const startVertex = this.normalizeVertex(vertexData.slice(0, 3));
+    scaledVertices.set(startVertex, 0);
+    // Double up vertices for line segment rendering
+    for (let i = 1; i < numVertices - 1; i += 1) {
+      const vertex = this.normalizeVertex(vertexData.slice(3 * i, 3 * (i + 1)));
+      scaledVertices.set(vertex, 6 * i - 3);
+      scaledVertices.set(vertex, 6 * i);
+    }
+    const endVertex = this.normalizeVertex(vertexData.slice(vertexData.length - 3));
+    scaledVertices.set(endVertex, scaledVertices.length - 3);
+
+    this.lineMesh.geometry.setPositions(scaledVertices);
     this.lineMesh.geometry.computeBoundingSphere();
+    this.lineMesh.computeLineDistances();
+    this.lineMesh.geometry.attributes.position.needsUpdate = true;
   }
 
   setVertexRange(start: number, end: number): void {
     if (this.lineMesh.geometry) {
-      this.lineMesh.geometry.setDrawRange(start, end - start);
-      this.lineMesh.geometry.computeBoundingSphere();
+      this.lineMesh.geometry.instanceCount = end - start;
     }
   }
 }
