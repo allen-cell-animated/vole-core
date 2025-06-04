@@ -114,7 +114,8 @@ export default class MeshLine {
 
   setVertexRange(start: number, end: number): void {
     if (this.lineMesh.geometry) {
-      this.lineMesh.geometry.instanceCount = end - start;
+      const count = (end - start - 1) * 2;
+      this.lineMesh.geometry.instanceCount = count;
     }
   }
 }
