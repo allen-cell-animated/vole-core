@@ -88,6 +88,19 @@ export interface ColorizeFeature {
   hideOutOfRange: boolean;
 }
 
+export enum LineRenderOrder {
+  WITHIN = 0,
+  FRONT = 1,
+}
+
+export interface LineConfiguration {
+  /** Width in onscreen pixels. */
+  widthPx: number;
+  color: string | Color;
+  opacity: number;
+  renderOrder: LineRenderOrder;
+}
+
 export interface FuseChannel {
   chIndex: number;
   lut: Uint8Array;

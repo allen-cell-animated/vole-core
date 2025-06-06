@@ -948,14 +948,36 @@ export class View3d {
   }
 
   // TODO: Add comments. Positions should be in terms of original volume voxels.
-  setLineVertices(positions: Float32Array) {
-    this.image?.setLineVertices(positions);
-    this.redraw();
+  addLine(): number {
+    return this.image?.addLine() || -1;
   }
 
-  setLineVertexRange(start: number, end: number) {
-    this.image?.setLineVertexRange(start, end);
-    this.redraw();
+  removeLine(lineId: number): void {
+    if (this.image) {
+      this.image.removeLine(lineId);
+      this.redraw();
+    }
+  }
+
+  setLinePositions(lineId: number, positions: Float32Array): void {
+    if (this.image) {
+      this.image.setLinePositions(lineId, positions);
+      this.redraw();
+    }
+  }
+
+  setLinePositionsNormalized(lineId: number, positions: Float32Array): void {
+    if (this.image) {
+      this.image.setLinePositionsNormalized(lineId, positions);
+      this.redraw();
+    }
+  }
+
+  setLineSegmentsVisible(lineId: number, segments: number): void {
+    if (this.image) {
+      this.image.setLineSegmentsVisible(lineId, segments);
+      this.redraw();
+    }
   }
 
   /**

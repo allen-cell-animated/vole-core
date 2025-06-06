@@ -80,42 +80,32 @@ export default class MeshLine {
     }
   }
 
-  private normalizeVertex(centroid: Float32Array): number[] {
-    const { physicalSize } = this.volume;
-    const x = centroid[0] / physicalSize.x - 0.5;
-    const y = centroid[1] / physicalSize.y - 0.5;
-    const z = centroid[2] / physicalSize.z - 0.5;
-    return [x, y, z];
-  }
-
-  setLineVertices(vertexData: Float32Array): void {
-    // TODO: Scale based on volume size?
-    const numVertices = vertexData.length / 3;
-    if (numVertices <= 1) {
-      this.lineMesh.geometry.setPositions(new Float32Array(0));
+  setLinePositionsNormalized(positionData: Float32Array): void {
+    if (positionData.length % 6 !== 0) {
+      throw new Error("positionData length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
     }
-    const scaledVertices = new Float32Array(numVertices * 3 * 2 - 6);
-    const startVertex = this.normalizeVertex(vertexData.slice(0, 3));
-    scaledVertices.set(startVertex, 0);
-    // Double up vertices for line segment rendering
-    for (let i = 1; i < numVertices - 1; i += 1) {
-      const vertex = this.normalizeVertex(vertexData.slice(3 * i, 3 * (i + 1)));
-      scaledVertices.set(vertex, 6 * i - 3);
-      scaledVertices.set(vertex, 6 * i);
-    }
-    const endVertex = this.normalizeVertex(vertexData.slice(vertexData.length - 3));
-    scaledVertices.set(endVertex, scaledVertices.length - 3);
-
-    this.lineMesh.geometry.setPositions(scaledVertices);
-    this.lineMesh.geometry.computeBoundingSphere();
-    this.lineMesh.computeLineDistances();
+    this.lineMesh.geometry.setPositions(positionData);
     this.lineMesh.geometry.attributes.position.needsUpdate = true;
   }
 
-  setVertexRange(start: number, end: number): void {
+  setLinePositions(positionData: Float32Array): void {
+    // Normalize the vertex data based on the volume's physical size
+    if (positionData.length % 6 !== 0) {
+      throw new Error("positionData length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+    }
+    const normalizedVertices = new Float32Array(positionData.length);
+    for (let i = 0; i < positionData.length; i += 3) {
+      normalizedVertices[i + 0] = positionData[i + 0] / this.volume.physicalSize.x - 0.5;
+      normalizedVertices[i + 1] = positionData[i + 1] / this.volume.physicalSize.y - 0.5;
+      normalizedVertices[i + 2] = positionData[i + 2] / this.volume.physicalSize.z - 0.5;
+    }
+    this.setLinePositionsNormalized(normalizedVertices);
+  }
+
+  setNumSegmentsVisible(segments: number): void {
     if (this.lineMesh.geometry) {
-      const count = (end - start - 1) * 2;
-      this.lineMesh.geometry.instanceCount = count;
+      const count = segments * 2;
+      this.lineMesh.geometry.instanceCount = Math.max(0, count);
     }
   }
 }

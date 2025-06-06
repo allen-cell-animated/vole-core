@@ -19,7 +19,13 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
+import type {
+  VolumeDisplayOptions,
+  VolumeChannelDisplayOptions,
+  FuseChannel,
+  ColorizeFeature,
+  LineConfiguration,
+} from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -49,7 +55,8 @@ export default class VolumeDrawable {
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
   private meshVolume: MeshVolume;
-  private meshLine: MeshLine;
+  private meshLines: Map<number, MeshLine>;
+  private meshLinesCreated: number;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -89,7 +96,8 @@ export default class VolumeDrawable {
     this.sceneRoot = new Object3D(); //create an empty container
 
     this.meshVolume = new MeshVolume(this.volume);
-    this.meshLine = new MeshLine(this.volume);
+    this.meshLines = new Map<number, MeshLine>();
+    this.meshLinesCreated = 0;
 
     options.renderMode = options.renderMode || RenderMode.RAYMARCH;
     switch (options.renderMode) {
@@ -110,7 +118,6 @@ export default class VolumeDrawable {
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     if (options.renderMode === RenderMode.RAYMARCH || options.renderMode === RenderMode.SLICE) {
       this.sceneRoot.add(this.meshVolume.get3dObject());
-      this.sceneRoot.add(this.meshLine.get3dObject());
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
@@ -257,7 +264,9 @@ export default class VolumeDrawable {
     const { normPhysicalSize, normRegionSize } = this.volume;
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.meshVolume.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
-    this.meshLine.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
+    for (const meshLine of this.meshLines.values()) {
+      meshLine.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
+    }
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -278,7 +287,9 @@ export default class VolumeDrawable {
     const resolution = new Vector2(x, y);
     if (!this.settings.resolution.equals(resolution)) {
       this.meshVolume.setResolution(x, y);
-      this.meshLine.setResolution(x, y);
+      for (const meshLine of this.meshLines.values()) {
+        meshLine.setResolution(x, y);
+      }
       this.settings.resolution = resolution;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.SAMPLING);
@@ -399,7 +410,9 @@ export default class VolumeDrawable {
     if (!this.settings.flipAxes.equals(flipAxes)) {
       this.settings.flipAxes = flipAxes;
       this.meshVolume.setFlipAxes(flipX, flipY, flipZ);
-      this.meshLine.setFlipAxes(flipX, flipY, flipZ);
+      for (const meshLine of this.meshLines.values()) {
+        meshLine.setFlipAxes(flipX, flipY, flipZ);
+      }
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.TRANSFORM);
     }
@@ -429,7 +442,9 @@ export default class VolumeDrawable {
     this.volumeRendering.doRender(renderer, camera, depthTexture);
     if (this.renderMode !== RenderMode.PATHTRACE) {
       this.meshVolume.doRender();
-      this.meshLine.doRender();
+      for (const meshLine of this.meshLines.values()) {
+        meshLine.doRender();
+      }
     }
   }
 
@@ -521,7 +536,9 @@ export default class VolumeDrawable {
 
   cleanup(): void {
     this.meshVolume.cleanup();
-    this.meshLine.cleanup();
+    for (const meshLine of this.meshLines.values()) {
+      meshLine.cleanup();
+    }
     this.volumeRendering.cleanup();
     this.pickRendering?.cleanup();
   }
@@ -832,12 +849,95 @@ export default class VolumeDrawable {
     this.updateScale();
   }
 
-  setLineVertices(vertices: Float32Array): void {
-    this.meshLine.setLineVertices(vertices);
+  //// Line rendering /////
+
+  /**
+   * Creates a new line in the scene and returns an ID for it.
+   */
+  addLine(): number {
+    // Get next available line ID
+    const lineId = this.meshLinesCreated++;
+    const meshLine = new MeshLine(this.volume);
+    this.meshLines.set(lineId, meshLine);
+    if (this.renderMode === RenderMode.RAYMARCH || this.renderMode === RenderMode.SLICE) {
+      this.sceneRoot.add(meshLine.get3dObject());
+    }
+    this.updateScale(); // Scale the new line
+    return lineId;
   }
 
-  setLineVertexRange(start: number, end: number): void {
-    this.meshLine.setVertexRange(start, end);
+  /**
+   * Deletes a line from the scene and cleans up its resources.
+   */
+  removeLine(lineId: number): void {
+    const meshLine = this.meshLines.get(lineId);
+    if (meshLine) {
+      this.sceneRoot.remove(meshLine.get3dObject());
+      meshLine.cleanup();
+      this.meshLines.delete(lineId);
+    }
+  }
+
+  /**
+   * Sets the positions of a line by ID, where coordinates are given in the
+   * volume's physical size.
+   *
+   * @param id ID of the line to set positions for, as returned by
+   * `createLine()`.
+   * @param positions Float32Array containing vertex positions, where each 6
+   * values represents a pair of 3D vertex coordinates (x, y, z). For line
+   * segment `i`, the coordinates of its endpoints `v1` and `v2` are given by:
+   * ```
+   * v1.x = [vertices[3 * 2 * i + 0]]
+   * v1.y = [vertices[3 * 2 * i + 1]]
+   * v1.z = [vertices[3 * 2 * i + 2]]
+   * v2.x = [vertices[3 * 2 * i + 3]]
+   * v2.y = [vertices[3 * 2 * i + 4]]
+   * v2.z = [vertices[3 * 2 * i + 5]]
+   * ```
+   *
+   * Vertex coordinates should be with respect to the volume's physical size
+   * (e.g. `volume.physicalSize`).
+   * @throws {Error} If the line with the given ID does not exist, or if the
+   * `positions` array length is not a multiple of 6.
+   */
+  setLinePositions(id: number, positions: Float32Array): void {
+    const meshLine = this.meshLines.get(id);
+    if (!meshLine) {
+      throw new Error(`MeshLine with ID ${id} does not exist or was removed.`);
+    }
+    if (positions.length % 6 !== 0) {
+      throw new Error("Positions array length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+    }
+    meshLine.setLinePositions(positions);
+  }
+
+  /**
+   * Sets the positions of a line by ID, where coordinates are normalized to
+   * volume bounds in a `[-0.5, 0.5]` range.
+   * @param id ID of the line to set positions for, as returned by
+   * `createLine()`.
+   * @param positionsNormalized
+   */
+  setLinePositionsNormalized(id: number, positionsNormalized: Float32Array): void {
+    const meshLine = this.meshLines.get(id);
+    if (!meshLine) {
+      throw new Error(`MeshLine with ID ${id} does not exist or was removed.`);
+    }
+    if (positionsNormalized.length % 6 !== 0) {
+      throw new Error("Vertices array length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+    }
+    meshLine.setLinePositionsNormalized(positionsNormalized);
+  }
+
+  setLineConfig(id: number, config: LineConfiguration): void {}
+
+  setLineSegmentsVisible(id: number, segments: number): void {
+    const meshLine = this.meshLines.get(id);
+    if (!meshLine) {
+      throw new Error(`MeshLine with ID ${id} does not exist or was removed.`);
+    }
+    meshLine.setNumSegmentsVisible(segments);
   }
 
   setupGui(pane: Pane): void {
