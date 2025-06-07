@@ -2,23 +2,24 @@ import { Line2 } from "three/addons/lines/Line2.js";
 import Volume from "./Volume";
 import { Euler, Group, Vector3 } from "three";
 import { Bounds } from "./types";
-import { LineGeometry } from "three/addons/lines/LineGeometry";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
 import { MESH_LAYER } from "./ThreeJsPanel";
+import { LineSegments2 } from "three/addons/lines/LineSegments2";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
 export default class MeshLine {
   private volume: Volume;
   private meshPivot: Group;
-  private lineMesh: Line2;
+  private lineMesh: LineSegments2;
   private bounds: Bounds;
   private scale: Vector3;
 
   constructor(volume: Volume) {
     this.volume = volume;
-    const geometry = new LineGeometry();
+    const geometry = new LineSegmentsGeometry();
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
 
-    this.lineMesh = new Line2(geometry, material);
+    this.lineMesh = new LineSegments2(geometry, material);
     this.lineMesh.layers.set(MESH_LAYER);
     this.lineMesh.frustumCulled = false;
 
@@ -86,6 +87,7 @@ export default class MeshLine {
     }
     this.lineMesh.geometry.setPositions(positionData);
     this.lineMesh.geometry.attributes.position.needsUpdate = true;
+    console.log(positionData.slice(121 * 6, 121 * 6 + 12));
   }
 
   setLinePositions(positionData: Float32Array): void {
@@ -104,7 +106,7 @@ export default class MeshLine {
 
   setNumSegmentsVisible(segments: number): void {
     if (this.lineMesh.geometry) {
-      const count = segments * 2;
+      const count = segments;
       this.lineMesh.geometry.instanceCount = Math.max(0, count);
     }
   }
