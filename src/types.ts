@@ -96,8 +96,8 @@ export enum LineRenderOrder {
 export interface LineConfiguration {
   /** Width in onscreen pixels. */
   widthPx: number;
-  color: string | Color;
-  opacity: number;
+  color?: string | Color;
+  colors?: Float32Array;
   renderOrder: LineRenderOrder;
 }
 

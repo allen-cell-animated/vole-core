@@ -3,7 +3,7 @@ import Volume from "./Volume";
 import { Euler, Group, Vector3 } from "three";
 import { Bounds } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_LAYER } from "./ThreeJsPanel";
+import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
 import { LineSegments2 } from "three/addons/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
@@ -85,9 +85,12 @@ export default class MeshLine {
     if (positionData.length % 6 !== 0) {
       throw new Error("positionData length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
     }
+    // Replacing the geometry fixes a bug where the number of line segments
+    // would not update. There may be a flag that needs to be set to fix this?
+    this.lineMesh.geometry.dispose();
+    this.lineMesh.geometry = new LineSegmentsGeometry();
     this.lineMesh.geometry.setPositions(positionData);
     this.lineMesh.geometry.attributes.position.needsUpdate = true;
-    console.log(positionData.slice(121 * 6, 121 * 6 + 12));
   }
 
   setLinePositions(positionData: Float32Array): void {
