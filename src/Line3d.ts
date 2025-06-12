@@ -15,6 +15,7 @@ export default class MeshLine {
   private scale: Vector3;
 
   constructor(volume: Volume) {
+    // TODO: Line should not know about the Volume, should instead be scaled by a transform
     this.volume = volume;
     const geometry = new LineSegmentsGeometry();
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
@@ -23,6 +24,7 @@ export default class MeshLine {
     this.lineMesh.layers.set(MESH_LAYER);
     this.lineMesh.frustumCulled = false;
 
+    // TODO: Apply a matrix transform based on the Volume physical size
     this.meshPivot = new Group();
     this.meshPivot.add(this.lineMesh);
 
