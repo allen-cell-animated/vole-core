@@ -1,4 +1,4 @@
-import { Camera, Color, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, Color, DataTexture, Euler, Group, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -96,9 +96,23 @@ export enum LineRenderOrder {
 export interface LineConfiguration {
   /** Width in onscreen pixels. */
   widthPx: number;
-  color?: string | Color;
-  colors?: Float32Array;
+  color: string | Color;
+  // colors?: Float32Array;
   renderOrder: LineRenderOrder;
+}
+
+export interface IDrawableObject {
+  cleanup(): void;
+  setVisible(visible: boolean): void;
+  doRender(): void;
+  get3dObject(): Group;
+  setTranslation(translation: Vector3): void;
+  setScale(scale: Vector3): void;
+  setRotation(eulerXYZ: Euler): void;
+  setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
+  setOrthoThickness(thickness: number): void;
+  setResolution(x: number, y: number): void;
+  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void;
 }
 
 export interface FuseChannel {

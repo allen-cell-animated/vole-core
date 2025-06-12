@@ -23,6 +23,7 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
+  IDrawableObject,
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
@@ -947,35 +948,16 @@ export class View3d {
     }
   }
 
-  // TODO: Add comments. Positions should be in terms of original volume voxels.
-  addLine(): number {
-    return this.image?.addLine() || -1;
-  }
-
-  removeLine(lineId: number): void {
+  addSceneObject(object: IDrawableObject): void {
     if (this.image) {
-      this.image.removeLine(lineId);
+      this.image.addSceneObject(object);
       this.redraw();
     }
   }
 
-  setLinePositions(lineId: number, positions: Float32Array): void {
+  removeSceneObject(object: IDrawableObject): void {
     if (this.image) {
-      this.image.setLinePositions(lineId, positions);
-      this.redraw();
-    }
-  }
-
-  setLinePositionsNormalized(lineId: number, positions: Float32Array): void {
-    if (this.image) {
-      this.image.setLinePositionsNormalized(lineId, positions);
-      this.redraw();
-    }
-  }
-
-  setLineSegmentsVisible(lineId: number, segments: number): void {
-    if (this.image) {
-      this.image.setLineSegmentsVisible(lineId, segments);
+      this.image.removeSceneObject(object);
       this.redraw();
     }
   }

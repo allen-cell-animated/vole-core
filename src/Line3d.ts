@@ -1,23 +1,24 @@
-import { Line2 } from "three/addons/lines/Line2.js";
-import Volume from "./Volume";
 import { Euler, Group, Vector3 } from "three";
-import { Bounds } from "./types";
+import { Bounds, IDrawableObject } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
 import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
 import { LineSegments2 } from "three/addons/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
-export default class MeshLine {
-  private volume: Volume;
+const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
+
+export default class Line3d implements IDrawableObject {
   private meshPivot: Group;
-  private lineMesh: LineSegments2;
   private bounds: Bounds;
   private scale: Vector3;
+  private lineMesh: LineSegments2;
+  private bufferSize: number;
 
-  constructor(volume: Volume) {
+  constructor() {
     // TODO: Line should not know about the Volume, should instead be scaled by a transform
-    this.volume = volume;
+    this.bufferSize = DEFAULT_VERTEX_BUFFER_SIZE;
     const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(new Float32Array(this.bufferSize));
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
 
     this.lineMesh = new LineSegments2(geometry, material);
@@ -37,6 +38,23 @@ export default class MeshLine {
     };
   }
 
+  setTranslation(translation: Vector3): void {
+    this.meshPivot.position.copy(translation);
+  }
+  setScale(scale: Vector3): void {
+    this.scale.copy(scale);
+    this.meshPivot.scale.copy(scale);
+    console.log("Line3d setScale", scale);
+  }
+
+  setOrthoThickness(thickness: number): void {
+    // no op
+  }
+
+  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void {
+    // no op
+  }
+
   cleanup(): void {
     this.lineMesh.geometry.dispose();
     this.lineMesh.material.dispose();
@@ -54,7 +72,7 @@ export default class MeshLine {
     return this.meshPivot;
   }
 
-  setScale(scale: Vector3, position = new Vector3(0, 0, 0)): void {
+  setTransform(scale: Vector3, position = new Vector3(0, 0, 0)): void {
     this.meshPivot.scale.copy(scale);
     this.meshPivot.position.copy(position);
   }
@@ -63,10 +81,6 @@ export default class MeshLine {
     this.meshPivot.scale.copy(
       new Vector3(0.5 * this.scale.x * flipX, 0.5 * this.scale.y * flipY, 0.5 * this.scale.z * flipZ)
     );
-  }
-
-  setTranslation(vec3xyz: Vector3): void {
-    this.meshPivot.position.copy(vec3xyz);
   }
 
   setResolution(_x: number, _y: number): void {
@@ -83,30 +97,21 @@ export default class MeshLine {
     }
   }
 
-  setLinePositionsNormalized(positionData: Float32Array): void {
-    if (positionData.length % 6 !== 0) {
-      throw new Error("positionData length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+  setLineVertexData(positions: Float32Array, colors?: Float32Array): void {
+    if (positions.length % 6 !== 0) {
+      throw new Error("positions length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
     }
-    // Replacing the geometry fixes a bug where the number of line segments
-    // would not update. There may be a flag that needs to be set to fix this?
-    this.lineMesh.geometry.dispose();
-    this.lineMesh.geometry = new LineSegmentsGeometry();
-    this.lineMesh.geometry.setPositions(positionData);
-    this.lineMesh.geometry.attributes.position.needsUpdate = true;
-  }
-
-  setLinePositions(positionData: Float32Array): void {
-    // Normalize the vertex data based on the volume's physical size
-    if (positionData.length % 6 !== 0) {
-      throw new Error("positionData length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+    // If buffer size is too small, dispose of the old geometry and create a new
+    // one with the larger size.
+    if (positions.length > this.bufferSize) {
+      this.lineMesh.geometry.dispose();
+      this.lineMesh.geometry = new LineSegmentsGeometry();
+      this.bufferSize = positions.length;
     }
-    const normalizedVertices = new Float32Array(positionData.length);
-    for (let i = 0; i < positionData.length; i += 3) {
-      normalizedVertices[i + 0] = positionData[i + 0] / this.volume.physicalSize.x - 0.5;
-      normalizedVertices[i + 1] = positionData[i + 1] / this.volume.physicalSize.y - 0.5;
-      normalizedVertices[i + 2] = positionData[i + 2] / this.volume.physicalSize.z - 0.5;
+    this.lineMesh.geometry.setPositions(positions);
+    if (colors) {
+      this.lineMesh.geometry.setColors(colors);
     }
-    this.setLinePositionsNormalized(normalizedVertices);
   }
 
   setNumSegmentsVisible(segments: number): void {

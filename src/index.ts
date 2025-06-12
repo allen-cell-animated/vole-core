@@ -24,6 +24,7 @@ import VolumeLoaderContext from "./workers/VolumeLoaderContext.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "./loaders/VolumeLoadError.js";
 import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
+import Line3d from "./Line3d.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -34,6 +35,7 @@ export type { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 export {
   Histogram,
   Lut,
+  Line3d,
   remapControlPoints,
   View3d,
   Volume,
