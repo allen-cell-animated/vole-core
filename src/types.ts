@@ -57,6 +57,13 @@ export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
   /**
+   * Ignore the feature min and max, and treat the color ramp texture as a
+   * direct lookup for feature values. Feature values that are greater than
+   * the length of the color ramp will be wrapped around to the start
+   * (e.g. `value % colorRamp.length`).
+   */
+  useRepeatingColor: boolean;
+  /**
    * Maps from a frame number to an info object used to look up the global ID
    * from a given segmentation ID (raw pixel value) on that frame. The info
    * object contains a texture and a minimum segmentation ID for that frame, the
