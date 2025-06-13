@@ -95,19 +95,6 @@ export interface ColorizeFeature {
   hideOutOfRange: boolean;
 }
 
-export enum LineRenderOrder {
-  WITHIN = 0,
-  FRONT = 1,
-}
-
-export interface LineConfiguration {
-  /** Width in onscreen pixels. */
-  widthPx: number;
-  color: string | Color;
-  // colors?: Float32Array;
-  renderOrder: LineRenderOrder;
-}
-
 export interface IDrawableObject {
   cleanup(): void;
   setVisible(visible: boolean): void;

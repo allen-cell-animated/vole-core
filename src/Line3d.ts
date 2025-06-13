@@ -1,7 +1,7 @@
 import { Color, Euler, Group, Vector3 } from "three";
 import { IDrawableObject } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_LAYER } from "./ThreeJsPanel";
+import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
 import { LineSegments2 } from "three/addons/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
@@ -100,6 +100,34 @@ export default class Line3d implements IDrawableObject {
     this.lineMesh.material.color.set(color);
     this.lineMesh.material.vertexColors = useVertexColors;
     this.lineMesh.material.needsUpdate = true;
+  }
+
+  /**
+   * Sets the opacity of the line material.
+   *
+   * Note that transparent lines may have unexpected colors when intersecting
+   * with or overlapping the volume. Consider setting them to render as an
+   * overlay instead using `setOverlay()`.
+   * @param opacity Opacity value in the range `[0, 1]`. 0 is fully transparent,
+   * 1 is fully opaque.
+   */
+  setOpacity(opacity: number): void {
+    const isTransparent = opacity < 1.0;
+    this.lineMesh.material.opacity = opacity;
+    this.lineMesh.material.transparent = isTransparent;
+    this.lineMesh.material.needsUpdate = true;
+  }
+
+  /**
+   * Sets whether a line should be rendered as an overlay (rendered on top of
+   *  the volume) instead of a mesh (with depth, intersects with volume).
+   * @param renderAsOverlay If true, the line will be rendered on top of the
+   * volume, ignoring depth.
+   */
+  setOverlay(overlay: boolean): void {
+    this.lineMesh.layers.set(overlay ? OVERLAY_LAYER : MESH_LAYER);
+    this.lineMesh.material.depthTest = !overlay;
+    this.lineMesh.material.depthTest = !overlay;
   }
 
   /**
