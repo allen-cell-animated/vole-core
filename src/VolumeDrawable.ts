@@ -25,7 +25,6 @@ import type {
   VolumeChannelDisplayOptions,
   FuseChannel,
   ColorizeFeature,
-  LineConfiguration,
   IDrawableObject,
 } from "./types.js";
 import { RenderMode } from "./types.js";
@@ -57,9 +56,15 @@ export default class VolumeDrawable {
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
   private meshVolume: MeshVolume;
-  /** Scene objects are added to this group, and  */
-  private sceneObjectsGroup: Group;
-  private sceneObjects: Set<IDrawableObject>;
+  /**
+   * Group for all child objects of the volume. The group is scaled and
+   * transformed to the normalized volume coordinate space, where the volume's
+   * center is at (0, 0, 0) and the bounds have a range of [-0.5, 0.5] along each
+   * axis.
+   */
+  private childObjectsGroup: Group;
+  /** Set of drawable objects that are children of the volume's transform. */
+  private childObjects: Set<IDrawableObject>;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -98,9 +103,9 @@ export default class VolumeDrawable {
 
     this.sceneRoot = new Object3D(); //create an empty container
 
-    this.sceneObjectsGroup = new Group();
-    this.sceneObjects = new Set<IDrawableObject>();
-    this.sceneRoot.add(this.sceneObjectsGroup);
+    this.childObjectsGroup = new Group();
+    this.childObjects = new Set<IDrawableObject>();
+    this.sceneRoot.add(this.childObjectsGroup);
 
     options.renderMode = options.renderMode || RenderMode.RAYMARCH;
     switch (options.renderMode) {
@@ -121,8 +126,8 @@ export default class VolumeDrawable {
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     this.meshVolume = new MeshVolume(this.volume);
     if (options.renderMode === RenderMode.RAYMARCH || options.renderMode === RenderMode.SLICE) {
-      this.sceneObjectsGroup.add(this.meshVolume.get3dObject());
-      this.sceneObjects.add(this.meshVolume);
+      this.childObjectsGroup.add(this.meshVolume.get3dObject());
+      this.childObjects.add(this.meshVolume);
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
@@ -268,8 +273,8 @@ export default class VolumeDrawable {
   updateScale(): void {
     const { normPhysicalSize, normRegionSize } = this.volume;
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
-    this.sceneObjectsGroup.scale.copy(scale);
-    this.sceneObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
+    this.childObjectsGroup.scale.copy(scale);
+    this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -289,7 +294,7 @@ export default class VolumeDrawable {
   setResolution(x: number, y: number): void {
     const resolution = new Vector2(x, y);
     if (!this.settings.resolution.equals(resolution)) {
-      for (const object of this.sceneObjects) {
+      for (const object of this.childObjects) {
         object.setResolution(x, y);
       }
       this.settings.resolution = resolution;
@@ -411,7 +416,7 @@ export default class VolumeDrawable {
     const flipAxes = new Vector3(flipX, flipY, flipZ);
     if (!this.settings.flipAxes.equals(flipAxes)) {
       this.settings.flipAxes = flipAxes;
-      for (const object of this.sceneObjects) {
+      for (const object of this.childObjects) {
         object.setFlipAxes(flipX, flipY, flipZ);
       }
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -442,7 +447,7 @@ export default class VolumeDrawable {
     // TODO confirm sequence
     this.volumeRendering.doRender(renderer, camera, depthTexture);
     if (this.renderMode !== RenderMode.PATHTRACE) {
-      for (const object of this.sceneObjects) {
+      for (const object of this.childObjects) {
         object.doRender();
       }
     }
@@ -535,7 +540,7 @@ export default class VolumeDrawable {
   }
 
   cleanup(): void {
-    for (const object of this.sceneObjects) {
+    for (const object of this.childObjects) {
       object.cleanup();
     }
     this.volumeRendering.cleanup();
@@ -848,24 +853,34 @@ export default class VolumeDrawable {
     this.updateScale();
   }
 
-  addSceneObject(object: IDrawableObject): void {
-    if (!this.sceneObjects.has(object)) {
-      this.sceneObjects.add(object);
-      this.sceneObjectsGroup.add(object.get3dObject());
-      object.setResolution(this.settings.resolution.x, this.settings.resolution.y);
-      object.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
+  /**
+   * Adds a Line3d object as a child of the Volume, if it does not already
+   * exist. Line objects will be in the normalized coordinate space of the
+   * Volume, where the origin (0,0,0) is at the center of the Volume and the
+   * extent is from -0.5 to 0.5 in each axis.
+   */
+  addLineObject(line: Line3d): void {
+    if (!this.childObjects.has(line)) {
+      this.childObjects.add(line);
+      this.childObjectsGroup.add(line.get3dObject());
+      line.setResolution(this.settings.resolution.x, this.settings.resolution.y);
+      line.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
     }
   }
 
-  hasSceneObject(object: IDrawableObject): boolean {
-    return this.sceneObjects.has(object);
+  /** Returns whether a line object exists as a child of the volume. */
+  hasLineObject(line: Line3d): boolean {
+    return this.childObjects.has(line);
   }
 
-  removeSceneObject(object: IDrawableObject): void {
-    if (this.sceneObjects.has(object)) {
-      this.sceneObjects.delete(object);
-      this.sceneObjectsGroup.remove(object.get3dObject());
-      // object.cleanup();
+  /**
+   * Removes a Line3d object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+   */
+  removeLineObject(line: Line3d): void {
+    if (this.childObjects.has(line)) {
+      this.childObjects.delete(line);
+      this.childObjectsGroup.remove(line.get3dObject());
     }
   }
 

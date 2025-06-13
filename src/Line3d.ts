@@ -1,16 +1,20 @@
 import { Color, Euler, Group, Vector3 } from "three";
-import { Bounds, IDrawableObject } from "./types";
+import { IDrawableObject } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
+import { MESH_LAYER } from "./ThreeJsPanel";
 import { LineSegments2 } from "three/addons/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
+/**
+ * Simple wrapper for a 3D line segments object, with controls for vertex data,
+ * color, width, and segments visible.
+ */
 export default class Line3d implements IDrawableObject {
   private meshPivot: Group;
-  private bounds: Bounds;
   private scale: Vector3;
+  private flipAxes: Vector3;
   private lineMesh: LineSegments2;
   private bufferSize: number;
 
@@ -32,28 +36,10 @@ export default class Line3d implements IDrawableObject {
     this.meshPivot.layers.set(MESH_LAYER);
 
     this.scale = new Vector3(1, 1, 1);
-    this.bounds = {
-      bmin: new Vector3(-0.5, -0.5, -0.5),
-      bmax: new Vector3(0.5, 0.5, 0.5),
-    };
+    this.flipAxes = new Vector3(1, 1, 1);
   }
 
-  setTranslation(translation: Vector3): void {
-    this.meshPivot.position.copy(translation);
-  }
-  setScale(scale: Vector3): void {
-    this.scale.copy(scale);
-    this.meshPivot.scale.copy(scale);
-    console.log("Line3d setScale", scale);
-  }
-
-  setOrthoThickness(thickness: number): void {
-    // no op
-  }
-
-  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void {
-    // no op
-  }
+  // IDrawableObject interface methods
 
   cleanup(): void {
     this.lineMesh.geometry.dispose();
@@ -72,46 +58,88 @@ export default class Line3d implements IDrawableObject {
     return this.meshPivot;
   }
 
-  setTransform(scale: Vector3, position = new Vector3(0, 0, 0)): void {
-    this.meshPivot.scale.copy(scale);
-    this.meshPivot.position.copy(position);
+  setTranslation(translation: Vector3): void {
+    this.meshPivot.position.copy(translation);
   }
 
-  setFlipAxes(flipX: number, flipY: number, flipZ: number): void {
-    this.meshPivot.scale.copy(
-      new Vector3(0.5 * this.scale.x * flipX, 0.5 * this.scale.y * flipY, 0.5 * this.scale.z * flipZ)
-    );
-  }
-
-  setResolution(_x: number, _y: number): void {
-    // no op
+  setScale(scale: Vector3): void {
+    this.scale.copy(scale);
+    this.meshPivot.scale.copy(scale).multiply(this.flipAxes);
   }
 
   setRotation(eulerXYZ: Euler): void {
     this.meshPivot.rotation.copy(eulerXYZ);
   }
 
-  setColor(color: Color, useVertexColors: boolean = false): void {
+  setFlipAxes(flipX: number, flipY: number, flipZ: number): void {
+    this.flipAxes.set(flipX, flipY, flipZ);
+    this.meshPivot.scale.copy(this.scale).multiply(this.flipAxes);
+  }
+
+  setOrthoThickness(_thickness: number): void {
+    // no op
+  }
+
+  setResolution(_x: number, _y: number): void {
+    // no op
+  }
+
+  setAxisClip(_axis: "x" | "y" | "z", _minval: number, _maxval: number, _isOrthoAxis: boolean): void {
+    // no op
+  }
+
+  // Line-specific functions
+
+  /**
+   * Sets the color of the line material.
+   * @param color Base line color.
+   * @param useVertexColors If true, the line will multiply the base color with
+   * the per-vertex colors defined in the geometry (see `setLineVertexData`). Default is false.
+   */
+  setColor(color: Color, useVertexColors = false): void {
     this.lineMesh.material.color.set(color);
     this.lineMesh.material.vertexColors = useVertexColors;
     this.lineMesh.material.needsUpdate = true;
   }
 
-  setLineWidth(widthPx: number): void {
+  /**
+   * Sets the width of the line in pixels.
+   * @param widthPx Width in pixels.
+   * @param useWorldUnits Whether to use world units for the line width. By
+   * default (false), the width is in screen pixels.
+   */
+  setLineWidth(widthPx: number, useWorldUnits = false): void {
     this.lineMesh.material.linewidth = widthPx;
+    this.lineMesh.material.worldUnits = useWorldUnits;
     this.lineMesh.material.needsUpdate = true;
   }
 
+  /**
+   * Sets the vertex data (position and RGB colors) for the line segments.
+   * @param positions A Float32Array of 3D coordinates, where each pair of
+   * coordinates is one line segment. Length must be a multiple of 6 (pairs of
+   * two 3-dimensional coordinates).
+   * @param colors A Float32Array of RGB values in the [0, 1] range, where each triplet corresponds
+   * to a vertex color.
+   * @throws {Error} If the positions length is not a multiple of 6 or if colors
+   * length is not a multiple of 3.
+   */
   setLineVertexData(positions: Float32Array, colors?: Float32Array): void {
     if (positions.length % 6 !== 0) {
-      throw new Error("positions length must be a multiple of 6 (pairs of two 3-dimensional coordinates)");
+      throw new Error(
+        `positions length of ${positions.length} is not a multiple of 6 (pairs of two 3-dimensional coordinates)`
+      );
     }
+    if (colors !== undefined && colors.length % 3 !== 0) {
+      throw new Error(`colors length of ${colors.length} is not a multiple of 3 (triplets of RGB values)`);
+    }
+    const newBufferSize = Math.max(positions.length, colors ? colors.length : 0);
     // If buffer size is too small, dispose of the old geometry and create a new
     // one with the larger size.
-    if (positions.length > this.bufferSize) {
+    if (newBufferSize > this.bufferSize) {
       this.lineMesh.geometry.dispose();
       this.lineMesh.geometry = new LineSegmentsGeometry();
-      this.bufferSize = positions.length;
+      this.bufferSize = newBufferSize;
     }
     this.lineMesh.geometry.setPositions(positions);
     if (colors) {
@@ -119,6 +147,7 @@ export default class Line3d implements IDrawableObject {
     }
   }
 
+  /** Number of line segments that should be visible. */
   setNumSegmentsVisible(segments: number): void {
     if (this.lineMesh.geometry) {
       const count = segments;
