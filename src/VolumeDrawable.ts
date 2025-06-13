@@ -857,6 +857,10 @@ export default class VolumeDrawable {
     }
   }
 
+  hasSceneObject(object: IDrawableObject): boolean {
+    return this.sceneObjects.has(object);
+  }
+
   removeSceneObject(object: IDrawableObject): void {
     if (this.sceneObjects.has(object)) {
       this.sceneObjects.delete(object);

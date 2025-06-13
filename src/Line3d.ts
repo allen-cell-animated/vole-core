@@ -1,4 +1,4 @@
-import { Euler, Group, Vector3 } from "three";
+import { Color, Euler, Group, Vector3 } from "three";
 import { Bounds, IDrawableObject } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
 import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
@@ -91,10 +91,15 @@ export default class Line3d implements IDrawableObject {
     this.meshPivot.rotation.copy(eulerXYZ);
   }
 
-  setColor(color: string): void {
-    if (this.lineMesh.material) {
-      this.lineMesh.material.color.set(color);
-    }
+  setColor(color: Color, useVertexColors: boolean = false): void {
+    this.lineMesh.material.color.set(color);
+    this.lineMesh.material.vertexColors = useVertexColors;
+    this.lineMesh.material.needsUpdate = true;
+  }
+
+  setLineWidth(widthPx: number): void {
+    this.lineMesh.material.linewidth = widthPx;
+    this.lineMesh.material.needsUpdate = true;
   }
 
   setLineVertexData(positions: Float32Array, colors?: Float32Array): void {

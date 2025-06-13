@@ -955,6 +955,13 @@ export class View3d {
     }
   }
 
+  hasSceneObject(object: IDrawableObject): boolean {
+    if (this.image) {
+      return this.image.hasSceneObject(object);
+    }
+    return false;
+  }
+
   removeSceneObject(object: IDrawableObject): void {
     if (this.image) {
       this.image.removeSceneObject(object);
