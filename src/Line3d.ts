@@ -19,17 +19,15 @@ export default class Line3d implements IDrawableObject {
   private bufferSize: number;
 
   constructor() {
-    // TODO: Line should not know about the Volume, should instead be scaled by a transform
     this.bufferSize = DEFAULT_VERTEX_BUFFER_SIZE;
+
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(this.bufferSize));
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
-
     this.lineMesh = new LineSegments2(geometry, material);
     this.lineMesh.layers.set(MESH_LAYER);
     this.lineMesh.frustumCulled = false;
 
-    // TODO: Apply a matrix transform based on the Volume physical size
     this.meshPivot = new Group();
     this.meshPivot.add(this.lineMesh);
 
@@ -88,12 +86,16 @@ export default class Line3d implements IDrawableObject {
     // no op
   }
 
+  updateClipRegion(_xmin: number, _xmax: number, _ymin: number, _ymax: number, _zmin: number, _zmax: number): void {
+    // no op
+  }
+
   // Line-specific functions
 
   /**
    * Sets the color of the line material.
    * @param color Base line color.
-   * @param useVertexColors If true, the line will multiply the base color with
+   * @param useVertexColors If true, _the line will multiply the base color with
    * the per-vertex colors defined in the geometry (see `setLineVertexData`). Default is false.
    */
   setColor(color: Color, useVertexColors = false): void {
@@ -120,7 +122,7 @@ export default class Line3d implements IDrawableObject {
 
   /**
    * Sets whether a line should be rendered as an overlay (rendered on top of
-   *  the volume) instead of a mesh (with depth, intersects with volume).
+   * the volume) instead of a mesh (with depth, intersects with volume).
    * @param renderAsOverlay If true, the line will be rendered on top of the
    * volume, ignoring depth.
    */
@@ -128,6 +130,7 @@ export default class Line3d implements IDrawableObject {
     this.lineMesh.layers.set(overlay ? OVERLAY_LAYER : MESH_LAYER);
     this.lineMesh.material.depthTest = !overlay;
     this.lineMesh.material.depthTest = !overlay;
+    this.lineMesh.material.needsUpdate = true;
   }
 
   /**
@@ -147,9 +150,9 @@ export default class Line3d implements IDrawableObject {
    * @param positions A Float32Array of 3D coordinates, where each pair of
    * coordinates is one line segment. Length must be a multiple of 6 (pairs of
    * two 3-dimensional coordinates).
-   * @param colors A Float32Array of RGB values in the [0, 1] range, where each triplet corresponds
-   * to a vertex color.
-   * @throws {Error} If the positions length is not a multiple of 6 or if colors
+   * @param colors A Float32Array of RGB values in the [0, 1] range, where each
+   * triplet corresponds to a vertex color.
+   * @throws {Error} If `positions` length is not a multiple of 6 or if `colors`
    * length is not a multiple of 3.
    */
   setLineVertexData(positions: Float32Array, colors?: Float32Array): void {

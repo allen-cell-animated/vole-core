@@ -326,7 +326,9 @@ export default class VolumeDrawable {
 
     // Configure mesh volume when in an orthographic axis alignment
     if (axis !== Axis.NONE && this.renderMode !== RenderMode.PATHTRACE) {
-      this.meshVolume.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
+      for (const object of this.childObjects) {
+        object.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
+      }
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
@@ -393,7 +395,9 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       return;
     }
-    this.meshVolume.setOrthoThickness(value);
+    for (const object of this.childObjects) {
+      object.setOrthoThickness(value);
+    }
     // No settings update because ortho thickness is calculated in the renderers
   }
 
@@ -766,7 +770,9 @@ export default class VolumeDrawable {
   updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void {
     this.settings.bounds.bmin = new Vector3(xmin - 0.5, ymin - 0.5, zmin - 0.5);
     this.settings.bounds.bmax = new Vector3(xmax - 0.5, ymax - 0.5, zmax - 0.5);
-    this.meshVolume.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
+    for (const object of this.childObjects) {
+      object.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
+    }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
   }
