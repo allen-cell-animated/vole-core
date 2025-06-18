@@ -8,6 +8,7 @@ import {
   Scene,
   Color,
   Light as ThreeLight,
+  Matrix4,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -159,6 +160,11 @@ export class View3d {
   setCameraState(transform: Partial<CameraState>) {
     this.canvas3d.setCameraState(transform);
     this.redraw();
+  }
+
+  getViewProjectionMatrix(): Matrix4 {
+    const viewMatrix = this.canvas3d.camera.matrixWorldInverse;
+    return this.canvas3d.camera.projectionMatrix.clone().multiply(viewMatrix);
   }
 
   /**
