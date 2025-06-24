@@ -163,8 +163,8 @@ export class View3d {
   }
 
   getViewProjectionMatrix(): Matrix4 {
-    const viewMatrix = this.canvas3d.camera.matrixWorldInverse;
-    return this.canvas3d.camera.projectionMatrix.clone().multiply(viewMatrix);
+    const camera = this.canvas3d.camera;
+    return new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
   }
 
   /**
