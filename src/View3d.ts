@@ -162,6 +162,13 @@ export class View3d {
     this.redraw();
   }
 
+  /**
+   * Returns the view projection matrix, which transforms from world coordinates
+   * to clip space coordinates.
+   *
+   * 3D coordinates within the camera's view frustum will be transformed to a
+   * [-1, 1] range in the X and Y axes, and a [0, 1] range in the Z axis.
+   */
   getViewProjectionMatrix(): Matrix4 {
     const camera = this.canvas3d.camera;
     return new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
