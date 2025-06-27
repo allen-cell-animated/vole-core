@@ -190,7 +190,7 @@ export class View3d {
   }
 
   /**
-   * Sets a listener that will be called whenever the 3D canvas is rendered.
+   * Sets a listener that will be called after the 3D canvas renders.
    */
   setOnRenderCallback(callback: (() => void) | null): void {
     this.canvas3d.setOnRenderCallback(callback);
