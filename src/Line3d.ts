@@ -126,10 +126,10 @@ export default class Line3d implements IDrawableObject {
    * @param renderAsOverlay If true, the line will be rendered on top of the
    * volume, ignoring depth.
    */
-  setOverlay(overlay: boolean): void {
-    this.lineMesh.layers.set(overlay ? OVERLAY_LAYER : MESH_LAYER);
-    this.lineMesh.material.depthTest = !overlay;
-    this.lineMesh.material.depthTest = !overlay;
+  setRenderAsOverlay(renderAsOverlay: boolean): void {
+    this.lineMesh.layers.set(renderAsOverlay ? OVERLAY_LAYER : MESH_LAYER);
+    this.lineMesh.material.depthTest = !renderAsOverlay;
+    this.lineMesh.material.depthTest = !renderAsOverlay;
     this.lineMesh.material.needsUpdate = true;
   }
 

@@ -56,6 +56,10 @@ export default class VolumeDrawable {
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
   private meshVolume: MeshVolume;
+  // TODO: Move responsibility for drawable objects that are otherwise unrelated
+  // to the volume out of VolumeDrawable. Consider making a parent group that
+  // can contain all other drawable objects AND the VolumeDrawable and its owned
+  // objects (MeshVolume).
   /**
    * Group for all child objects of the volume. The group is scaled and
    * transformed to the normalized volume coordinate space, where the volume's
