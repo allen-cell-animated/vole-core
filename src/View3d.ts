@@ -102,6 +102,7 @@ export class View3d {
     this.buildScene();
 
     this.tweakpane = null;
+
     window.addEventListener("keydown", this.handleKeydown);
   }
 
@@ -186,6 +187,13 @@ export class View3d {
     } else {
       this.canvas3d.redraw();
     }
+  }
+
+  /**
+   * Sets a listener that will be called whenever the 3D canvas is rendered.
+   */
+  setOnRenderCallback(callback: (() => void) | null): void {
+    this.canvas3d.setOnRenderCallback(callback);
   }
 
   unsetImage(): VolumeDrawable | undefined {
