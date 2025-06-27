@@ -1183,6 +1183,7 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outOfRangeDrawMode: 0,
       hideOutOfRange: false,
       frameToGlobalIdLookup: new Map(),
+      useRepeatingColor: false,
     };
   } else {
     return null;

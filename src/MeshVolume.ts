@@ -20,7 +20,7 @@ import FileSaver from "./FileSaver.js";
 import NaiveSurfaceNets from "./NaiveSurfaceNets.js";
 import MarchingCubes from "./MarchingCubes.js";
 import Volume from "./Volume.js";
-import type { Bounds } from "./types.js";
+import type { Bounds, IDrawableObject } from "./types.js";
 import { MESH_LAYER } from "./ThreeJsPanel.js";
 
 /**
@@ -29,7 +29,7 @@ import { MESH_LAYER } from "./ThreeJsPanel.js";
  */
 const ALPHA_THRESHOLD = 0.95;
 
-export default class MeshVolume {
+export default class MeshVolume implements IDrawableObject {
   private volume: Volume;
   private meshRoot: Object3D;
   private meshPivot: Group;

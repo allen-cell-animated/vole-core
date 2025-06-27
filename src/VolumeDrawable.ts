@@ -10,6 +10,7 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
   Texture,
+  Group,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -19,13 +20,20 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
+import type {
+  VolumeDisplayOptions,
+  VolumeChannelDisplayOptions,
+  FuseChannel,
+  ColorizeFeature,
+  IDrawableObject,
+} from "./types.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
+import Line3d from "./Line3d.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -48,6 +56,19 @@ export default class VolumeDrawable {
   private fusion: FuseChannel[];
   public sceneRoot: Object3D;
   private meshVolume: MeshVolume;
+  // TODO: Move responsibility for drawable objects that are otherwise unrelated
+  // to the volume out of VolumeDrawable. Consider making a parent group that
+  // can contain all other drawable objects AND the VolumeDrawable and its owned
+  // objects (MeshVolume).
+  /**
+   * Group for all child objects of the volume. The group is scaled and
+   * transformed to the normalized volume coordinate space, where the volume's
+   * center is at (0, 0, 0) and the bounds have a range of [-0.5, 0.5] along each
+   * axis.
+   */
+  private childObjectsGroup: Group;
+  /** Set of drawable objects that are children of the volume's transform. */
+  private childObjects: Set<IDrawableObject>;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -86,7 +107,9 @@ export default class VolumeDrawable {
 
     this.sceneRoot = new Object3D(); //create an empty container
 
-    this.meshVolume = new MeshVolume(this.volume);
+    this.childObjectsGroup = new Group();
+    this.childObjects = new Set<IDrawableObject>();
+    this.sceneRoot.add(this.childObjectsGroup);
 
     options.renderMode = options.renderMode || RenderMode.RAYMARCH;
     switch (options.renderMode) {
@@ -105,8 +128,10 @@ export default class VolumeDrawable {
     }
 
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
+    this.meshVolume = new MeshVolume(this.volume);
     if (options.renderMode === RenderMode.RAYMARCH || options.renderMode === RenderMode.SLICE) {
-      this.sceneRoot.add(this.meshVolume.get3dObject());
+      this.childObjectsGroup.add(this.meshVolume.get3dObject());
+      this.childObjects.add(this.meshVolume);
     }
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
@@ -252,7 +277,8 @@ export default class VolumeDrawable {
   updateScale(): void {
     const { normPhysicalSize, normRegionSize } = this.volume;
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
-    this.meshVolume.setScale(scale, this.volume.getContentCenter().multiply(this.settings.scale));
+    this.childObjectsGroup.scale.copy(scale);
+    this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -272,7 +298,9 @@ export default class VolumeDrawable {
   setResolution(x: number, y: number): void {
     const resolution = new Vector2(x, y);
     if (!this.settings.resolution.equals(resolution)) {
-      this.meshVolume.setResolution(x, y);
+      for (const object of this.childObjects) {
+        object.setResolution(x, y);
+      }
       this.settings.resolution = resolution;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.SAMPLING);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.SAMPLING);
@@ -302,7 +330,9 @@ export default class VolumeDrawable {
 
     // Configure mesh volume when in an orthographic axis alignment
     if (axis !== Axis.NONE && this.renderMode !== RenderMode.PATHTRACE) {
-      this.meshVolume.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
+      for (const object of this.childObjects) {
+        object.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
+      }
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
@@ -369,7 +399,9 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.PATHTRACE) {
       return;
     }
-    this.meshVolume.setOrthoThickness(value);
+    for (const object of this.childObjects) {
+      object.setOrthoThickness(value);
+    }
     // No settings update because ortho thickness is calculated in the renderers
   }
 
@@ -392,7 +424,9 @@ export default class VolumeDrawable {
     const flipAxes = new Vector3(flipX, flipY, flipZ);
     if (!this.settings.flipAxes.equals(flipAxes)) {
       this.settings.flipAxes = flipAxes;
-      this.meshVolume.setFlipAxes(flipX, flipY, flipZ);
+      for (const object of this.childObjects) {
+        object.setFlipAxes(flipX, flipY, flipZ);
+      }
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.TRANSFORM);
     }
@@ -421,7 +455,9 @@ export default class VolumeDrawable {
     // TODO confirm sequence
     this.volumeRendering.doRender(renderer, camera, depthTexture);
     if (this.renderMode !== RenderMode.PATHTRACE) {
-      this.meshVolume.doRender();
+      for (const object of this.childObjects) {
+        object.doRender();
+      }
     }
   }
 
@@ -512,7 +548,9 @@ export default class VolumeDrawable {
   }
 
   cleanup(): void {
-    this.meshVolume.cleanup();
+    for (const object of this.childObjects) {
+      object.cleanup();
+    }
     this.volumeRendering.cleanup();
     this.pickRendering?.cleanup();
   }
@@ -736,7 +774,9 @@ export default class VolumeDrawable {
   updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void {
     this.settings.bounds.bmin = new Vector3(xmin - 0.5, ymin - 0.5, zmin - 0.5);
     this.settings.bounds.bmax = new Vector3(xmax - 0.5, ymax - 0.5, zmax - 0.5);
-    this.meshVolume.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
+    for (const object of this.childObjects) {
+      object.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
+    }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
   }
@@ -821,6 +861,37 @@ export default class VolumeDrawable {
   setScale(xyz: Vector3): void {
     this.settings.scale.copy(xyz);
     this.updateScale();
+  }
+
+  /**
+   * Adds a Line3d object as a child of the Volume, if it does not already
+   * exist. Line objects will be in the normalized coordinate space of the
+   * Volume, where the origin (0,0,0) is at the center of the Volume and the
+   * extent is from -0.5 to 0.5 in each axis.
+   */
+  addLineObject(line: Line3d): void {
+    if (!this.childObjects.has(line)) {
+      this.childObjects.add(line);
+      this.childObjectsGroup.add(line.get3dObject());
+      line.setResolution(this.settings.resolution.x, this.settings.resolution.y);
+      line.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
+    }
+  }
+
+  /** Returns whether a line object exists as a child of the volume. */
+  hasLineObject(line: Line3d): boolean {
+    return this.childObjects.has(line);
+  }
+
+  /**
+   * Removes a Line3d object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+   */
+  removeLineObject(line: Line3d): void {
+    if (this.childObjects.has(line)) {
+      this.childObjects.delete(line);
+      this.childObjectsGroup.remove(line.get3dObject());
+    }
   }
 
   setupGui(pane: Pane): void {

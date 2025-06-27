@@ -27,6 +27,7 @@ import {
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import VolumeLoaderContext, { WorkerLoader } from "./workers/VolumeLoaderContext.js";
+import Line3d from "./Line3d.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;
@@ -943,6 +944,39 @@ export class View3d {
     const needRedraw = this.image?.setSelectedID(channel, id);
     if (needRedraw) {
       this.image?.fuse();
+      this.redraw();
+    }
+  }
+
+  /**
+   * Adds a Line3d object as a child of the Volume, if a volume has been added
+   * to the view and the line is not already a child of it. Line positions will
+   * be in the normalized coordinate space of the Volume, where the origin
+   * (0,0,0) is at the center of the Volume and the extent is from -0.5 to 0.5
+   * in each axis.
+   */
+  addLineObject(line: Line3d): void {
+    if (this.image) {
+      this.image.addLineObject(line);
+      this.redraw();
+    }
+  }
+
+  /** Returns whether a Line3d object exists as a child of the volume. */
+  hasLineObject(line: Line3d): boolean {
+    if (this.image) {
+      return this.image.hasLineObject(line);
+    }
+    return false;
+  }
+
+  /**
+   * Removes a Line3d object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+   */
+  removeLineObject(line: Line3d): void {
+    if (this.image) {
+      this.image.removeLineObject(line);
       this.redraw();
     }
   }

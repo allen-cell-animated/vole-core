@@ -33,6 +33,7 @@ import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
+export const OVERLAY_LAYER = 2;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -717,10 +718,16 @@ export class ThreeJsPanel {
     this.meshRenderToBuffer.render(this.renderer);
 
     // Step 3: Render volumes, which can now depth test against the meshes.
+    this.renderer.autoClear = false;
     this.camera.layers.set(VOLUME_LAYER);
     this.renderer.setRenderTarget(null);
-    this.renderer.autoClear = false;
     this.renderer.render(this.scene, this.camera);
+
+    // Step 4: Render lines and other objects that must render over volumes and meshes.
+    this.camera.layers.set(OVERLAY_LAYER);
+    this.renderer.setRenderTarget(null);
+    this.renderer.render(this.scene, this.camera);
+
     this.renderer.autoClear = true;
 
     // overlay
@@ -823,13 +830,13 @@ export class ThreeJsPanel {
 
     // if the pick buffer is a different size from our render canvas,
     // then we have to transform the mouse event coordinates
-    const sx = Math.floor(x / size.x * pickBuffer.width);
-    const sy = Math.floor(y / size.y * pickBuffer.height);
+    const sx = Math.floor((x / size.x) * pickBuffer.width);
+    const sy = Math.floor((y / size.y) * pickBuffer.height);
 
     // read from the instance buffer
     const pixel = new Float32Array(4).fill(-1);
     this.renderer.readRenderTargetPixels(pickBuffer, sx, sy, 1, 1, pixel);
-    // For future reference, Simularium stores the following: 
+    // For future reference, Simularium stores the following:
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
     if (pixel[3] === -1 || pixel[3] === 0) {

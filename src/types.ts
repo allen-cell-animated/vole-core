@@ -1,4 +1,4 @@
-import { Camera, Color, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, Color, DataTexture, Euler, Group, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -57,6 +57,13 @@ export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
   /**
+   * Ignore the feature min and max, and treat the color ramp texture as a
+   * direct lookup for feature values. Feature values that are greater than
+   * the length of the color ramp will be wrapped around to the start
+   * (e.g. `value % colorRamp.length`).
+   */
+  useRepeatingColor: boolean;
+  /**
    * Maps from a frame number to an info object used to look up the global ID
    * from a given segmentation ID (raw pixel value) on that frame. The info
    * object contains a texture and a minimum segmentation ID for that frame, the
@@ -86,6 +93,21 @@ export interface ColorizeFeature {
   outlierDrawMode: number;
   outOfRangeDrawMode: number;
   hideOutOfRange: boolean;
+}
+
+export interface IDrawableObject {
+  cleanup(): void;
+  setVisible(visible: boolean): void;
+  doRender(): void;
+  get3dObject(): Group;
+  setTranslation(translation: Vector3): void;
+  setScale(scale: Vector3): void;
+  setRotation(eulerXYZ: Euler): void;
+  setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
+  setOrthoThickness(thickness: number): void;
+  setResolution(x: number, y: number): void;
+  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void;
+  updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void;
 }
 
 export interface FuseChannel {

@@ -38,7 +38,7 @@ uniform uint outOfRangeDrawMode;
 
 uniform uint highlightedId;
 
-uniform bool hideOutOfRange;
+uniform bool useRepeatingCategoricalColors;
 
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
@@ -68,12 +68,22 @@ uint getId(ivec2 uv) {
   }
   return globalId;
 }
+
 vec4 getColorRamp(float val) {
   float width = float(textureSize(colorRamp, 0).x);
   float range = (width - 1.0) / width;
   float adjustedVal = (0.5 / width) + (val * range);
   return texture(colorRamp, vec2(adjustedVal, 0.5));
 }
+
+vec4 getCategoricalColor(float featureValue) {
+  float width = float(textureSize(colorRamp, 0).x);
+  float modValue = mod(featureValue, width);
+  // The categorical texture uses no interpolation, so when sampling, `modValue`
+  // is rounded to the nearest integer.
+  return getColorRamp(modValue / (width - 1.0));
+}
+
 vec4 getColorFromDrawMode(uint drawMode, vec3 defaultColor) {
   const uint DRAW_MODE_HIDE = 0u;
   vec3 backgroundColor = vec3(0.0, 0.0, 0.0);
@@ -133,6 +143,8 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   } else if (isInRange) {
     if (isOutlier) {
       color = getColorFromDrawMode(outlierDrawMode, outlierColor);
+    } else if (useRepeatingCategoricalColors) {
+      color = getCategoricalColor(featureVal);
     } else {
       color = getColorRamp(normFeatureVal);
     }

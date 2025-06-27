@@ -144,6 +144,7 @@ export default class FusedChannelData {
         colorRamp: {
           value: null,
         },
+        useRepeatingCategoricalColors: { value: false },
         outlineColor: { value: new Color(0xffffff) },
         outlierColor: { value: new Color(0x444444) },
         outOfRangeColor: { value: new Color(0x444444) },
@@ -246,6 +247,7 @@ export default class FusedChannelData {
           mat.uniforms.featureColorRampMin.value = feature.featureMin;
           mat.uniforms.featureColorRampMax.value = feature.featureMax;
           mat.uniforms.colorRamp.value = feature.featureValueToColor;
+          mat.uniforms.useRepeatingCategoricalColors.value = feature.useRepeatingColor;
           mat.uniforms.outlineColor.value = feature.outlineColor;
           mat.uniforms.outlierColor.value = feature.outlierColor;
           mat.uniforms.outOfRangeColor.value = feature.outOfRangeColor;
