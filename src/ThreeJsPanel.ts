@@ -101,6 +101,7 @@ export class ThreeJsPanel {
   public showTimestepIndicator: boolean;
 
   private dataurlcallback?: (url: string) => void;
+  private onRenderCallback?: () => void;
 
   constructor(parentElement: HTMLElement | undefined, _useWebGL2: boolean) {
     this.containerdiv = document.createElement("div");
@@ -763,6 +764,7 @@ export class ThreeJsPanel {
     this.controls.update(delta);
 
     this.render();
+    this.onRenderCallback?.();
   }
 
   startRenderLoop(): void {
@@ -782,6 +784,10 @@ export class ThreeJsPanel {
     }
 
     this.timer.end();
+  }
+
+  setOnRenderCallback(callback: (() => void) | null): void {
+    this.onRenderCallback = callback ?? undefined;
   }
 
   removeControlHandlers(): void {

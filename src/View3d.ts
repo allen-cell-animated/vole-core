@@ -8,6 +8,7 @@ import {
   Scene,
   Color,
   Light as ThreeLight,
+  Matrix4,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -101,6 +102,7 @@ export class View3d {
     this.buildScene();
 
     this.tweakpane = null;
+
     window.addEventListener("keydown", this.handleKeydown);
   }
 
@@ -162,6 +164,18 @@ export class View3d {
   }
 
   /**
+   * Returns the view projection matrix, which transforms from world coordinates
+   * to clip space coordinates.
+   *
+   * 3D coordinates within the camera's view frustum will be transformed to a
+   * [-1, 1] range in the X and Y axes, and a [0, 1] range in the Z axis.
+   */
+  getViewProjectionMatrix(): Matrix4 {
+    const camera = this.canvas3d.camera;
+    return new Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  }
+
+  /**
    * Force a redraw.
    * @param synchronous If true, the redraw will be done synchronously. If false (default), the
    * redraw will be done asynchronously via `requestAnimationFrame`. Redraws should be done async
@@ -173,6 +187,13 @@ export class View3d {
     } else {
       this.canvas3d.redraw();
     }
+  }
+
+  /**
+   * Sets a listener that will be called after the 3D canvas renders.
+   */
+  setOnRenderCallback(callback: (() => void) | null): void {
+    this.canvas3d.setOnRenderCallback(callback);
   }
 
   unsetImage(): VolumeDrawable | undefined {
