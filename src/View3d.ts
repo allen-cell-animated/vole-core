@@ -27,7 +27,7 @@ import {
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
-import VolumeLoaderContext, { WorkerLoader } from "./workers/VolumeLoaderContext.js";
+import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./Line3d.js";
 
 // Constants are kept for compatibility reasons.
@@ -49,11 +49,6 @@ const allGlobalLoadingOptions = {
  * @class
  */
 export class View3d {
-  // TODO because View3d is basically a top level entrypoint for Vol-E,
-  // maybe it should create the VolumeLoaderContext with options passed in.
-  // (instead of having the loaderContext created externally)
-  public loaderContext?: VolumeLoaderContext;
-
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
@@ -1074,7 +1069,7 @@ export class View3d {
     });
     // when multiple prefetch frames arrive at once, should we slow down how quickly we load them?
     prefetch.addInput(allGlobalLoadingOptions, "throttleArrivingChannelData").on("change", (event) => {
-      this.loaderContext?.setThrottleChannelData(event.value);
+      loader?.getContext?.().setThrottleChannelData(event.value);
     });
 
     return pane;
