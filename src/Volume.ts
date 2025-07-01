@@ -38,13 +38,30 @@ export default class Volume {
   public channelNames: string[];
   public channelColorsDefault: [number, number, number][];
 
-  /** The maximum of the measurements of 3 axes in physical units (pixels*physicalSize) */
+  /**
+   * The maximum of the measurements of 3 axes in physical units.
+   *
+   * Equivalent to `Math.max(physicalSize.x, physicalSize.y, physicalSize.z)`.
+   */
   public physicalScale: number;
-  /** The physical size of a voxel in the original level 0 volume */
+  /**
+   * The size of a voxel in the original level 0 volume in real-world (physical)
+   * units (e.g. μm).
+   */
   public physicalPixelSize: Vector3;
-  /** The physical dims of the whole volume (not accounting for subregion) */
+  /**
+   * The dimensions of the whole volume (not accounting for subregion) in
+   * real-world (physical) units. Equivalent to `imageInfo.originalSize *
+   * physicalPixelSize`.
+   */
   public physicalSize: Vector3;
-  /** Normalized physical size of the whole volume (not accounting for subregion) */
+  /**
+   * Physical size of the whole volume (not accounting for subregion) normalized
+   * along the largest axis, so that all dimensions are `<= 1`.
+   *
+   * Example: If the physical size is `[100, 50, 25]` μm, then the
+   * normPhysicalSize will be `[1, 0.5, 0.25]`.
+   */
   public normPhysicalSize: Vector3;
   public normRegionSize: Vector3;
   public normRegionOffset: Vector3;
