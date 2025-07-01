@@ -217,7 +217,7 @@ class VolumeLoaderContext {
       throw new Error("Failed to create loader");
     }
 
-    const loader = new WorkerLoader(loaderId, this.workerHandle);
+    const loader = new WorkerLoader(loaderId, this.workerHandle, this);
     this.loaders.set(loaderId, loader);
     return loader;
   }
@@ -235,14 +235,16 @@ class VolumeLoaderContext {
 class WorkerLoader extends ThreadableVolumeLoader {
   private loaderId: number | undefined;
   private workerHandle: SharedLoadWorkerHandle;
+  private context: VolumeLoaderContext;
   private currentLoadId = -1;
   private currentLoadCallback: RawChannelDataCallback | undefined = undefined;
   private currentMetadataUpdateCallback: ((imageInfo?: ImageInfo, loadSpec?: LoadSpec) => void) | undefined = undefined;
 
-  constructor(loaderId: number, workerHandle: SharedLoadWorkerHandle) {
+  constructor(loaderId: number, workerHandle: SharedLoadWorkerHandle, context: VolumeLoaderContext) {
     super();
     this.loaderId = loaderId;
     this.workerHandle = workerHandle;
+    this.context = context;
   }
 
   private getLoaderId(): number {
@@ -250,6 +252,10 @@ class WorkerLoader extends ThreadableVolumeLoader {
       throw new Error("Tried to use a closed loader");
     }
     return this.loaderId;
+  }
+
+  getContext(): VolumeLoaderContext {
+    return this.context;
   }
 
   /** Close and permanently invalidate this loader. */
