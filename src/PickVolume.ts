@@ -254,6 +254,10 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("textureRes", this.settings.resolution);
 
     const depthTex = depthTexture ?? this.emptyPositionTex;
+    if (depthTex.image.width !== this.pickBuffer.width || depthTex.image.height !== this.pickBuffer.height) {
+      // Skip rendering when the texture resolution is mismatched
+      return;
+    }
     this.setUniform("textureDepth", depthTex);
     this.setUniform("usingPositionTexture", (depthTex as DepthTexture).isDepthTexture ? 0 : 1);
     this.setUniform("CLIP_NEAR", camera.near);
