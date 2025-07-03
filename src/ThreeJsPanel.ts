@@ -51,6 +51,12 @@ export type CameraState = {
   orthoScale?: number;
 };
 
+type AnimateFunction = (
+  renderer: WebGLRenderer,
+  camera: PerspectiveCamera | OrthographicCamera,
+  depthTexture?: DepthTexture | null
+) => void;
+
 export class ThreeJsPanel {
   public containerdiv: HTMLDivElement;
   private canvas: HTMLCanvasElement;
@@ -59,11 +65,8 @@ export class ThreeJsPanel {
   private meshRenderTarget: WebGLRenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
 
-  public animateFuncs: ((
-    renderer: WebGLRenderer,
-    camera: PerspectiveCamera | OrthographicCamera,
-    depthTexture?: DepthTexture | null
-  ) => void)[];
+  public animateFuncs: AnimateFunction[];
+  public postAnimateFuncs: AnimateFunction[];
   private inRenderLoop: boolean;
   private requestedRender: number;
   public hasWebGL2: boolean;
@@ -139,6 +142,7 @@ export class ThreeJsPanel {
     this.showTimestepIndicator = false;
 
     this.animateFuncs = [];
+    this.postAnimateFuncs = [];
 
     // are we in a constant render loop or not?
     this.inRenderLoop = false;
@@ -633,11 +637,6 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
-    // Force resize of depth texture now, otherwise it will not be resized until
-    // the next render and will cause texture size mismatches with the pick
-    // buffer.
-    this.meshRenderTarget.depthTexture?.dispose();
-    this.meshRenderTarget.depthTexture = new DepthTexture(w, h);
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
@@ -741,6 +740,12 @@ export class ThreeJsPanel {
       this.renderer.autoClear = false;
       this.renderer.render(this.axisHelperScene, this.axisCamera);
       this.renderer.autoClear = true;
+    }
+
+    for (let i = 0; i < this.postAnimateFuncs.length; i++) {
+      if (this.postAnimateFuncs[i]) {
+        this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      }
     }
 
     if (this.dataurlcallback) {
