@@ -184,6 +184,8 @@ export class ThreeJsPanel {
     if (parentElement) {
       this.renderer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
       this.meshRenderTarget.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
+      this.meshRenderTarget.depthTexture.dispose();
+      this.meshRenderTarget.depthTexture = new DepthTexture(parentElement.offsetWidth, parentElement.offsetHeight);
     }
 
     this.timer = new Timing();
@@ -633,6 +635,11 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
+    // Force resize of depth texture now, otherwise it will not be resized until
+    // the next render and will cause texture size mismatches with the pick
+    // buffer.
+    this.meshRenderTarget.depthTexture?.dispose();
+    this.meshRenderTarget.depthTexture = new DepthTexture(w, h);
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
