@@ -184,8 +184,6 @@ export class ThreeJsPanel {
     if (parentElement) {
       this.renderer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
       this.meshRenderTarget.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
-      this.meshRenderTarget.depthTexture.dispose();
-      this.meshRenderTarget.depthTexture = new DepthTexture(parentElement.offsetWidth, parentElement.offsetHeight);
     }
 
     this.timer = new Timing();
