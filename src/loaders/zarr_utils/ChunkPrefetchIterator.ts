@@ -1,4 +1,4 @@
-import { PrefetchDirection, TCZYX } from "./types";
+import { PrefetchDirection, TCZYX } from "./types.js";
 
 type TZYX = [number, number, number, number];
 
