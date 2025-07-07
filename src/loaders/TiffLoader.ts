@@ -145,11 +145,17 @@ class TiffLoader extends ThreadableVolumeLoader {
         .getImage()
         .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
-      const tiffimgdesc = prepareXML(image.getFileDirectory().ImageDescription);
-      const omeEl = getOME(tiffimgdesc);
-
-      const image0El = omeEl.getElementsByTagName("Image")[0];
-      this.dims = getOMEDims(image0El);
+      const fileDir = image.getFileDirectory();
+      if (fileDir.ImageDescription !== undefined) {
+        const tiffimgdesc = prepareXML(image.getFileDirectory().ImageDescription);
+        const omeEl = getOME(tiffimgdesc);
+        const image0El = omeEl.getElementsByTagName("Image")[0];
+        this.dims = getOMEDims(image0El);
+      } else {
+        throw new VolumeLoadError("No OME metadata found in TIFF file", {
+          type: VolumeLoadErrorType.INVALID_METADATA,
+        });
+      }
     }
     return this.dims;
   }
