@@ -64,8 +64,7 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
   // No interpolation - sample just one slice at a pixel center.
   // Ideally this would be accomplished in part by switching this texture to linear
   //   filtering, but three makes this difficult to do through a WebGLRenderTarget.
-  loc0 = floor(loc0 * textureRes) / textureRes;
-  loc0 += vec2(0.5) / textureRes;
+  loc0 = (loc0 * textureRes) / textureRes;
 
   float z = min(floor(pos.z * nSlices), nSlices-1.0);
   
