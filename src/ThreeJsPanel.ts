@@ -735,17 +735,18 @@ export class ThreeJsPanel {
 
     this.renderer.autoClear = true;
 
+    // Render contours
+    for (let i = 0; i < this.postAnimateFuncs.length; i++) {
+      if (this.postAnimateFuncs[i]) {
+        this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      }
+    }
+
     // overlay
     if (this.showAxis) {
       this.renderer.autoClear = false;
       this.renderer.render(this.axisHelperScene, this.axisCamera);
       this.renderer.autoClear = true;
-    }
-
-    for (let i = 0; i < this.postAnimateFuncs.length; i++) {
-      if (this.postAnimateFuncs[i]) {
-        this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-      }
     }
 
     if (this.dataurlcallback) {

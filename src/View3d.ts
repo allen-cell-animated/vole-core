@@ -422,6 +422,7 @@ export class View3d {
     // during a resize, the texture is disposed of and not recreated until the
     // next render.
     this.canvas3d.postAnimateFuncs.push(img.fillPickBuffer.bind(img));
+    this.canvas3d.postAnimateFuncs.push(img.drawContours.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);

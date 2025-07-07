@@ -22,7 +22,7 @@ export default class RenderToBuffer {
   public mesh: Mesh;
   public camera: OrthographicCamera;
 
-  constructor(fragmentSrc: string, uniforms: { [key: string]: IUniform }) {
+  constructor(fragmentSrc: string, uniforms: { [key: string]: IUniform }, transparent = false) {
     this.scene = new Scene();
     this.geometry = new PlaneGeometry(2, 2);
 
@@ -30,6 +30,7 @@ export default class RenderToBuffer {
       vertexShader: renderToBufferVertShader,
       fragmentShader: fragmentSrc,
       uniforms,
+      transparent,
     });
 
     this.material.depthWrite = false;

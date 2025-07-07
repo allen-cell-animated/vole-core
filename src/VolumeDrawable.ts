@@ -34,6 +34,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
 import Line3d from "./Line3d.js";
+import ContourPass from "./ContourPass.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -72,6 +73,7 @@ export default class VolumeDrawable {
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
+  private contourRendering: ContourPass;
   private renderMode: RenderMode;
 
   private renderUpdateListener?: (iteration: number) => void;
@@ -126,6 +128,7 @@ export default class VolumeDrawable {
     if (this.pickRendering) {
       this.pickRendering = new PickVolume(this.volume, this.settings);
     }
+    this.contourRendering = new ContourPass();
 
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     this.meshVolume = new MeshVolume(this.volume);
@@ -152,6 +155,7 @@ export default class VolumeDrawable {
   public getPickBuffer(): WebGLRenderTarget | undefined {
     return this.pickRendering?.getPickBuffer();
   }
+
   /**
    * Updates whether a channel's data must be loaded for rendering,
    * based on if its volume or isosurface is enabled, or whether it is needed for masking.
@@ -483,6 +487,13 @@ export default class VolumeDrawable {
     this.pickRendering?.doRender(renderer, camera, depthTexture);
   }
 
+  drawContours(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera): void {
+    if (!this.pickRendering) {
+      return;
+    }
+    this.contourRendering?.render(renderer, renderer.getRenderTarget(), this.pickRendering.getPickBuffer());
+  }
+
   getViewMode(): Axis {
     return this.viewMode;
   }
@@ -712,6 +723,7 @@ export default class VolumeDrawable {
       this.fusion[channelIndex].feature = undefined;
     } else {
       this.fusion[channelIndex].feature = featureInfo;
+      this.contourRendering.setColorizeFeature(featureInfo);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.MATERIAL);
