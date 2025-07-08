@@ -121,6 +121,7 @@ function getOMEDims(imageEl: Element): OMEDims {
 }
 
 const getBytesPerSample = (type: string): number => (type === "uint8" ? 1 : type === "uint16" ? 2 : 4);
+const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSize === 2 ? "uint16" : "uint32");
 
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
@@ -147,14 +148,17 @@ class TiffLoader extends ThreadableVolumeLoader {
 
       const fileDir = image.getFileDirectory();
       if (fileDir.ImageDescription !== undefined) {
-        const tiffimgdesc = prepareXML(image.getFileDirectory().ImageDescription);
+        const tiffimgdesc = prepareXML(fileDir.ImageDescription);
         const omeEl = getOME(tiffimgdesc);
         const image0El = omeEl.getElementsByTagName("Image")[0];
         this.dims = getOMEDims(image0El);
       } else {
-        throw new VolumeLoadError("No OME metadata found in TIFF file", {
-          type: VolumeLoadErrorType.INVALID_METADATA,
-        });
+        console.warn("Could not read OME-TIFF metadata from file. Doing our best with base TIFF metadata.");
+        this.dims = new OMEDims();
+        this.dims.sizex = image.getWidth();
+        this.dims.sizey = image.getHeight();
+        this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
+        this.dims.channelnames = ["Channel"];
       }
     }
     return this.dims;
