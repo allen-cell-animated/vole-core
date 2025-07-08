@@ -7,6 +7,7 @@ import {
   Texture,
   Uniform,
   UnsignedByteType,
+  UnsignedIntType,
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
@@ -34,7 +35,7 @@ const defaultUniforms: ContourUniforms = {
   outlineColor: new Uniform(new Color(1, 0, 1)),
   outlineAlpha: new Uniform(1.0),
   useGlobalIdLookup: new Uniform(false),
-  segIdToGlobalId: new Uniform(new DataTexture(new Uint32Array([0]), 1, 1, RGBAFormat, UnsignedByteType)),
+  segIdToGlobalId: new Uniform(new DataTexture(new Uint32Array([0]), 1, 1, RGBAFormat, UnsignedIntType)),
   segIdOffset: new Uniform(0),
   devicePixelRatio: new Uniform(1.0),
 };
@@ -51,7 +52,8 @@ export default class ContourPass {
   }
 
   setHighlightedId(id: number) {
-    (this.pass.material.uniforms.highlightedId as IUniform<number>).value = id;
+    this.pass.material.uniforms.highlightedId.value = id;
+    console.log("Set highlighted ID to:", id);
   }
 
   syncGlobalIdLookup() {
@@ -61,7 +63,7 @@ export default class ContourPass {
     if (this.featureInfo) {
       const globalIdLookupInfo = this.featureInfo.frameToGlobalIdLookup.get(this.time);
       if (globalIdLookupInfo) {
-        console.log("Using global ID lookup");
+        console.log("Using global ID lookup with type ", globalIdLookupInfo.texture.type);
         uniforms.useGlobalIdLookup.value = true;
         uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
         uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;

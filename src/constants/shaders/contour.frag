@@ -1,7 +1,7 @@
-// precision highp float;
-// precision highp int;
-// precision highp usampler2D;
-// precision highp sampler3D;
+precision highp float;
+precision highp int;
+precision highp usampler2D;
+precision highp sampler3D;
 
 /**
  * LUT mapping from the segmentation ID (raw pixel value) to the
@@ -10,7 +10,7 @@
  * For a given segmentation ID `segId`, the global ID is given by:
  * `segIdToGlobalId[segId - segIdOffset] - 1`.
 */
-uniform sampler2D segIdToGlobalId;
+uniform usampler2D segIdToGlobalId;
 uniform uint segIdOffset;
 uniform bool useGlobalIdLookup;
 uniform sampler2D pickBuffer;
@@ -34,7 +34,7 @@ vec4 alphaBlend(vec4 a, vec4 b) {
   return vec4((a.rgb * a.a + b.rgb * b.a * (1.0 - a.a)) / alpha, alpha);
 }
 
-uvec4 getUintFromTex(sampler2D tex, int index) {
+uvec4 getUintFromTex(usampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
   return uvec4(texelFetch(tex, featurePos, 0));
@@ -76,9 +76,9 @@ void main(void) {
   ivec2 vUv = ivec2(int(gl_FragCoord.x / devicePixelRatio), int(gl_FragCoord.y / devicePixelRatio));
   vec4 finalColor = vec4(0, 0, 0, 0.0);
 
-  int rawId = int(getId(vUv));
-  int id = rawId - ID_OFFSET;
-  if (rawId != int(BACKGROUND_ID) && id == highlightedId && isEdge(vUv, id, outlineThickness)) {
+  uint rawId = getId(vUv);
+  int id = int(rawId) - ID_OFFSET;
+  if (id == highlightedId && isEdge(vUv, id, outlineThickness)) {
     finalColor = vec4(outlineColor, 1);
   }
 
