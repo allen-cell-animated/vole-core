@@ -525,6 +525,13 @@ export default class VolumeDrawable {
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
     // pickRendering only really works with one channel so we don't need to call
     // its updateActiveChannels method
+    if (this.pickRendering) {
+      const pickChannel = this.pickRendering.getChannelToPick();
+      const channelData = this.volume.channels[pickChannel];
+      if (channelData) {
+        this.contourRendering.setTime(channelData.time);
+      }
+    }
   }
 
   setRenderUpdateListener(callback?: (iteration: number) => void): void {
@@ -727,6 +734,7 @@ export default class VolumeDrawable {
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.MATERIAL);
+    this.contourRendering.setColorizeFeature(featureInfo);
   }
 
   setMaskAlpha(maskAlpha: number): void {

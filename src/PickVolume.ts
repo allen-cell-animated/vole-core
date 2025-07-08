@@ -92,6 +92,10 @@ export default class PickVolume implements VolumeRenderImpl {
     this.channelToPick = channel;
   }
 
+  public getChannelToPick(): number {
+    return this.channelToPick;
+  }
+
   public getPickBuffer(): WebGLRenderTarget {
     return this.pickBuffer;
   }

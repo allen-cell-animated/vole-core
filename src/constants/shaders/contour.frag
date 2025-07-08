@@ -12,10 +12,11 @@
 */
 uniform sampler2D segIdToGlobalId;
 uniform uint segIdOffset;
+uniform bool useGlobalIdLookup;
 uniform sampler2D pickBuffer;
 
 /* Pick buffer. Used to determine IDs. */
-uniform uint highlightedId;
+uniform int highlightedId;
 uniform float outlineThickness;
 uniform float outlineAlpha;
 uniform vec3 outlineColor;
@@ -34,10 +35,9 @@ vec4 alphaBlend(vec4 a, vec4 b) {
 }
 
 uvec4 getUintFromTex(sampler2D tex, int index) {
-  return uvec4(1u, 1u, 1u, 1u);
-  // int width = textureSize(tex, 0).x;
-  // ivec2 featurePos = ivec2(index % width, index / width);
-  // return texelFetch(tex, featurePos, 0);
+  int width = textureSize(tex, 0).x;
+  ivec2 featurePos = ivec2(index % width, index / width);
+  return uvec4(texelFetch(tex, featurePos, 0));
 }
 
 uint getId(ivec2 uv) {
@@ -46,8 +46,10 @@ uint getId(ivec2 uv) {
     return BACKGROUND_ID;
   }
   int segId = int(rawId) - int(segIdOffset);
+  if (!useGlobalIdLookup) {
+    return uint(segId + ID_OFFSET);
+  }
   uvec4 c = getUintFromTex(segIdToGlobalId, segId);
-  // return 0u;
   // Note: IDs are offset by `ID_OFFSET` (`=1`) to reserve `0` for segmentations that don't
   // have associated data. `ID_OFFSET` MUST be subtracted from the ID when accessing
   // data buffers.
@@ -55,7 +57,7 @@ uint getId(ivec2 uv) {
   if (globalId == 0u) {
     return MISSING_DATA_ID;
   }
-  return uint(segId);
+  return globalId;
 }
 
 bool isEdge(ivec2 uv, int id, float thickness) {
@@ -74,8 +76,9 @@ void main(void) {
   ivec2 vUv = ivec2(int(gl_FragCoord.x / devicePixelRatio), int(gl_FragCoord.y / devicePixelRatio));
   vec4 finalColor = vec4(0, 0, 0, 0.0);
 
-  int id = int(getId(vUv)) - ID_OFFSET;
-  if (id == int(highlightedId) && isEdge(vUv, id, outlineThickness)) {
+  int rawId = int(getId(vUv));
+  int id = rawId - ID_OFFSET;
+  if (rawId != int(BACKGROUND_ID) && id == highlightedId && isEdge(vUv, id, outlineThickness)) {
     finalColor = vec4(outlineColor, 1);
   }
 

@@ -21,6 +21,7 @@ type ContourUniforms = {
   outlineThickness: IUniform<number>;
   outlineColor: IUniform<Color>;
   outlineAlpha: IUniform<number>;
+  useGlobalIdLookup: IUniform<boolean>;
   segIdToGlobalId: IUniform<Texture>;
   segIdOffset: IUniform<number>;
   devicePixelRatio: IUniform<number>;
@@ -32,6 +33,7 @@ const defaultUniforms: ContourUniforms = {
   outlineThickness: new Uniform(2.0),
   outlineColor: new Uniform(new Color(1, 0, 1)),
   outlineAlpha: new Uniform(1.0),
+  useGlobalIdLookup: new Uniform(false),
   segIdToGlobalId: new Uniform(new DataTexture(new Uint32Array([0]), 1, 1, RGBAFormat, UnsignedByteType)),
   segIdOffset: new Uniform(0),
   devicePixelRatio: new Uniform(1.0),
@@ -39,18 +41,54 @@ const defaultUniforms: ContourUniforms = {
 
 export default class ContourPass {
   private pass: RenderToBuffer;
+  private featureInfo: ColorizeFeature | null;
+  private time: number;
 
   constructor() {
     this.pass = new RenderToBuffer(contourFragShader, defaultUniforms, true);
+    this.featureInfo = null;
+    this.time = 0;
   }
 
   setHighlightedId(id: number) {
     (this.pass.material.uniforms.highlightedId as IUniform<number>).value = id;
   }
 
-  setColorizeFeature(featureInfo: ColorizeFeature): void {
-    // TODO: needs access to time to read out the correct segIdToGlobalId texture....
-    this.pass.material.uniforms.outlineColor.value = featureInfo.outlineColor;
+  syncGlobalIdLookup() {
+    const uniforms = this.pass.material.uniforms as ContourUniforms;
+    console.log("Has featureInfo:", !!this.featureInfo);
+    console.log("Time:", this.time);
+    if (this.featureInfo) {
+      const globalIdLookupInfo = this.featureInfo.frameToGlobalIdLookup.get(this.time);
+      if (globalIdLookupInfo) {
+        console.log("Using global ID lookup");
+        uniforms.useGlobalIdLookup.value = true;
+        uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
+        uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
+      } else {
+        console.log("No global ID lookup for this time, using segmentation IDs directly");
+        uniforms.useGlobalIdLookup.value = false;
+      }
+    } else {
+      uniforms.useGlobalIdLookup.value = false;
+    }
+  }
+
+  setColorizeFeature(featureInfo: ColorizeFeature | null): void {
+    if (this.featureInfo !== featureInfo) {
+      this.featureInfo = featureInfo;
+      if (featureInfo) {
+        this.pass.material.uniforms.outlineColor.value = featureInfo.outlineColor;
+      }
+      this.syncGlobalIdLookup();
+    }
+  }
+
+  setTime(time: number) {
+    if (this.time !== time) {
+      this.time = time;
+      this.syncGlobalIdLookup();
+    }
   }
 
   render(renderer: WebGLRenderer, target: WebGLRenderTarget | null, pickBuffer: WebGLRenderTarget) {
@@ -60,7 +98,8 @@ export default class ContourPass {
     uniforms.pickBuffer.value = pickBuffer.texture;
 
     renderer.autoClear = false;
-    this.pass.render(renderer);
+    // Render to screen
+    this.pass.render(renderer, target ?? undefined);
     renderer.autoClear = true;
   }
 }
