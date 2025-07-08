@@ -23,6 +23,7 @@ type ContourUniforms = {
   outlineAlpha: IUniform<number>;
   segIdToGlobalId: IUniform<Texture>;
   segIdOffset: IUniform<number>;
+  devicePixelRatio: IUniform<number>;
 };
 
 const defaultUniforms: ContourUniforms = {
@@ -33,6 +34,7 @@ const defaultUniforms: ContourUniforms = {
   outlineAlpha: new Uniform(1.0),
   segIdToGlobalId: new Uniform(new DataTexture(new Uint32Array([0]), 1, 1, RGBAFormat, UnsignedByteType)),
   segIdOffset: new Uniform(0),
+  devicePixelRatio: new Uniform(1.0),
 };
 
 export default class ContourPass {
@@ -52,7 +54,11 @@ export default class ContourPass {
   }
 
   render(renderer: WebGLRenderer, target: WebGLRenderTarget | null, pickBuffer: WebGLRenderTarget) {
-    this.pass.material.uniforms.pickBuffer.value = pickBuffer.texture;
+    // Setup uniforms
+    const uniforms = this.pass.material.uniforms as ContourUniforms;
+    uniforms.devicePixelRatio.value = window.devicePixelRatio;
+    uniforms.pickBuffer.value = pickBuffer.texture;
+
     renderer.autoClear = false;
     this.pass.render(renderer);
     renderer.autoClear = true;

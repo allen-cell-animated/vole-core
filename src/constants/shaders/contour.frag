@@ -19,6 +19,7 @@ uniform uint highlightedId;
 uniform float outlineThickness;
 uniform float outlineAlpha;
 uniform vec3 outlineColor;
+uniform float devicePixelRatio;
 
 const uint BACKGROUND_ID = 0u;
 const uint MISSING_DATA_ID = 0xFFFFFFFFu;
@@ -58,10 +59,6 @@ uint getId(ivec2 uv) {
 }
 
 bool isEdge(ivec2 uv, int id, float thickness) {
-  // step size is equal to 1 onscreen canvas pixel
-  ivec2 resolution = textureSize(pickBuffer, 0);
-  // float wStep = 1.0 / float(resolution.x);
-  // float hStep = 1.0 / float(resolution.y);
   float wStep = 1.0;
   float hStep = 1.0;
   // sample around the pixel to see if we are on an edge
@@ -74,19 +71,13 @@ bool isEdge(ivec2 uv, int id, float thickness) {
 }
 
 void main(void) {
-  // TODO: Is vUv expected to be in pixel or normalized coordinates?
-  ivec2 vUv = ivec2(int(gl_FragCoord.x), int(gl_FragCoord.y));
+  ivec2 vUv = ivec2(int(gl_FragCoord.x / devicePixelRatio), int(gl_FragCoord.y / devicePixelRatio));
   vec4 finalColor = vec4(0, 0, 0, 0.0);
 
   int id = int(getId(vUv)) - ID_OFFSET;
-  if (id == int(highlightedId)) {
-    // finalColor = vec4(outlineColor, outlineAlpha);
-  }
   if (id == int(highlightedId) && isEdge(vUv, id, outlineThickness)) {
     finalColor = vec4(outlineColor, 1);
   }
 
   gl_FragColor = finalColor;
-  // gl_FragColor = vec4(1, 0, 0, 1);
-  // gl_FragColor = vec4(outlineColor, outlineAlpha);
 }

@@ -507,6 +507,7 @@ export default class VolumeDrawable {
   }
 
   setSelectedID(channelIndex: number, id: number): boolean {
+    this.contourRendering.setHighlightedId(id);
     if (this.fusion.length > 0) {
       // TODO does it make sense to do this for a particular channel?
       if (id !== this.fusion[channelIndex].selectedID) {
@@ -723,7 +724,6 @@ export default class VolumeDrawable {
       this.fusion[channelIndex].feature = undefined;
     } else {
       this.fusion[channelIndex].feature = featureInfo;
-      this.contourRendering.setColorizeFeature(featureInfo);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.MATERIAL);
