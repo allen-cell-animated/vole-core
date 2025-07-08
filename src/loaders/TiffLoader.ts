@@ -20,16 +20,19 @@ function prepareXML(xml: string): string {
   return xml.trim().replace(expr, "").trim();
 }
 
-function getOME(xml: string): Element {
+function getOME(xml: string | undefined): Element | undefined {
+  if (xml === undefined) {
+    return undefined;
+  }
+
+  const prepared = prepareXML(xml);
   const parser = new DOMParser();
+
   try {
-    const xmlDoc = parser.parseFromString(xml, "text/xml");
+    const xmlDoc = parser.parseFromString(prepared, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
   } catch (e) {
-    throw new VolumeLoadError("Could not find OME metadata in TIFF file", {
-      type: VolumeLoadErrorType.INVALID_METADATA,
-      cause: e,
-    });
+    return undefined;
   }
 }
 
@@ -146,10 +149,9 @@ class TiffLoader extends ThreadableVolumeLoader {
         .getImage()
         .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
-      const fileDir = image.getFileDirectory();
-      if (fileDir.ImageDescription !== undefined) {
-        const tiffimgdesc = prepareXML(fileDir.ImageDescription);
-        const omeEl = getOME(tiffimgdesc);
+      const omeEl = getOME(image.getFileDirectory().ImageDescription);
+
+      if (omeEl !== undefined) {
         const image0El = omeEl.getElementsByTagName("Image")[0];
         this.dims = getOMEDims(image0El);
       } else {
