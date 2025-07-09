@@ -60,12 +60,6 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
   float nSlices = float(SLICES);
 
   vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / ATLAS_DIMS;
-
-  // No interpolation - sample just one slice at a pixel center.
-  // Ideally this would be accomplished in part by switching this texture to linear
-  //   filtering, but three makes this difficult to do through a WebGLRenderTarget.
-  loc0 = (loc0 * textureRes) / textureRes;
-
   float z = min(floor(pos.z * nSlices), nSlices-1.0);
   
   if (flipVolume.z == -1.0) {

@@ -26,14 +26,6 @@ const uint BACKGROUND_ID = 0u;
 const uint MISSING_DATA_ID = 0xFFFFFFFFu;
 const int ID_OFFSET = 1;
 
-varying vec2 vUv;
-
-vec4 alphaBlend(vec4 a, vec4 b) {
-  // Implements a over b operation. See https://en.wikipedia.org/wiki/Alpha_compositing
-  float alpha = a.a + b.a * (1.0 - a.a);
-  return vec4((a.rgb * a.a + b.rgb * b.a * (1.0 - a.a)) / alpha, alpha);
-}
-
 uvec4 getUintFromTex(usampler2D tex, int index) {
   int width = textureSize(tex, 0).x;
   ivec2 featurePos = ivec2(index % width, index / width);
@@ -79,7 +71,7 @@ void main(void) {
   uint rawId = getId(vUv);
   int id = int(rawId) - ID_OFFSET;
   if (id == highlightedId && isEdge(vUv, id, outlineThickness)) {
-    finalColor = vec4(outlineColor, 1);
+    finalColor = vec4(outlineColor, outlineAlpha);
   }
 
   gl_FragColor = finalColor;

@@ -6,7 +6,6 @@ import {
   RGBAFormat,
   Texture,
   Uniform,
-  UnsignedByteType,
   UnsignedIntType,
   WebGLRenderer,
   WebGLRenderTarget,
@@ -31,7 +30,7 @@ type ContourUniforms = {
 const defaultUniforms: ContourUniforms = {
   pickBuffer: new Uniform(new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType)),
   highlightedId: new Uniform(94),
-  outlineThickness: new Uniform(2.0),
+  outlineThickness: new Uniform(2),
   outlineColor: new Uniform(new Color(1, 0, 1)),
   outlineAlpha: new Uniform(1.0),
   useGlobalIdLookup: new Uniform(false),

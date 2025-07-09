@@ -32,7 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
-import { MESH_LAYER, VOLUME_LAYER } from "./ThreeJsPanel.js";
+import { VOLUME_LAYER } from "./ThreeJsPanel.js";
 
 export default class PickVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
