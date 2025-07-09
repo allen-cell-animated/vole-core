@@ -1509,6 +1509,14 @@ function main() {
   setupGui();
 
   loadTestData((testDataSelect as HTMLSelectElement)?.value, TEST_DATA[(testDataSelect as HTMLSelectElement)?.value]);
+
+  view3D.setCameraState({
+    position: [-0.60988299, -0.1896081, 0.0285959],
+    target: [-0.01388069, -0.0328399, 0.06311195],
+  });
+  setTimeout(() => {
+    view3D.setSelectedID(myState.volume, myState.colorizeChannel, 103);
+  }, 2000);
 }
 
 document.body.onload = () => {
