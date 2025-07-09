@@ -735,14 +735,14 @@ export class ThreeJsPanel {
 
     this.renderer.autoClear = true;
 
-    // Render contours
+    // Step 5: Render contours and update the pick buffer.
     for (let i = 0; i < this.postAnimateFuncs.length; i++) {
       if (this.postAnimateFuncs[i]) {
         this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
       }
     }
 
-    // overlay
+    // Step 6: Render axis helper and other overlays.
     if (this.showAxis) {
       this.renderer.autoClear = false;
       this.renderer.render(this.axisHelperScene, this.axisCamera);

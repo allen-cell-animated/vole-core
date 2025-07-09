@@ -32,6 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
+import { MESH_LAYER, VOLUME_LAYER } from "./ThreeJsPanel.js";
 
 export default class PickVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -280,7 +281,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("inverseModelViewMatrix", mvm);
     this.setUniform("inverseProjMatrix", camera.projectionMatrixInverse);
 
-    const VOLUME_LAYER = 0;
     // draw into pick buffer...
     camera.layers.set(VOLUME_LAYER);
     renderer.setRenderTarget(this.pickBuffer);
