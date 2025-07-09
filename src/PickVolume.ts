@@ -256,7 +256,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.needRedraw = false;
 
     this.setUniform("iResolution", this.settings.resolution);
-    this.setUniform("textureRes", this.settings.resolution);
 
     const depthTex = depthTexture ?? this.emptyPositionTex;
     this.setUniform("textureDepth", depthTex);
@@ -266,11 +265,8 @@ export default class PickVolume implements VolumeRenderImpl {
 
     // this.channelData.gpuFuse(renderer);
 
-    // set up texture from segmentation channel!!!!
-    // we need to know the channel index for this.
-    // ...channel.dataTexture...
-    // TODO TODO TODO FIXME
     this.setUniform("textureAtlas", this.volume.getChannel(this.channelToPick).dataTexture);
+    this.setUniform("textureRes", new Vector2(this.volume.getChannel(this.channelToPick).dataTexture.image.width, this.volume.getChannel(this.channelToPick).dataTexture.image.height));
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
