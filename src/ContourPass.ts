@@ -3,6 +3,7 @@ import {
   DataTexture,
   FloatType,
   IUniform,
+  RedFormat,
   RGBAFormat,
   Texture,
   Uniform,
@@ -27,16 +28,23 @@ type ContourUniforms = {
   devicePixelRatio: IUniform<number>;
 };
 
-const defaultUniforms: ContourUniforms = {
-  pickBuffer: new Uniform(new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType)),
-  highlightedId: new Uniform(94),
-  outlineThickness: new Uniform(2),
-  outlineColor: new Uniform(new Color(1, 0, 1)),
-  outlineAlpha: new Uniform(1.0),
-  useGlobalIdLookup: new Uniform(false),
-  segIdToGlobalId: new Uniform(new DataTexture(new Uint32Array([0]), 1, 1, RGBAFormat, UnsignedIntType)),
-  segIdOffset: new Uniform(0),
-  devicePixelRatio: new Uniform(1.0),
+const makeDefaultUniforms = (): ContourUniforms => {
+  const pickBufferTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  const segIdToGlobalIdTex = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedIntType);
+  segIdToGlobalIdTex.internalFormat = "R32UI"; // Ensure the texture is treated as an unsigned int texture
+  segIdToGlobalIdTex.type = UnsignedIntType;
+  segIdToGlobalIdTex.needsUpdate = true;
+  return {
+    pickBuffer: new Uniform(pickBufferTex),
+    highlightedId: new Uniform(94),
+    outlineThickness: new Uniform(2),
+    outlineColor: new Uniform(new Color(1, 0, 1)),
+    outlineAlpha: new Uniform(1.0),
+    useGlobalIdLookup: new Uniform(false),
+    segIdToGlobalId: new Uniform(segIdToGlobalIdTex),
+    segIdOffset: new Uniform(0),
+    devicePixelRatio: new Uniform(1.0),
+  };
 };
 
 export default class ContourPass {
@@ -45,29 +53,24 @@ export default class ContourPass {
   private time: number;
 
   constructor() {
-    this.pass = new RenderToBuffer(contourFragShader, defaultUniforms, true);
+    this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), true);
     this.featureInfo = null;
     this.time = 0;
   }
 
   setHighlightedId(id: number) {
     this.pass.material.uniforms.highlightedId.value = id;
-    console.log("Set highlighted ID to:", id);
   }
 
   syncGlobalIdLookup() {
     const uniforms = this.pass.material.uniforms as ContourUniforms;
-    console.log("Has featureInfo:", !!this.featureInfo);
-    console.log("Time:", this.time);
     if (this.featureInfo) {
       const globalIdLookupInfo = this.featureInfo.frameToGlobalIdLookup.get(this.time);
       if (globalIdLookupInfo) {
-        console.log("Using global ID lookup with type ", globalIdLookupInfo.texture.type);
         uniforms.useGlobalIdLookup.value = true;
         uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
         uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
       } else {
-        console.log("No global ID lookup for this time, using segmentation IDs directly");
         uniforms.useGlobalIdLookup.value = false;
       }
     } else {
