@@ -7,15 +7,15 @@ precision highp sampler3D;
  * LUT mapping from the segmentation ID (raw pixel value) to the
  * global ID (index in data buffers like `featureData` and `outlierData`).
  * 
- * For a given segmentation ID `segId`, the global ID is given by:
- * `segIdToGlobalId[segId - segIdOffset] - 1`.
+ * For a given local pixel ID `localId`, the global ID is given by:
+ * `localIdToGlobalId[localId - localIdOffset] - 1`.
 */
 uniform usampler2D localIdToGlobalId;
 uniform uint localIdOffset;
 uniform bool useGlobalIdLookup;
+/* Pick buffer. Used to determine IDs. */
 uniform sampler2D pickBuffer;
 
-/* Pick buffer. Used to determine IDs. */
 uniform int highlightedId;
 uniform int outlineThickness;
 uniform float outlineAlpha;
@@ -61,7 +61,7 @@ bool isEdge(ivec2 uv, int id, int thickness) {
   int L = int(getId(uv + ivec2(-thicknessFloat * wStep, 0))) - ID_OFFSET;
   int T = int(getId(uv + ivec2(0, thicknessFloat * hStep))) - ID_OFFSET;
   int B = int(getId(uv + ivec2(0, -thicknessFloat * hStep))) - ID_OFFSET;
-  // if any neighbors are not highlightedId then color this as edge
+  // if any neighbors are not id then this is an edge
   return id != -1 && (R != id || L != id || T != id || B != id);
 }
 

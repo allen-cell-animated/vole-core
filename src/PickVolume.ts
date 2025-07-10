@@ -266,7 +266,8 @@ export default class PickVolume implements VolumeRenderImpl {
     // this.channelData.gpuFuse(renderer);
 
     this.setUniform("textureAtlas", this.volume.getChannel(this.channelToPick).dataTexture);
-    this.setUniform("textureRes", new Vector2(this.volume.getChannel(this.channelToPick).dataTexture.image.width, this.volume.getChannel(this.channelToPick).dataTexture.image.height));
+    const channelImage = this.volume.getChannel(this.channelToPick).dataTexture.image;
+    this.setUniform("textureRes", new Vector2(channelImage.width, channelImage.height));
 
     this.geometryTransformNode.updateMatrixWorld(true);
 

@@ -3,7 +3,7 @@ import {
   DataTexture,
   FloatType,
   IUniform,
-  RedFormat,
+  RedIntegerFormat,
   RGBAFormat,
   Texture,
   Uniform,
@@ -31,10 +31,8 @@ type ContourUniforms = {
 
 const makeDefaultUniforms = (): ContourUniforms => {
   const pickBufferTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
-  const segIdToGlobalIdTex = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedIntType);
-  segIdToGlobalIdTex.internalFormat = "R32UI"; // Ensure the texture is treated as an unsigned int texture
-  segIdToGlobalIdTex.type = UnsignedIntType;
-  segIdToGlobalIdTex.needsUpdate = true;
+  const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+  localIdToGlobalId.needsUpdate = true;
   return {
     pickBuffer: new Uniform(pickBufferTex),
     highlightedId: new Uniform(94),
@@ -42,7 +40,7 @@ const makeDefaultUniforms = (): ContourUniforms => {
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
     useGlobalIdLookup: new Uniform(false),
-    localIdToGlobalId: new Uniform(segIdToGlobalIdTex),
+    localIdToGlobalId: new Uniform(localIdToGlobalId),
     localIdOffset: new Uniform(0),
     devicePixelRatio: new Uniform(1.0),
   };
@@ -70,27 +68,22 @@ export default class ContourPass {
 
   private syncGlobalIdLookup(): void {
     const uniforms = this.pass.material.uniforms as ContourUniforms;
-    if (this.frameToGlobalIdLookup) {
-      const globalIdLookupInfo = this.frameToGlobalIdLookup.get(this.time);
-      if (globalIdLookupInfo) {
-        uniforms.useGlobalIdLookup.value = true;
-        uniforms.localIdToGlobalId.value = globalIdLookupInfo.texture;
-        uniforms.localIdOffset.value = globalIdLookupInfo.minSegId;
-      } else {
-        uniforms.useGlobalIdLookup.value = false;
-      }
-    } else {
+    const globalIdLookupInfo = this.frameToGlobalIdLookup?.get(this.time);
+    if (!globalIdLookupInfo) {
       uniforms.useGlobalIdLookup.value = false;
+      return;
     }
+    uniforms.useGlobalIdLookup.value = true;
+    uniforms.localIdToGlobalId.value = globalIdLookupInfo.texture;
+    uniforms.localIdOffset.value = globalIdLookupInfo.minSegId;
   }
 
   /**
    * Sets a frame-dependent lookup for global IDs. Set to a non-null value if
    * the `highlightedId` represents a global ID instead of a local (pixel) ID.
    * @param frameToGlobalIdLookup A map from a frame number to a lookup object,
-   * containing a texture mapping from local IDs to their corresponding global
-   * IDs and an offset value. See `ColorizeFeature` for more details. If `null`,
-   * the pass will not use a global ID lookup.
+   * containing a texture and an offset value; see `ColorizeFeature` for more
+   * details. If `null`, the pass will not use a global ID lookup.
    */
   public setGlobalIdLookup(frameToGlobalIdLookup: ColorizeFeature["frameToGlobalIdLookup"] | null): void {
     if (this.frameToGlobalIdLookup !== frameToGlobalIdLookup) {
@@ -120,7 +113,7 @@ export default class ContourPass {
   }
 
   /**
-   * Renders the contour as a transparent overlay on the specified target.
+   * Renders the contour as a transparent pass on the specified target.
    * @param renderer The WebGL renderer to render with.
    * @param target The render target to render to.
    * @param pickBuffer The pick buffer containing the pixel IDs to highlight,
@@ -134,7 +127,6 @@ export default class ContourPass {
 
     const startingAutoClearState = renderer.autoClear;
     renderer.autoClear = false;
-    // Render to screen
     this.pass.render(renderer, target ?? undefined);
     renderer.autoClear = startingAutoClearState;
   }

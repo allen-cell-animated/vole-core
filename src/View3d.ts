@@ -418,10 +418,10 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
-    // NOTE: `fillPickBuffer` MUST run after render occurs. This is because the
-    // pick buffer needs to access the `meshRenderTarget`'s depth texture, but
-    // during a resize, the texture is disposed of and not recreated until the
-    // next render.
+    // NOTE: `fillPickBuffer` MUST run after mesh rendering occurs. This is
+    // because the pick buffer needs to access the `meshRenderTarget`'s depth
+    // texture, but during a resize, the texture is disposed of and not
+    // recreated until the next render.
     this.canvas3d.postMeshRenderFuncs.push(img.fillPickBuffer.bind(img));
     this.canvas3d.overlayRenderFuncs.push(img.drawContours.bind(img));
 

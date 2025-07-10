@@ -488,10 +488,10 @@ export default class VolumeDrawable {
   }
 
   drawContours(renderer: WebGLRenderer): void {
-    if (!this.pickRendering) {
+    if (!this.pickRendering || !this.contourRendering) {
       return;
     }
-    this.contourRendering?.render(renderer, renderer.getRenderTarget(), this.pickRendering.getPickBuffer());
+    this.contourRendering.render(renderer, renderer.getRenderTarget(), this.pickRendering.getPickBuffer());
   }
 
   getViewMode(): Axis {

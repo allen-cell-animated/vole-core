@@ -764,12 +764,6 @@ export class ThreeJsPanel {
       this.renderer.autoClear = true;
     }
 
-    for (let i = 0; i < this.postAnimateFuncs.length; i++) {
-      if (this.postAnimateFuncs[i]) {
-        this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-      }
-    }
-
     if (this.dataurlcallback) {
       this.dataurlcallback(this.canvas.toDataURL());
       this.dataurlcallback = undefined;

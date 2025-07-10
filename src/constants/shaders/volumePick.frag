@@ -93,9 +93,9 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
   uint voxelColor = texelFetch(tex, ivec2(o * textureRes), 0).x;
 
   // Apply mask
-  //   float voxelMask = texture2D(textureAtlasMask, o).x;
-  //   voxelMask = mix(voxelMask, 1.0, maskAlpha);
-  //   voxelColor.rgb *= voxelMask;
+  // float voxelMask = texture2D(textureAtlasMask, o).x;
+  // voxelMask = mix(voxelMask, 1.0, maskAlpha);
+  // voxelColor.rgb *= voxelMask;
 
   return bounds*voxelColor;
 }
@@ -136,9 +136,8 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
   float scaledSteps = float(BREAK_STEPS) * length((eye_d.xyz/volumeScale));
   float csteps = clamp(float(scaledSteps), 1.0, float(maxSteps));
   float invstep = (tfar-tnear)/csteps;
-  // special-casing the single slice to remove the random ray dither.
-  // this removes a Moire pattern visible in single slice images, which we want to view as 2D images as best we can.
-  float r = 0.0;//(SLICES==1.0) ? 0.0 : rand(eye_d.xy);
+  // Removed random ray dither to prevent artifacting
+  float r = 0.0; // (SLICES==1.0) ? 0.0 : rand(eye_d.xy);
   // if ortho and clipped, make step size smaller so we still get same number of steps
   float tstep = invstep*orthoThickness;
   float tfarsurf = r*tstep;
