@@ -1111,7 +1111,7 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
   await loaderContext.onOpen();
 
   const options: Partial<CreateLoaderOptions> = {};
-  let path: string | string[] = data.url;
+  // top level array: multiscene
   if (Array.isArray(data.url)) {
     // fake multiscene loading. TODO revert and replace with the real thing!
     const options = {
@@ -1119,23 +1119,28 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
     };
     const promises = data.url.map((url) => loaderContext.createLoader(url, options));
     return Promise.all(promises);
-  } else if (data.type === VolumeFileFormat.JSON) {
-    path = [];
-    const times = data.times || 0;
-    for (let t = 0; t <= times; t++) {
-      path.push(data.url.replace("%%", t.toString()));
-    }
-  } else if (data.type === VolumeFileFormat.DATA) {
-    const volumeInfo = createTestVolume();
-    options.fileType = VolumeFileFormat.DATA;
-    options.rawArrayOptions = { data: volumeInfo.data, metadata: volumeInfo.metadata };
-  }
+  } else {
+    // data.url is not an array
+    let path: string | string[] = data.url;
 
-  const result = await loaderContext.createLoader(path, {
-    ...options,
-    fetchOptions: { maxPrefetchDistance: PREFETCH_DISTANCE, maxPrefetchChunks: MAX_PREFETCH_CHUNKS },
-  });
-  return [result];
+    // treat json as single scene, assume single url source.
+    if (data.type === VolumeFileFormat.JSON) {
+      const src = data.url as string;
+      const times = data.times || 0;
+      const timesArray = [...Array(times + 1).keys()];
+      path = timesArray.map((t) => src.replace("%%", t.toString()));
+    } else if (data.type === VolumeFileFormat.DATA) {
+      const volumeInfo = createTestVolume();
+      options.fileType = VolumeFileFormat.DATA;
+      options.rawArrayOptions = { data: volumeInfo.data, metadata: volumeInfo.metadata };
+    }
+
+    const result = await loaderContext.createLoader(path, {
+      ...options,
+      fetchOptions: { maxPrefetchDistance: PREFETCH_DISTANCE, maxPrefetchChunks: MAX_PREFETCH_CHUNKS },
+    });
+    return [result];
+  }
 }
 
 async function loadVolume(name: string, loadSpec: LoadSpec, loader: IVolumeLoader): Promise<void> {

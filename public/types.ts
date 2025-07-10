@@ -5,6 +5,9 @@ import { IVolumeLoader } from "../src/loaders/IVolumeLoader";
 export interface TestDataSpec {
   type: VolumeFileFormat | "opencell" | "procedural";
   // TODO: replace array here with multi-scene handling at the loader level
+  // one string is single scene
+  // an array of strings is multiple scenes
+  // (currently for tiff only) an array of arrays is multiple scenes with multiple channel sources
   url: string | string[] | string[][];
   /** Optional fallback for JSON volumes which don't specify a value for `times` */
   times?: number;
