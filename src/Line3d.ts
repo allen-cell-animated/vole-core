@@ -1,7 +1,7 @@
 import { Color, Euler, Group, Vector3 } from "three";
 import { IDrawableObject } from "./types";
 import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
+import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
 import { LineSegments2 } from "three/addons/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
@@ -25,13 +25,13 @@ export default class Line3d implements IDrawableObject {
     geometry.setPositions(new Float32Array(this.bufferSize));
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
     this.lineMesh = new LineSegments2(geometry, material);
-    this.lineMesh.layers.set(MESH_LAYER);
+    this.lineMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.frustumCulled = false;
 
     this.meshPivot = new Group();
     this.meshPivot.add(this.lineMesh);
 
-    this.meshPivot.layers.set(MESH_LAYER);
+    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
     this.scale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
@@ -127,7 +127,7 @@ export default class Line3d implements IDrawableObject {
    * volume, ignoring depth.
    */
   setRenderAsOverlay(renderAsOverlay: boolean): void {
-    this.lineMesh.layers.set(renderAsOverlay ? OVERLAY_LAYER : MESH_LAYER);
+    this.lineMesh.layers.set(renderAsOverlay ? OVERLAY_LAYER : MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.material.depthTest = !renderAsOverlay;
     this.lineMesh.material.depthTest = !renderAsOverlay;
     this.lineMesh.material.needsUpdate = true;
