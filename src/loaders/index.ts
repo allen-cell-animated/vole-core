@@ -53,7 +53,8 @@ export async function createVolumeLoader(
     case VolumeFileFormat.JSON:
       return new JsonImageInfoLoader(path, options?.cache);
     case VolumeFileFormat.TIFF:
-      return new TiffLoader(pathString);
+      const pathArray = Array.isArray(path) ? path : [path];
+      return new TiffLoader(pathArray);
     case VolumeFileFormat.DATA:
       if (!options?.rawArrayOptions) {
         throw new Error("Must provide RawArrayOptions for RawArrayLoader");
