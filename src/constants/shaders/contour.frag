@@ -10,8 +10,8 @@ precision highp sampler3D;
  * For a given segmentation ID `segId`, the global ID is given by:
  * `segIdToGlobalId[segId - segIdOffset] - 1`.
 */
-uniform usampler2D segIdToGlobalId;
-uniform uint segIdOffset;
+uniform usampler2D localIdToGlobalId;
+uniform uint localIdOffset;
 uniform bool useGlobalIdLookup;
 uniform sampler2D pickBuffer;
 
@@ -37,14 +37,14 @@ uint getId(ivec2 uv) {
   if (rawId == 0.0) {
     return BACKGROUND_ID;
   }
-  int segId = int(rawId) - int(segIdOffset);
+  int localId = int(rawId) - int(localIdOffset);
   if (!useGlobalIdLookup) {
-    return uint(segId + ID_OFFSET);
+    return uint(localId + ID_OFFSET);
   }
-  uvec4 c = getUintFromTex(segIdToGlobalId, segId);
-  // Note: IDs are offset by `ID_OFFSET` (`=1`) to reserve `0` for segmentations that don't
-  // have associated data. `ID_OFFSET` MUST be subtracted from the ID when accessing
-  // data buffers.
+  uvec4 c = getUintFromTex(localIdToGlobalId, localId);
+  // Note: IDs are offset by `ID_OFFSET` (`=1`) to reserve `0` for local IDs
+  // that don't have associated data in the global lookup. `ID_OFFSET` MUST be
+  // subtracted from the ID when accessing data buffers.
   uint globalId = c.r;
   if (globalId == 0u) {
     return MISSING_DATA_ID;

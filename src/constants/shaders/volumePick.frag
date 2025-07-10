@@ -61,21 +61,26 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
                        pos[2] >= 0.0 && pos[2] <= 1.0 );
   float nSlices = float(SLICES);
 
-// ascii art of a texture atlas:
-//  +------------------+
-//  | 0  | 1  | 2  | 3 |
-//  +------------------+
-//  | 4  | 5  | 6  | 7 | 
-//  +------------------+
-//  | 8  | 9  |10  |11 |
-//  +------------------+
-//  |12  |13  |14  |15 |
-//  +------------------+
+  // ascii art of a texture atlas:
+  //  +------------------+
+  //  | 0  | 1  | 2  | 3 |
+  //  +------------------+
+  //  | 4  | 5  | 6  | 7 | 
+  //  +------------------+
+  //  | 8  | 9  |10  |11 |
+  //  +------------------+
+  //  |12  |13  |14  |15 |
+  //  +------------------+
+  // Each tile is one z-slice of the 3D texture, which has been flattened
+  // into an atlased 2D texture.
 
-  // pos.xy is 0-1 range.  apply the xy flip here and then divide by number of tiles in x and y
-  // this results in a uv coordinate in the first tile (z slice) of the atlas texture
+  // pos.xy is 0-1 range. Apply the xy flip here and then divide by number of tiles in x and y to normalize
+  // to a single tile. This results in a uv coordinate that's in the correct X and Y position but only for
+  // the first tile (z slice) of the atlas texture, z=0.
   vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / vec2(float(ATLAS_DIMS.x), float(ATLAS_DIMS.y));
-  // now round z to the nearest (floor) slice
+  
+  // Next, offset the UV coordinate so we are sampling in the correct Z slice.
+  // Round z to the nearest (floor) slice
   float z = min(floor(pos.z * nSlices), nSlices-1.0);
   // flip z coordinate if needed
   if (flipVolume.z == -1.0) {
@@ -88,9 +93,9 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
   uint voxelColor = texelFetch(tex, ivec2(o * textureRes), 0).x;
 
   // Apply mask
-//   float voxelMask = texture2D(textureAtlasMask, o).x;
-//   voxelMask = mix(voxelMask, 1.0, maskAlpha);
-//   voxelColor.rgb *= voxelMask;
+  //   float voxelMask = texture2D(textureAtlasMask, o).x;
+  //   voxelMask = mix(voxelMask, 1.0, maskAlpha);
+  //   voxelColor.rgb *= voxelMask;
 
   return bounds*voxelColor;
 }

@@ -729,12 +729,14 @@ export default class VolumeDrawable {
     // TODO only one channel can ever have this?
     if (!featureInfo) {
       this.fusion[channelIndex].feature = undefined;
+      this.contourRendering.setGlobalIdLookup(null);
     } else {
       this.fusion[channelIndex].feature = featureInfo;
+      this.contourRendering.setOutlineColor(featureInfo.outlineColor);
+      this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.MATERIAL);
-    this.contourRendering.setColorizeFeature(featureInfo);
   }
 
   setMaskAlpha(maskAlpha: number): void {
