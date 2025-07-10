@@ -5,7 +5,7 @@ import { IVolumeLoader } from "../src/loaders/IVolumeLoader";
 export interface TestDataSpec {
   type: VolumeFileFormat | "opencell" | "procedural";
   // TODO: replace array here with multi-scene handling at the loader level
-  url: string | string[];
+  url: string | string[] | string[][];
   /** Optional fallback for JSON volumes which don't specify a value for `times` */
   times?: number;
 }

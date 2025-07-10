@@ -129,18 +129,18 @@ const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSiz
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
 class TiffLoader extends ThreadableVolumeLoader {
-  url: string;
+  url: string[];
   dims?: OMEDims;
 
-  constructor(url: string) {
+  constructor(url: string[]) {
     super();
     this.url = url;
   }
 
   private async loadOmeDims(): Promise<OMEDims> {
     if (!this.dims) {
-      const tiff = await fromUrl(this.url, { allowFullFile: true }).catch<GeoTIFF>(
-        wrapVolumeLoadError(`Could not open TIFF file at ${this.url}`, VolumeLoadErrorType.NOT_FOUND)
+      const tiff = await fromUrl(this.url[0], { allowFullFile: true }).catch<GeoTIFF>(
+        wrapVolumeLoadError(`Could not open TIFF file at ${this.url[0]}`, VolumeLoadErrorType.NOT_FOUND)
       );
       // DO NOT DO THIS, ITS SLOW
       // const imagecount = await tiff.getImageCount();
@@ -159,6 +159,7 @@ class TiffLoader extends ThreadableVolumeLoader {
         this.dims = new OMEDims();
         this.dims.sizex = image.getWidth();
         this.dims.sizey = image.getHeight();
+        this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
         this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
         this.dims.channelnames = ["Channel"];
       }
@@ -269,7 +270,7 @@ class TiffLoader extends ThreadableVolumeLoader {
           sizez: volumeSize.z,
           dimensionOrder: dims.dimensionorder,
           bytesPerSample: getBytesPerSample(dims.pixeltype),
-          url: this.url,
+          url: this.url.length > 1 ? this.url[channel] : this.url[0], // if multiple urls, use the channel index to select the right one
         };
 
         const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });

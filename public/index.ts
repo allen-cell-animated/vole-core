@@ -35,6 +35,21 @@ const MAX_PREFETCH_CHUNKS = 25;
 const PLAYBACK_INTERVAL = 80;
 
 const TEST_DATA: Record<string, TestDataSpec> = {
+  cellpainting: {
+    type: VolumeFileFormat.TIFF,
+    url: [
+      [
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch1sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch2sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch3sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch4sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch5sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch6sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch7sk1fk1fl1.tiff",
+        "http://localhost:3000/cellpainting/r01c01f01p01-ch8sk1fk1fl1.tiff",
+      ],
+    ],
+  },
   testpick: {
     type: VolumeFileFormat.ZARR,
     url: "https://allencell.s3.amazonaws.com/aics/nuc-morph-dataset/hipsc_fov_nuclei_timelapse_dataset/hipsc_fov_nuclei_timelapse_data_used_for_analysis/baseline_colonies_fov_timelapse_dataset/20200323_09_small/seg.ome.zarr",

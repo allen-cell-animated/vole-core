@@ -204,7 +204,8 @@ class VolumeLoaderContext {
     const pathString = Array.isArray(path) ? path[0] : path;
     const fileType = options?.fileType || pathToFileType(pathString);
     if (fileType === VolumeFileFormat.TIFF) {
-      return new TiffLoader(pathString);
+      const pathArray = Array.isArray(path) ? path : [path];
+      return new TiffLoader(pathArray);
     } else if (fileType === VolumeFileFormat.DATA) {
       if (!options?.rawArrayOptions) {
         throw new Error("Failed to create loader: Must provide RawArrayOptions for RawArrayLoader");
