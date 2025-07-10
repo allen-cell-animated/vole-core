@@ -17,7 +17,7 @@ uniform sampler2D pickBuffer;
 
 /* Pick buffer. Used to determine IDs. */
 uniform int highlightedId;
-uniform float outlineThickness;
+uniform int outlineThickness;
 uniform float outlineAlpha;
 uniform vec3 outlineColor;
 uniform float devicePixelRatio;
@@ -52,14 +52,15 @@ uint getId(ivec2 uv) {
   return globalId;
 }
 
-bool isEdge(ivec2 uv, int id, float thickness) {
+bool isEdge(ivec2 uv, int id, int thickness) {
   float wStep = 1.0;
   float hStep = 1.0;
+  float thicknessFloat = float(thickness);
   // sample around the pixel to see if we are on an edge
-  int R = int(getId(uv + ivec2(thickness * wStep, 0))) - ID_OFFSET;
-  int L = int(getId(uv + ivec2(-thickness * wStep, 0))) - ID_OFFSET;
-  int T = int(getId(uv + ivec2(0, thickness * hStep))) - ID_OFFSET;
-  int B = int(getId(uv + ivec2(0, -thickness * hStep))) - ID_OFFSET;
+  int R = int(getId(uv + ivec2(thicknessFloat * wStep, 0))) - ID_OFFSET;
+  int L = int(getId(uv + ivec2(-thicknessFloat * wStep, 0))) - ID_OFFSET;
+  int T = int(getId(uv + ivec2(0, thicknessFloat * hStep))) - ID_OFFSET;
+  int B = int(getId(uv + ivec2(0, -thicknessFloat * hStep))) - ID_OFFSET;
   // if any neighbors are not highlightedId then color this as edge
   return id != -1 && (R != id || L != id || T != id || B != id);
 }

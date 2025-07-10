@@ -15,6 +15,7 @@ import RenderToBuffer from "./RenderToBuffer";
 
 import contourFragShader from "./constants/shaders/contour.frag";
 import { ColorizeFeature } from "./types";
+import { clamp } from "three/src/math/MathUtils";
 
 type ContourUniforms = {
   pickBuffer: IUniform<Texture>;
@@ -37,7 +38,7 @@ const makeDefaultUniforms = (): ContourUniforms => {
   return {
     pickBuffer: new Uniform(pickBufferTex),
     highlightedId: new Uniform(94),
-    outlineThickness: new Uniform(2),
+    outlineThickness: new Uniform(2.0),
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
     useGlobalIdLookup: new Uniform(false),
@@ -58,9 +59,13 @@ export default class ContourPass {
     this.time = 0;
   }
 
-  public setOutlineColor(color: Color, alpha: number = 1.0): void {
+  public setOutlineColor(color: Color, alpha = 1.0): void {
     this.pass.material.uniforms.outlineColor.value = color;
-    this.pass.material.uniforms.outlineAlpha.value = alpha;
+    this.pass.material.uniforms.outlineAlpha.value = clamp(alpha, 0, 1);
+  }
+
+  public setOutlineThickness(thickness: number): void {
+    this.pass.material.uniforms.outlineThickness.value = Math.floor(thickness);
   }
 
   private syncGlobalIdLookup(): void {

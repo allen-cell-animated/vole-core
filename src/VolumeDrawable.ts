@@ -487,7 +487,7 @@ export default class VolumeDrawable {
     this.pickRendering?.doRender(renderer, camera, depthTexture);
   }
 
-  drawContours(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera): void {
+  drawContours(renderer: WebGLRenderer): void {
     if (!this.pickRendering) {
       return;
     }
@@ -732,7 +732,7 @@ export default class VolumeDrawable {
       this.contourRendering.setGlobalIdLookup(null);
     } else {
       this.fusion[channelIndex].feature = featureInfo;
-      this.contourRendering.setOutlineColor(featureInfo.outlineColor);
+      this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
       this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
