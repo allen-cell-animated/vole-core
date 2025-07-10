@@ -159,6 +159,10 @@ class TiffLoader extends ThreadableVolumeLoader {
         this.dims = new OMEDims();
         this.dims.sizex = image.getWidth();
         this.dims.sizey = image.getHeight();
+        // TODO this is a big hack/assumption about only loading multi-source tiffs that are not OMETIFF.
+        // We really have to check each url in the array for sizec to get the total number of channels
+        // See combinedNumChannels in ImageInfo below.
+        // Also compare with how OMEZarrLoader does this.
         this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
         this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
         this.dims.channelnames = Array.from({ length: this.dims.sizec }, (_, i) => "Channel" + i);
