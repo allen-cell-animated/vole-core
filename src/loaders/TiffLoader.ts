@@ -161,7 +161,7 @@ class TiffLoader extends ThreadableVolumeLoader {
         this.dims.sizey = image.getHeight();
         this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
         this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
-        this.dims.channelnames = ["Channel"];
+        this.dims.channelnames = Array.from({ length: this.dims.sizec }, (_, i) => "Channel" + i);
       }
     }
     return this.dims;
