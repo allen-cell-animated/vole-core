@@ -40,6 +40,7 @@ export async function createVolumeLoader(
 ): Promise<ThreadableVolumeLoader> {
   const pathString = Array.isArray(path) ? path[0] : path;
   const fileType = options?.fileType || pathToFileType(pathString);
+  const pathArrayForTiffLoader = Array.isArray(path) ? path : [path];
 
   switch (fileType) {
     case VolumeFileFormat.ZARR:
@@ -53,7 +54,7 @@ export async function createVolumeLoader(
     case VolumeFileFormat.JSON:
       return new JsonImageInfoLoader(path, options?.cache);
     case VolumeFileFormat.TIFF:
-      return new TiffLoader(pathString);
+      return new TiffLoader(pathArrayForTiffLoader);
     case VolumeFileFormat.DATA:
       if (!options?.rawArrayOptions) {
         throw new Error("Must provide RawArrayOptions for RawArrayLoader");
