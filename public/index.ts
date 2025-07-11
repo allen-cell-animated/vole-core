@@ -1241,7 +1241,6 @@ function main() {
     return;
   }
   view3D = new View3d({ parentElement: el });
-  view3D.loaderContext = loaderContext;
 
   el.addEventListener("mousemove", (e: Event) => {
     const event = e as MouseEvent;
