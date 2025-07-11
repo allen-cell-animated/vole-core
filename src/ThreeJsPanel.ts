@@ -33,7 +33,9 @@ import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
-export const OVERLAY_LAYER = 2;
+/** Meshes that do not occlude picking/contour behavior. */
+export const MESH_NO_PICK_OCCLUSION_LAYER = 2;
+export const OVERLAY_LAYER = 3;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -66,7 +68,8 @@ export class ThreeJsPanel {
   private meshRenderToBuffer: RenderToBuffer;
 
   public animateFuncs: AnimateFunction[];
-  public postAnimateFuncs: AnimateFunction[];
+  public postMeshRenderFuncs: AnimateFunction[];
+  public overlayRenderFuncs: AnimateFunction[];
   private inRenderLoop: boolean;
   private requestedRender: number;
   public hasWebGL2: boolean;
@@ -142,7 +145,8 @@ export class ThreeJsPanel {
     this.showTimestepIndicator = false;
 
     this.animateFuncs = [];
-    this.postAnimateFuncs = [];
+    this.postMeshRenderFuncs = [];
+    this.overlayRenderFuncs = [];
 
     // are we in a constant render loop or not?
     this.inRenderLoop = false;
@@ -713,39 +717,51 @@ export class ThreeJsPanel {
 
     // RENDERING
     // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
-    //   layer 1.) This is necessary to access the depth buffer.
+    // layer 1.) This is necessary to access the depth buffer.
     this.camera.layers.set(MESH_LAYER);
     this.renderer.setRenderTarget(this.meshRenderTarget);
     this.renderer.render(this.scene, this.camera);
 
-    // Step 2: Render the mesh render target out to the screen.
+    // Step 2. Render any passes that have to happen after the meshes are
+    // rendered but before volume rendering (e.g. pick buffer).
+    this.postMeshRenderFuncs.forEach((func) => {
+      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+    });
+
+    // Step 3: Render meshes that do not interact with the pick buffer. This
+    // must happen after the pick buffer is rendered so picking isn't occluded
+    // by them, but before the volume renders so that volumes can still depth
+    // test against the lines.
+    this.renderer.autoClear = false;
+    this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+    this.renderer.setRenderTarget(this.meshRenderTarget);
+    this.renderer.render(this.scene, this.camera);
+
+    // Step 4: Render the mesh render target out to the screen.
     this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
     this.meshRenderToBuffer.render(this.renderer);
 
-    // Step 3: Render volumes, which can now depth test against the meshes.
-    this.renderer.autoClear = false;
+    // Step 5: Render volumes, which can now depth test against the meshes.
     this.camera.layers.set(VOLUME_LAYER);
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
 
-    // Step 4: Render lines and other objects that must render over volumes and meshes.
+    // Step 6: Render lines and other objects that must render over volumes and meshes.
     this.camera.layers.set(OVERLAY_LAYER);
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
 
+    // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
+    this.overlayRenderFuncs.forEach((func) => {
+      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+    });
     this.renderer.autoClear = true;
 
-    // overlay
+    // Step 8: Render axis helper and other overlays.
     if (this.showAxis) {
       this.renderer.autoClear = false;
       this.renderer.render(this.axisHelperScene, this.axisCamera);
       this.renderer.autoClear = true;
-    }
-
-    for (let i = 0; i < this.postAnimateFuncs.length; i++) {
-      if (this.postAnimateFuncs[i]) {
-        this.postAnimateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-      }
     }
 
     if (this.dataurlcallback) {

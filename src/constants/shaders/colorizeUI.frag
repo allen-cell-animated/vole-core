@@ -120,9 +120,9 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
 
   // color the highlighted object. Note, `highlightedId` is a 0-based index
   // (global ID w/o offset), while `id` is a 1-based index.
-  if (id - 1u == highlightedId) {
-    return vec4(outlineColor, 1.0);
-  }
+  // if (id - 1u == highlightedId) {
+  //   return vec4(outlineColor, 1.0);
+  // }
 
   float featureVal = getFeatureVal(id);
   uint outlierVal = getOutlierVal(id);
