@@ -1,4 +1,4 @@
-import { fromUrl } from "geotiff";
+import { fromUrl, type GeoTIFF, type GeoTIFFImage } from "geotiff";
 import { ErrorObject, deserializeError } from "serialize-error";
 
 import {
@@ -135,7 +135,7 @@ class TiffLoader extends ThreadableVolumeLoader {
 
   private async loadOmeDims(): Promise<OMEDims> {
     if (!this.dims) {
-      const tiff = await fromUrl(this.url, { allowFullFile: true }).catch(
+      const tiff = await fromUrl(this.url, { allowFullFile: true }).catch<GeoTIFF>(
         wrapVolumeLoadError(`Could not open TIFF file at ${this.url}`, VolumeLoadErrorType.NOT_FOUND)
       );
       // DO NOT DO THIS, ITS SLOW
@@ -143,7 +143,7 @@ class TiffLoader extends ThreadableVolumeLoader {
       // read the FIRST image
       const image = await tiff
         .getImage()
-        .catch(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
+        .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
       const tiffimgdesc = prepareXML(image.getFileDirectory().ImageDescription);
       const omeEl = getOME(tiffimgdesc);
@@ -260,7 +260,7 @@ class TiffLoader extends ThreadableVolumeLoader {
           url: this.url,
         };
 
-        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), {type: "module"});
+        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
         worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
           if (e.data.isError) {
             reject(deserializeError(e.data.error));
