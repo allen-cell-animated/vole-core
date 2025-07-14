@@ -88,6 +88,7 @@ export interface ColorizeFeature {
   featureMin: number;
   featureMax: number;
   outlineColor: Color;
+  outlineAlpha: number;
   outlierColor: Color;
   outOfRangeColor: Color;
   outlierDrawMode: number;
