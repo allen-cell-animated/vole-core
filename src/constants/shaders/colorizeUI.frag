@@ -13,6 +13,7 @@ uniform sampler2D colorRamp;
 uniform usampler2D inRangeIds;
 uniform usampler2D outlierData;
 
+// TODO: Rename to `localId` for consistency
 /**
  * LUT mapping from the segmentation ID (raw pixel value) to the
  * global ID (index in data buffers like `featureData` and `outlierData`).
