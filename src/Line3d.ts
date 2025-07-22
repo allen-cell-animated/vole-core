@@ -25,6 +25,13 @@ export default class Line3d implements IDrawableObject {
     geometry.setPositions(new Float32Array(this.bufferSize));
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
     this.lineMesh = new LineSegments2(geometry, material);
+
+    // Lines need to write depth information so they interact with the volume
+    // (so the lines appear to fade into the volume if they intersect), but
+    // lines shouldn't interact with the pick buffer, otherwise strange visual
+    // artifacts can occur where contours are drawn around lines. This layer
+    // (MESH_NO_PICK_OCCLUSION_LAYER) does not occlude/interact with the pick
+    // buffer but still writes depth information for the volume.
     this.lineMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.frustumCulled = false;
 
