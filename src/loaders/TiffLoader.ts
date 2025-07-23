@@ -202,6 +202,7 @@ class TiffLoader extends ThreadableVolumeLoader {
       subregionSize: [tilesizex, tilesizey, dims.sizez],
       subregionOffset: [0, 0, 0],
       combinedNumChannels: dims.sizec,
+      numChannelsPerSource: [dims.sizec],
       channelNames: dims.channelnames,
       multiscaleLevel: 0,
       multiscaleLevelDims: [
@@ -260,7 +261,7 @@ class TiffLoader extends ThreadableVolumeLoader {
           url: this.url,
         };
 
-        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), {type: "module"});
+        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
         worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
           if (e.data.isError) {
             reject(deserializeError(e.data.error));

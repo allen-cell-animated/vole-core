@@ -29,6 +29,7 @@ class OpenCellLoader extends ThreadableVolumeLoader {
       subregionSize: [600, 600, 27],
       subregionOffset: [0, 0, 0],
       combinedNumChannels: numChannels,
+      numChannelsPerSource: [2],
       channelNames: chnames,
       multiscaleLevel: 0,
       multiscaleLevelDims: [

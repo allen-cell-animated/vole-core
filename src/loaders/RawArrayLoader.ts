@@ -54,6 +54,7 @@ const convertImageInfo = (json: RawArrayInfo): ImageInfo => {
     subregionOffset: [0, 0, 0],
 
     combinedNumChannels: json.sizeC,
+    numChannelsPerSource: [json.sizeC],
     channelNames: json.channelNames,
     channelColors: undefined,
 

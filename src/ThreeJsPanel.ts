@@ -70,6 +70,7 @@ export class ThreeJsPanel {
   public animateFuncs: AnimateFunction[];
   public postMeshRenderFuncs: AnimateFunction[];
   public overlayRenderFuncs: AnimateFunction[];
+
   private inRenderLoop: boolean;
   private requestedRender: number;
   public hasWebGL2: boolean;

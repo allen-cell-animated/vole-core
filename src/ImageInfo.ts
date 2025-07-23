@@ -20,6 +20,7 @@ export type ImageInfo = Readonly<{
    * NOTE Currently there is one ImageInfo per Volume, not per source.
    */
   combinedNumChannels: number;
+  numChannelsPerSource: number[];
   /** The names of each channel */
   channelNames: string[];
   /** Optional overrides to default channel colors, in 0-255 range, RGB order */
@@ -56,6 +57,7 @@ export function defaultImageInfo(): ImageInfo {
     subregionSize: [1, 1, 1],
     subregionOffset: [0, 0, 0],
     combinedNumChannels: 1,
+    numChannelsPerSource: [1],
     channelNames: ["0"],
     channelColors: [[255, 255, 255]],
     multiscaleLevel: 0,
@@ -90,6 +92,11 @@ export class CImageInfo {
   /** Number of channels in the image */
   get numChannels(): number {
     return this.imageInfo.combinedNumChannels;
+  }
+
+  /** Number of channels per source, ordered by source index */
+  get numChannelsPerSource(): number[] {
+    return this.imageInfo.numChannelsPerSource;
   }
 
   /** XYZ size of the *original* (not downsampled) volume, in pixels */
