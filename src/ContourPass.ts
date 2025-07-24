@@ -11,7 +11,7 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-import RenderToBuffer from "./RenderToBuffer";
+import RenderToBuffer, { RenderPassType } from "./RenderToBuffer";
 
 import contourFragShader from "./constants/shaders/contour.frag";
 import { ColorizeFeature } from "./types";
@@ -52,7 +52,7 @@ export default class ContourPass {
   private time: number;
 
   constructor() {
-    this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), true);
+    this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), RenderPassType.TRANSPARENT);
     this.frameToGlobalIdLookup = null;
     this.time = 0;
   }
