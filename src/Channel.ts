@@ -49,7 +49,7 @@ export default class Channel {
   public lutTexture: DataTexture;
   public rawMin: number;
   public rawMax: number;
-  public time: number;
+  public frame: number;
 
   constructor(name: string) {
     this.loaded = false;
@@ -57,7 +57,7 @@ export default class Channel {
     this.imgData = { data: new Uint8Array(), width: 0, height: 0 };
     this.rawMin = 0;
     this.rawMax = 255;
-    this.time = 0;
+    this.frame = 0;
 
     // on gpu
     this.dataTexture = new DataTexture(new Uint8Array(), 0, 0);
@@ -227,7 +227,7 @@ export default class Channel {
     rawMin: number,
     rawMax: number,
     subregionSize: Vector3,
-    time = 0
+    frame = 0
   ): void {
     this.dtype = dtype;
     this.imgData = { data: bitsArray, width: w, height: h };
@@ -236,7 +236,7 @@ export default class Channel {
 
     this.loaded = true;
     this.histogram = new Histogram(bitsArray);
-    this.time = time;
+    this.frame = frame;
 
     // reuse old lut but auto-remap it to new data range
     this.setRawDataRange(rawMin, rawMax);
@@ -289,12 +289,12 @@ export default class Channel {
     rawMin: number,
     rawMax: number,
     dtype: NumberType,
-    time = 0
+    frame = 0
   ): void {
     this.dims = [vx, vy, vz];
     this.volumeData = bitsArray;
     this.dtype = dtype;
-    this.time = time;
+    this.frame = frame;
     // TODO FIXME performance hit for shuffling the data and storing 2 versions of it (could do this in worker at least?)
     this.packToAtlas(vx, vy, vz, ax, ay);
     this.loaded = true;

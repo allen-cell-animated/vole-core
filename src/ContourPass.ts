@@ -49,12 +49,12 @@ const makeDefaultUniforms = (): ContourUniforms => {
 export default class ContourPass {
   private pass: RenderToBuffer;
   private frameToGlobalIdLookup: ColorizeFeature["frameToGlobalIdLookup"] | null;
-  private time: number;
+  private frame: number;
 
   constructor() {
     this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), RenderPassType.TRANSPARENT);
     this.frameToGlobalIdLookup = null;
-    this.time = 0;
+    this.frame = 0;
   }
 
   public setOutlineColor(color: Color, alpha = 1.0): void {
@@ -68,7 +68,7 @@ export default class ContourPass {
 
   private syncGlobalIdLookup(): void {
     const uniforms = this.pass.material.uniforms as ContourUniforms;
-    const globalIdLookupInfo = this.frameToGlobalIdLookup?.get(this.time);
+    const globalIdLookupInfo = this.frameToGlobalIdLookup?.get(this.frame);
     if (!globalIdLookupInfo) {
       uniforms.useGlobalIdLookup.value = false;
       return;
@@ -93,12 +93,12 @@ export default class ContourPass {
   }
 
   /**
-   * Sets the current time. If a global ID lookup has been set (`setGlobalIdLookup`),
-   * this must be updated on every frame.
+   * Sets the current frame number. If a global ID lookup has been set
+   * (`setGlobalIdLookup`), this must be updated on every frame.
    */
-  public setTime(time: number) {
-    if (this.time !== time) {
-      this.time = time;
+  public setFrame(frame: number) {
+    if (this.frame !== frame) {
+      this.frame = frame;
       this.syncGlobalIdLookup();
     }
   }

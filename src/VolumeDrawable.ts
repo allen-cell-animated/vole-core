@@ -529,7 +529,7 @@ export default class VolumeDrawable {
       const pickChannel = this.pickRendering.getChannelToPick();
       const channelData = this.volume.channels[pickChannel];
       if (channelData) {
-        this.contourRendering.setTime(channelData.time);
+        this.contourRendering.setFrame(channelData.frame);
       }
     }
   }
