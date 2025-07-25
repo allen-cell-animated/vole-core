@@ -32,6 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
+import { VOLUME_LAYER } from "./ThreeJsPanel.js";
 
 export default class PickVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -90,6 +91,10 @@ export default class PickVolume implements VolumeRenderImpl {
 
   public setChannelToPick(channel: number) {
     this.channelToPick = channel;
+  }
+
+  public getChannelToPick(): number {
+    return this.channelToPick;
   }
 
   public getPickBuffer(): WebGLRenderTarget {
@@ -251,7 +256,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.needRedraw = false;
 
     this.setUniform("iResolution", this.settings.resolution);
-    this.setUniform("textureRes", this.settings.resolution);
 
     const depthTex = depthTexture ?? this.emptyPositionTex;
     this.setUniform("textureDepth", depthTex);
@@ -261,11 +265,9 @@ export default class PickVolume implements VolumeRenderImpl {
 
     // this.channelData.gpuFuse(renderer);
 
-    // set up texture from segmentation channel!!!!
-    // we need to know the channel index for this.
-    // ...channel.dataTexture...
-    // TODO TODO TODO FIXME
-    this.setUniform("textureAtlas", this.volume.getChannel(this.channelToPick).dataTexture);
+    const channelTex = this.volume.getChannel(this.channelToPick).dataTexture;
+    this.setUniform("textureAtlas", channelTex);
+    this.setUniform("textureRes", new Vector2(channelTex.image.width, channelTex.image.height));
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -276,7 +278,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("inverseModelViewMatrix", mvm);
     this.setUniform("inverseProjMatrix", camera.projectionMatrixInverse);
 
-    const VOLUME_LAYER = 0;
     // draw into pick buffer...
     camera.layers.set(VOLUME_LAYER);
     renderer.setRenderTarget(this.pickBuffer);

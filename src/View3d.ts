@@ -195,7 +195,8 @@ export class View3d {
     if (this.image) {
       this.canvas3d.removeControlHandlers();
       this.canvas3d.animateFuncs = [];
-      this.canvas3d.postAnimateFuncs = [];
+      this.canvas3d.postMeshRenderFuncs = [];
+      this.canvas3d.overlayRenderFuncs = [];
       this.scene.remove(this.image.sceneRoot);
     }
     return this.image;
@@ -412,11 +413,12 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
-    // NOTE: `fillPickBuffer` MUST run after render occurs. This is because the
-    // pick buffer needs to access the `meshRenderTarget`'s depth texture, but
-    // during a resize, the texture is disposed of and not recreated until the
-    // next render.
-    this.canvas3d.postAnimateFuncs.push(img.fillPickBuffer.bind(img));
+    // NOTE: `fillPickBuffer` MUST run after mesh rendering occurs. This is
+    // because the pick buffer needs to access the `meshRenderTarget`'s depth
+    // texture, but during a resize, the texture is disposed of and not
+    // recreated until the next render.
+    this.canvas3d.postMeshRenderFuncs.push(img.fillPickBuffer.bind(img));
+    this.canvas3d.overlayRenderFuncs.push(img.drawContours.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
