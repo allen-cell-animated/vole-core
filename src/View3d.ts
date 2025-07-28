@@ -27,7 +27,7 @@ import {
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
-import VolumeLoaderContext, { WorkerLoader } from "./workers/VolumeLoaderContext.js";
+import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./Line3d.js";
 
 // Constants are kept for compatibility reasons.
@@ -49,11 +49,6 @@ const allGlobalLoadingOptions = {
  * @class
  */
 export class View3d {
-  // TODO because View3d is basically a top level entrypoint for Vol-E,
-  // maybe it should create the VolumeLoaderContext with options passed in.
-  // (instead of having the loaderContext created externally)
-  public loaderContext?: VolumeLoaderContext;
-
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
@@ -200,6 +195,8 @@ export class View3d {
     if (this.image) {
       this.canvas3d.removeControlHandlers();
       this.canvas3d.animateFuncs = [];
+      this.canvas3d.postMeshRenderFuncs = [];
+      this.canvas3d.overlayRenderFuncs = [];
       this.scene.remove(this.image.sceneRoot);
     }
     return this.image;
@@ -416,7 +413,12 @@ export class View3d {
 
     this.canvas3d.animateFuncs.push(this.preRender.bind(this));
     this.canvas3d.animateFuncs.push(img.onAnimate.bind(img));
-    this.canvas3d.animateFuncs.push(img.fillPickBuffer.bind(img));
+    // NOTE: `fillPickBuffer` MUST run after mesh rendering occurs. This is
+    // because the pick buffer needs to access the `meshRenderTarget`'s depth
+    // texture, but during a resize, the texture is disposed of and not
+    // recreated until the next render.
+    this.canvas3d.postMeshRenderFuncs.push(img.fillPickBuffer.bind(img));
+    this.canvas3d.overlayRenderFuncs.push(img.drawContours.bind(img));
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
@@ -1074,7 +1076,7 @@ export class View3d {
     });
     // when multiple prefetch frames arrive at once, should we slow down how quickly we load them?
     prefetch.addInput(allGlobalLoadingOptions, "throttleArrivingChannelData").on("change", (event) => {
-      this.loaderContext?.setThrottleChannelData(event.value);
+      loader?.getContext?.().setThrottleChannelData(event.value);
     });
 
     return pane;

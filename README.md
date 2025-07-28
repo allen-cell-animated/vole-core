@@ -34,7 +34,6 @@ const loaderContext = new VolumeLoaderContext(CACHE_MAX_SIZE, CONCURRENCY_LIMIT,
 
 // create the viewer.  it will try to fill the parent element.
 const view3D = new View3d(el);
-view3D.loaderContext = loaderContext;
 
 // ensure the loader worker is ready
 await loaderContext.onOpen();

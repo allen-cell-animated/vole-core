@@ -255,11 +255,11 @@ export default class FusedChannelData {
           mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
           mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
 
-          const time = channels[chIndex].time;
-          let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(time);
+          const frame = channels[chIndex].frame;
+          let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(frame);
           if (!globalIdLookupInfo) {
             console.warn(
-              `FusedChannelData.gpuFuse: No global ID lookup info for time ${time} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
+              `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
             );
             globalIdLookupInfo = { texture: new DataTexture(Uint32Array[0]), minSegId: 1 };
           }

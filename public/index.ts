@@ -1197,6 +1197,7 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       featureMin: myState.featureMin,
       featureMax: myState.featureMax,
       outlineColor: new Color(0xffffff),
+      outlineAlpha: 1.0,
       outlierColor: new Color(0x444444),
       outOfRangeColor: new Color(0x444444),
       outlierDrawMode: 0,
@@ -1261,7 +1262,6 @@ function main() {
     return;
   }
   view3D = new View3d({ parentElement: el });
-  view3D.loaderContext = loaderContext;
 
   el.addEventListener("mousemove", (e: Event) => {
     const event = e as MouseEvent;

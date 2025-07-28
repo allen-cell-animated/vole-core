@@ -10,7 +10,7 @@ uniform vec2 iResolution;
 uniform vec2 textureRes;
 
 //uniform float maskAlpha;
-uniform vec2 ATLAS_DIMS;
+uniform uvec2 ATLAS_DIMS;
 uniform vec3 AABB_CLIP_MIN;
 uniform float CLIP_NEAR;
 uniform vec3 AABB_CLIP_MAX;
@@ -46,11 +46,13 @@ float rand(vec2 co) {
   return fract(sin(dot(co, smallVal)) * bigVal);
 }
 
-vec2 offsetFrontBack(float t) {
-  int a = int(t);
-  int ax = int(ATLAS_DIMS.x);
-  vec2 os = vec2(float(a - (a / ax) * ax), float(a / ax)) / ATLAS_DIMS;
-  return clamp(os, vec2(0.0), vec2(1.0) - vec2(1.0) / ATLAS_DIMS);
+// get the uv offset into the atlas for the given z slice
+// ATLAS_DIMS is the number of z slices across the atlas texture
+vec2 offsetFrontBack(uint a) {
+  uint ax = ATLAS_DIMS.x;
+  vec2 tiles = vec2(1.0f/float(ATLAS_DIMS.x), 1.0f/float(ATLAS_DIMS.y));
+  vec2 os = vec2(float(a % ax), float(a / ax)) * tiles;
+  return clamp(os, vec2(0.0), vec2(1.0) - vec2(1.0) * tiles);
 }
 
 uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
@@ -59,27 +61,41 @@ uint sampleAtlasNearest(usampler2D tex, vec4 pos) {
                        pos[2] >= 0.0 && pos[2] <= 1.0 );
   float nSlices = float(SLICES);
 
-  vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / ATLAS_DIMS;
+  // ascii art of a texture atlas:
+  //  +------------------+
+  //  | 0  | 1  | 2  | 3 |
+  //  +------------------+
+  //  | 4  | 5  | 6  | 7 | 
+  //  +------------------+
+  //  | 8  | 9  |10  |11 |
+  //  +------------------+
+  //  |12  |13  |14  |15 |
+  //  +------------------+
+  // Each tile is one z-slice of the 3D texture, which has been flattened
+  // into an atlased 2D texture.
 
-  // No interpolation - sample just one slice at a pixel center.
-  // Ideally this would be accomplished in part by switching this texture to linear
-  //   filtering, but three makes this difficult to do through a WebGLRenderTarget.
-  loc0 = floor(loc0 * textureRes) / textureRes;
-  loc0 += vec2(0.5) / textureRes;
-
-  float z = min(floor(pos.z * nSlices), nSlices-1.0);
+  // pos.xy is 0-1 range. Apply the xy flip here and then divide by number of tiles in x and y to normalize
+  // to a single tile. This results in a uv coordinate that's in the correct X and Y position but only for
+  // the first tile (z slice) of the atlas texture, z=0.
+  vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / vec2(float(ATLAS_DIMS.x), float(ATLAS_DIMS.y));
   
+  // Next, offset the UV coordinate so we are sampling in the correct Z slice.
+  // Round z to the nearest (floor) slice
+  float z = min(floor(pos.z * nSlices), nSlices-1.0);
+  // flip z coordinate if needed
   if (flipVolume.z == -1.0) {
     z = nSlices - z - 1.0;
   }
 
-  vec2 o = offsetFrontBack(z) + loc0;
-  uint voxelColor = texture2D(tex, o).x;
+  // calculate the offset to the z slice in the atlas texture
+  vec2 o = offsetFrontBack(uint(z)) + loc0;
+  //uint voxelColor = texture2D(tex, o).x;
+  uint voxelColor = texelFetch(tex, ivec2(o * textureRes), 0).x;
 
   // Apply mask
-//   float voxelMask = texture2D(textureAtlasMask, o).x;
-//   voxelMask = mix(voxelMask, 1.0, maskAlpha);
-//   voxelColor.rgb *= voxelMask;
+  // float voxelMask = texture2D(textureAtlasMask, o).x;
+  // voxelMask = mix(voxelMask, 1.0, maskAlpha);
+  // voxelColor.rgb *= voxelMask;
 
   return bounds*voxelColor;
 }
@@ -120,9 +136,8 @@ vec4 integrateVolume(vec4 eye_o,vec4 eye_d,
   float scaledSteps = float(BREAK_STEPS) * length((eye_d.xyz/volumeScale));
   float csteps = clamp(float(scaledSteps), 1.0, float(maxSteps));
   float invstep = (tfar-tnear)/csteps;
-  // special-casing the single slice to remove the random ray dither.
-  // this removes a Moire pattern visible in single slice images, which we want to view as 2D images as best we can.
-  float r = (SLICES==1.0) ? 0.0 : rand(eye_d.xy);
+  // Removed random ray dither to prevent artifacting
+  float r = 0.0; // (SLICES==1.0) ? 0.0 : rand(eye_d.xy);
   // if ortho and clipped, make step size smaller so we still get same number of steps
   float tstep = invstep*orthoThickness;
   float tfarsurf = r*tstep;

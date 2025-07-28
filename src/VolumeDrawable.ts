@@ -34,6 +34,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
 import Line3d from "./Line3d.js";
+import ContourPass from "./ContourPass.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -72,6 +73,7 @@ export default class VolumeDrawable {
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
+  private contourRendering: ContourPass;
   private renderMode: RenderMode;
 
   private renderUpdateListener?: (iteration: number) => void;
@@ -126,6 +128,7 @@ export default class VolumeDrawable {
     if (this.pickRendering) {
       this.pickRendering = new PickVolume(this.volume, this.settings);
     }
+    this.contourRendering = new ContourPass();
 
     // draw meshes first, and volume last, for blending and depth test reasons with raymarch
     this.meshVolume = new MeshVolume(this.volume);
@@ -152,6 +155,7 @@ export default class VolumeDrawable {
   public getPickBuffer(): WebGLRenderTarget | undefined {
     return this.pickRendering?.getPickBuffer();
   }
+
   /**
    * Updates whether a channel's data must be loaded for rendering,
    * based on if its volume or isosurface is enabled, or whether it is needed for masking.
@@ -483,6 +487,13 @@ export default class VolumeDrawable {
     this.pickRendering?.doRender(renderer, camera, depthTexture);
   }
 
+  drawContours(renderer: WebGLRenderer): void {
+    if (!this.pickRendering || !this.contourRendering) {
+      return;
+    }
+    this.contourRendering.render(renderer, renderer.getRenderTarget(), this.pickRendering.getPickBuffer());
+  }
+
   getViewMode(): Axis {
     return this.viewMode;
   }
@@ -496,6 +507,7 @@ export default class VolumeDrawable {
   }
 
   setSelectedID(channelIndex: number, id: number): boolean {
+    this.contourRendering.setHighlightedId(id);
     if (this.fusion.length > 0) {
       // TODO does it make sense to do this for a particular channel?
       if (id !== this.fusion[channelIndex].selectedID) {
@@ -513,6 +525,13 @@ export default class VolumeDrawable {
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
     // pickRendering only really works with one channel so we don't need to call
     // its updateActiveChannels method
+    if (this.pickRendering) {
+      const pickChannel = this.pickRendering.getChannelToPick();
+      const channelData = this.volume.channels[pickChannel];
+      if (channelData) {
+        this.contourRendering.setFrame(channelData.frame);
+      }
+    }
   }
 
   setRenderUpdateListener(callback?: (iteration: number) => void): void {
@@ -710,8 +729,11 @@ export default class VolumeDrawable {
     // TODO only one channel can ever have this?
     if (!featureInfo) {
       this.fusion[channelIndex].feature = undefined;
+      this.contourRendering.setGlobalIdLookup(null);
     } else {
       this.fusion[channelIndex].feature = featureInfo;
+      this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
+      this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.MATERIAL);

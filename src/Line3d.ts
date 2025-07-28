@@ -1,10 +1,9 @@
 import { Color, Euler, Group, Vector3 } from "three";
-
-import { IDrawableObject } from "./types.js";
-import { LineMaterial } from "three/addons/lines/LineMaterial.js";
-import { MESH_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
-import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
-import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+import { IDrawableObject } from "./types";
+import { LineMaterial } from "three/addons/lines/LineMaterial";
+import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
+import { LineSegments2 } from "three/addons/lines/LineSegments2";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
@@ -26,13 +25,20 @@ export default class Line3d implements IDrawableObject {
     geometry.setPositions(new Float32Array(this.bufferSize));
     const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
     this.lineMesh = new LineSegments2(geometry, material);
-    this.lineMesh.layers.set(MESH_LAYER);
+
+    // Lines need to write depth information so they interact with the volume
+    // (so the lines appear to fade into the volume if they intersect), but
+    // lines shouldn't interact with the pick buffer, otherwise strange visual
+    // artifacts can occur where contours are drawn around lines. This layer
+    // (MESH_NO_PICK_OCCLUSION_LAYER) does not occlude/interact with the pick
+    // buffer but still writes depth information for the volume.
+    this.lineMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.frustumCulled = false;
 
     this.meshPivot = new Group();
     this.meshPivot.add(this.lineMesh);
 
-    this.meshPivot.layers.set(MESH_LAYER);
+    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
     this.scale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
@@ -128,7 +134,7 @@ export default class Line3d implements IDrawableObject {
    * volume, ignoring depth.
    */
   setRenderAsOverlay(renderAsOverlay: boolean): void {
-    this.lineMesh.layers.set(renderAsOverlay ? OVERLAY_LAYER : MESH_LAYER);
+    this.lineMesh.layers.set(renderAsOverlay ? OVERLAY_LAYER : MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.material.depthTest = !renderAsOverlay;
     this.lineMesh.material.depthTest = !renderAsOverlay;
     this.lineMesh.material.needsUpdate = true;
