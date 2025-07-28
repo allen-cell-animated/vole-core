@@ -35,6 +35,21 @@ const MAX_PREFETCH_CHUNKS = 25;
 const PLAYBACK_INTERVAL = 80;
 
 const TEST_DATA: Record<string, TestDataSpec> = {
+  cellpainting: {
+    type: VolumeFileFormat.TIFF,
+    url: [
+      [
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch1sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch2sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch3sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch4sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch5sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch6sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch7sk5fk1fl1.tiff",
+        "https://cellpainting-gallery.s3.us-east-1.amazonaws.com/cpg0000-jump-pilot/source_4/images/2020_12_08_CPJUMP1_Bleaching/images/BR00116992E__2020-11-12T01_22_40-Measurement1/Images/r01c01f01p01-ch8sk5fk1fl1.tiff",
+      ],
+    ],
+  },
   testpick: {
     type: VolumeFileFormat.ZARR,
     url: "https://allencell.s3.amazonaws.com/aics/nuc-morph-dataset/hipsc_fov_nuclei_timelapse_dataset/hipsc_fov_nuclei_timelapse_data_used_for_analysis/baseline_colonies_fov_timelapse_dataset/20200323_09_small/seg.ome.zarr",
@@ -1096,7 +1111,7 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
   await loaderContext.onOpen();
 
   const options: Partial<CreateLoaderOptions> = {};
-  let path: string | string[] = data.url;
+  // top level array: multiscene
   if (Array.isArray(data.url)) {
     // fake multiscene loading. TODO revert and replace with the real thing!
     const options = {
@@ -1104,23 +1119,28 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
     };
     const promises = data.url.map((url) => loaderContext.createLoader(url, options));
     return Promise.all(promises);
-  } else if (data.type === VolumeFileFormat.JSON) {
-    path = [];
-    const times = data.times || 0;
-    for (let t = 0; t <= times; t++) {
-      path.push(data.url.replace("%%", t.toString()));
-    }
-  } else if (data.type === VolumeFileFormat.DATA) {
-    const volumeInfo = createTestVolume();
-    options.fileType = VolumeFileFormat.DATA;
-    options.rawArrayOptions = { data: volumeInfo.data, metadata: volumeInfo.metadata };
-  }
+  } else {
+    // data.url is not an array
+    let path: string | string[] = data.url;
 
-  const result = await loaderContext.createLoader(path, {
-    ...options,
-    fetchOptions: { maxPrefetchDistance: PREFETCH_DISTANCE, maxPrefetchChunks: MAX_PREFETCH_CHUNKS },
-  });
-  return [result];
+    // treat json as single scene, assume single url source.
+    if (data.type === VolumeFileFormat.JSON) {
+      const src = data.url as string;
+      const times = data.times || 0;
+      const timesArray = [...Array(times + 1).keys()];
+      path = timesArray.map((t) => src.replace("%%", t.toString()));
+    } else if (data.type === VolumeFileFormat.DATA) {
+      const volumeInfo = createTestVolume();
+      options.fileType = VolumeFileFormat.DATA;
+      options.rawArrayOptions = { data: volumeInfo.data, metadata: volumeInfo.metadata };
+    }
+
+    const result = await loaderContext.createLoader(path, {
+      ...options,
+      fetchOptions: { maxPrefetchDistance: PREFETCH_DISTANCE, maxPrefetchChunks: MAX_PREFETCH_CHUNKS },
+    });
+    return [result];
+  }
 }
 
 async function loadVolume(name: string, loadSpec: LoadSpec, loader: IVolumeLoader): Promise<void> {

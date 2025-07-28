@@ -20,16 +20,19 @@ function prepareXML(xml: string): string {
   return xml.trim().replace(expr, "").trim();
 }
 
-function getOME(xml: string): Element {
+function getOME(xml: string | undefined): Element | undefined {
+  if (xml === undefined) {
+    return undefined;
+  }
+
+  const prepared = prepareXML(xml);
   const parser = new DOMParser();
+
   try {
-    const xmlDoc = parser.parseFromString(xml, "text/xml");
+    const xmlDoc = parser.parseFromString(prepared, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
   } catch (e) {
-    throw new VolumeLoadError("Could not find OME metadata in TIFF file", {
-      type: VolumeLoadErrorType.INVALID_METADATA,
-      cause: e,
-    });
+    return undefined;
   }
 }
 
@@ -121,22 +124,23 @@ function getOMEDims(imageEl: Element): OMEDims {
 }
 
 const getBytesPerSample = (type: string): number => (type === "uint8" ? 1 : type === "uint16" ? 2 : 4);
+const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSize === 2 ? "uint16" : "uint32");
 
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
 class TiffLoader extends ThreadableVolumeLoader {
-  url: string;
+  url: string[];
   dims?: OMEDims;
 
-  constructor(url: string) {
+  constructor(url: string[]) {
     super();
     this.url = url;
   }
 
   private async loadOmeDims(): Promise<OMEDims> {
     if (!this.dims) {
-      const tiff = await fromUrl(this.url, { allowFullFile: true }).catch<GeoTIFF>(
-        wrapVolumeLoadError(`Could not open TIFF file at ${this.url}`, VolumeLoadErrorType.NOT_FOUND)
+      const tiff = await fromUrl(this.url[0], { allowFullFile: true }).catch<GeoTIFF>(
+        wrapVolumeLoadError(`Could not open TIFF file at ${this.url[0]}`, VolumeLoadErrorType.NOT_FOUND)
       );
       // DO NOT DO THIS, ITS SLOW
       // const imagecount = await tiff.getImageCount();
@@ -145,11 +149,24 @@ class TiffLoader extends ThreadableVolumeLoader {
         .getImage()
         .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
-      const tiffimgdesc = prepareXML(image.getFileDirectory().ImageDescription);
-      const omeEl = getOME(tiffimgdesc);
+      const omeEl = getOME(image.getFileDirectory().ImageDescription);
 
-      const image0El = omeEl.getElementsByTagName("Image")[0];
-      this.dims = getOMEDims(image0El);
+      if (omeEl !== undefined) {
+        const image0El = omeEl.getElementsByTagName("Image")[0];
+        this.dims = getOMEDims(image0El);
+      } else {
+        console.warn("Could not read OME-TIFF metadata from file. Doing our best with base TIFF metadata.");
+        this.dims = new OMEDims();
+        this.dims.sizex = image.getWidth();
+        this.dims.sizey = image.getHeight();
+        // TODO this is a big hack/assumption about only loading multi-source tiffs that are not OMETIFF.
+        // We really have to check each url in the array for sizec to get the total number of channels
+        // See combinedNumChannels in ImageInfo below.
+        // Also compare with how OMEZarrLoader does this.
+        this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
+        this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
+        this.dims.channelnames = Array.from({ length: this.dims.sizec }, (_, i) => "Channel" + i);
+      }
     }
     return this.dims;
   }
@@ -257,7 +274,7 @@ class TiffLoader extends ThreadableVolumeLoader {
           sizez: volumeSize.z,
           dimensionOrder: dims.dimensionorder,
           bytesPerSample: getBytesPerSample(dims.pixeltype),
-          url: this.url,
+          url: this.url.length > 1 ? this.url[channel] : this.url[0], // if multiple urls, use the channel index to select the right one
         };
 
         const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
