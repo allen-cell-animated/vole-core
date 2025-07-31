@@ -11,11 +11,11 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from "three";
-import RenderToBuffer, { RenderPassType } from "./RenderToBuffer";
+import { clamp } from "three/src/math/MathUtils.js";
 
+import RenderToBuffer, { RenderPassType } from "./RenderToBuffer.js";
 import contourFragShader from "./constants/shaders/contour.frag";
-import { ColorizeFeature } from "./types";
-import { clamp } from "three/src/math/MathUtils";
+import { ColorizeFeature } from "./types.js";
 
 type ContourUniforms = {
   pickBuffer: IUniform<Texture>;
