@@ -179,8 +179,9 @@ vec4 integrateVolume(
     t += tstep;
     numSteps = i;
 
-    if (t > tfar || t > tnear + clipFar)
+    if (t > tfar || t > tnear + clipFar) {
       break;
+    }
   }
 
   return vec4(float(C));
