@@ -1,9 +1,10 @@
 import { Volume, Light } from "../src";
 import { VolumeFileFormat } from "../src/loaders";
 import { IVolumeLoader } from "../src/loaders/IVolumeLoader";
+import { type NumberType } from "../src/types";
 
 export interface TestDataSpec {
-  type: VolumeFileFormat | "opencell" | "procedural";
+  type: VolumeFileFormat | "opencell";
   // TODO: replace array here with multi-scene handling at the loader level
   // one string is single scene
   // an array of strings is multiple scenes
@@ -11,6 +12,8 @@ export interface TestDataSpec {
   url: string | string[] | string[][];
   /** Optional fallback for JSON volumes which don't specify a value for `times` */
   times?: number;
+  /** data type for procedural only */
+  dtype?: NumberType;
 }
 
 export interface State {
