@@ -16,7 +16,6 @@ import { getDataRange } from "../utils/num_utils.js";
 // by jupyterlab into a js object.
 // This loader does not yet support multiple time samples.
 export type RawArrayData = {
-  // expected to be "uint8" always
   dtype: NumberType;
   // [c,z,y,x]
   shape: [number, number, number, number];
@@ -31,7 +30,6 @@ export type RawArrayInfo = {
   sizeY: number;
   sizeZ: number;
   sizeC: number;
-  dtype: NumberType;
   physicalPixelSize: [number, number, number];
   spatialUnit: string;
   channelNames: string[];
@@ -53,10 +51,6 @@ function getBytesPerPixel(dtype: NumberType): number {
       return 2;
     case "uint32":
     case "int32":
-      return 4;
-    case "uint64":
-    case "int64":
-      return 8;
     case "float32":
       return 4;
     case "float64":
@@ -66,7 +60,7 @@ function getBytesPerPixel(dtype: NumberType): number {
   }
 }
 
-const convertImageInfo = (json: RawArrayInfo): ImageInfo => {
+const convertImageInfo = (json: RawArrayInfo, dtype: NumberType): ImageInfo => {
   const atlasTileDims = computePackedAtlasDims(json.sizeZ, json.sizeX, json.sizeY);
   return {
     name: json.name,
@@ -88,7 +82,7 @@ const convertImageInfo = (json: RawArrayInfo): ImageInfo => {
         spacing: [1, 1, json.physicalPixelSize[2], json.physicalPixelSize[1], json.physicalPixelSize[0]],
         spaceUnit: json.spatialUnit || "μm",
         timeUnit: "s",
-        dataType: json.dtype,
+        dataType: dtype,
       },
     ],
 
@@ -128,14 +122,14 @@ class RawArrayLoader extends ThreadableVolumeLoader {
       shape: [1, jsonInfo.sizeC, jsonInfo.sizeZ, jsonInfo.sizeY, jsonInfo.sizeX],
       spacing: [1, 1, jsonInfo.physicalPixelSize[2], jsonInfo.physicalPixelSize[1], jsonInfo.physicalPixelSize[0]],
       spaceUnit: jsonInfo.spatialUnit || "μm",
-      dataType: jsonInfo.dtype,
+      dataType: this.data.dtype,
       timeUnit: "s", // time unit not specified
     };
     return [d];
   }
 
   async createImageInfo(loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {
-    return { imageInfo: convertImageInfo(this.jsonInfo), loadSpec };
+    return { imageInfo: convertImageInfo(this.jsonInfo, this.data.dtype), loadSpec };
   }
 
   loadRawChannelData(

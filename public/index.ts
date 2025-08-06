@@ -1088,7 +1088,6 @@ function createTestVolume(dtype: NumberType): RawArrayLoaderOptions {
     sizeY,
     sizeZ,
     sizeC: 3,
-    dtype: dtype,
     physicalPixelSize: [1, 1, 1],
     spatialUnit: "",
     channelNames: ["DRAQ5", "EGFP", "SEG_Memb"],
