@@ -152,7 +152,8 @@ class RawArrayLoader extends ThreadableVolumeLoader {
       if (requestedChannels && requestedChannels.length > 0 && !requestedChannels.includes(chindex)) {
         continue;
       }
-      const volSizePixels = this.data.shape[3] * this.data.shape[2] * this.data.shape[1]; // x*y*z pixels * 1 byte/pixel
+      // x*y*z pixels
+      const volSizePixels = this.data.shape[3] * this.data.shape[2] * this.data.shape[1];
       const ctor = ARRAY_CONSTRUCTORS[this.data.dtype];
       const channelData = new ctor(
         this.data.buffer.buffer,

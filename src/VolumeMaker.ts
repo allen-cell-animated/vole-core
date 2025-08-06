@@ -11,7 +11,7 @@ export default class VolumeMaker {
    * @param {number} vy
    * @param {number} vz
    * @param {function} sdFunc A function f(x,y,z) that returns a distance. f < 0 will be the interior of the volume, and f>=0 will be outside.
-   * @param {TypedArrayConstructor} arrayConstructor The TypedArray constructor to use
+   * @param {NumberType} dtype The data type for the output array
    */
   static createVolume(
     vx: number,
