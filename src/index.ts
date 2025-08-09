@@ -8,7 +8,7 @@ import RequestQueue from "./utils/RequestQueue.js";
 import SubscribableRequestQueue from "./utils/SubscribableRequestQueue.js";
 import Histogram from "./Histogram.js";
 import { Lut, remapControlPoints } from "./Lut.js";
-import { type ColorizeFeature, ViewportCorner } from "./types.js";
+import { type ColorizeFeature, type NumberType, ViewportCorner } from "./types.js";
 import { VolumeFileFormat, createVolumeLoader, PrefetchDirection } from "./loaders/index.js";
 import { LoadSpec } from "./loaders/IVolumeLoader.js";
 import { OMEZarrLoader } from "./loaders/OmeZarrLoader.js";
@@ -67,4 +67,5 @@ export {
   SKY_LIGHT,
   type CameraState,
   type ColorizeFeature,
+  type NumberType,
 };

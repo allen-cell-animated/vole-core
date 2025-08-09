@@ -9,18 +9,17 @@ import {
 import { computePackedAtlasDims } from "./VolumeLoaderUtils.js";
 import type { ImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
-import { Uint8 } from "../types.js";
+import { ARRAY_CONSTRUCTORS, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
 
 // this is the form in which a 4D numpy array arrives as converted
 // by jupyterlab into a js object.
 // This loader does not yet support multiple time samples.
 export type RawArrayData = {
-  // expected to be "uint8" always
-  dtype: Uint8;
+  dtype: NumberType;
   // [c,z,y,x]
   shape: [number, number, number, number];
-  // the bits (assumed uint8!!)
+  // the bits
   buffer: DataView;
 };
 
@@ -42,7 +41,26 @@ export interface RawArrayLoaderOptions {
   metadata: RawArrayInfo;
 }
 
-const convertImageInfo = (json: RawArrayInfo): ImageInfo => {
+function getBytesPerPixel(dtype: NumberType): number {
+  switch (dtype) {
+    case "uint8":
+    case "int8":
+      return 1;
+    case "uint16":
+    case "int16":
+      return 2;
+    case "uint32":
+    case "int32":
+    case "float32":
+      return 4;
+    case "float64":
+      return 8;
+    default:
+      throw new Error(`Unsupported dtype: ${dtype}`);
+  }
+}
+
+const convertImageInfo = (json: RawArrayInfo, dtype: NumberType): ImageInfo => {
   const atlasTileDims = computePackedAtlasDims(json.sizeZ, json.sizeX, json.sizeY);
   return {
     name: json.name,
@@ -64,7 +82,7 @@ const convertImageInfo = (json: RawArrayInfo): ImageInfo => {
         spacing: [1, 1, json.physicalPixelSize[2], json.physicalPixelSize[1], json.physicalPixelSize[0]],
         spaceUnit: json.spatialUnit || "μm",
         timeUnit: "s",
-        dataType: "uint8",
+        dataType: dtype,
       },
     ],
 
@@ -104,14 +122,14 @@ class RawArrayLoader extends ThreadableVolumeLoader {
       shape: [1, jsonInfo.sizeC, jsonInfo.sizeZ, jsonInfo.sizeY, jsonInfo.sizeX],
       spacing: [1, 1, jsonInfo.physicalPixelSize[2], jsonInfo.physicalPixelSize[1], jsonInfo.physicalPixelSize[0]],
       spaceUnit: jsonInfo.spatialUnit || "μm",
-      dataType: "uint8",
+      dataType: this.data.dtype,
       timeUnit: "s", // time unit not specified
     };
     return [d];
   }
 
   async createImageInfo(loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {
-    return { imageInfo: convertImageInfo(this.jsonInfo), loadSpec };
+    return { imageInfo: convertImageInfo(this.jsonInfo, this.data.dtype), loadSpec };
   }
 
   loadRawChannelData(
@@ -134,11 +152,16 @@ class RawArrayLoader extends ThreadableVolumeLoader {
       if (requestedChannels && requestedChannels.length > 0 && !requestedChannels.includes(chindex)) {
         continue;
       }
-      const volSizeBytes = this.data.shape[3] * this.data.shape[2] * this.data.shape[1]; // x*y*z pixels * 1 byte/pixel
-      const channelData = new Uint8Array(this.data.buffer.buffer, chindex * volSizeBytes, volSizeBytes);
+      // x*y*z pixels
+      const volSizePixels = this.data.shape[3] * this.data.shape[2] * this.data.shape[1];
+      const ctor = ARRAY_CONSTRUCTORS[this.data.dtype];
+      const channelData = new ctor(
+        this.data.buffer.buffer,
+        chindex * volSizePixels * getBytesPerPixel(this.data.dtype),
+        volSizePixels
+      );
       const range = getDataRange(channelData);
-      // all data coming from this loader is natively 8-bit
-      onData([chindex], ["uint8"], [channelData], [range]);
+      onData([chindex], [this.data.dtype], [channelData], [range]);
     }
 
     return Promise.resolve();

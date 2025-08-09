@@ -24,7 +24,7 @@ import {
 import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
 import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8, ColorizeFeature } from "../src/types";
+import { DATARANGE_UINT8, ColorizeFeature, type NumberType } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
@@ -115,7 +115,9 @@ const TEST_DATA: Record<string, TestDataSpec> = {
     type: VolumeFileFormat.TIFF,
     url: "https://animatedcell-test-data.s3.us-west-2.amazonaws.com/HAMILTONIAN_TERM_FOV_VSAHJUP_0000_000192.ome.tif",
   },
-  procedural: { type: VolumeFileFormat.DATA, url: "" },
+  procedural: { type: VolumeFileFormat.DATA, url: "", dtype: "uint8" },
+  procedural2: { type: VolumeFileFormat.DATA, url: "", dtype: "uint16" },
+  procedural3: { type: VolumeFileFormat.DATA, url: "", dtype: "float32" },
 };
 
 let view3D: View3d;
@@ -1057,18 +1059,7 @@ function goToZSlice(slice: number): boolean {
   // update UI if successful
 }
 
-function concatenateArrays(arrays: Uint8Array[]): Uint8Array {
-  const totalLength = arrays.reduce((acc, arr) => acc + arr.length, 0);
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const arr of arrays) {
-    result.set(arr, offset);
-    offset += arr.length;
-  }
-  return result;
-}
-
-function createTestVolume(): RawArrayLoaderOptions {
+function createTestVolume(dtype: NumberType): RawArrayLoaderOptions {
   const sizeX = 64;
   const sizeY = 64;
   const sizeZ = 64;
@@ -1089,12 +1080,11 @@ function createTestVolume(): RawArrayLoaderOptions {
     VolumeMaker.createTorus(sizeX, sizeY, sizeZ, 24, 8),
     VolumeMaker.createCone(sizeX, sizeY, sizeZ, 24, 24),
   ];
-  const alldata = concatenateArrays(channelVolumes);
+  const alldata = VolumeMaker.concatenateArrays(channelVolumes, dtype);
   return {
     metadata: imgData,
     data: {
-      // expected to be "uint8" always
-      dtype: "uint8",
+      dtype: dtype,
       // [c,z,y,x]
       shape: [channelVolumes.length, sizeZ, sizeY, sizeX],
       // the bits (assumed uint8!!)
@@ -1130,7 +1120,7 @@ async function createLoader(data: TestDataSpec): Promise<IVolumeLoader[]> {
       const timesArray = [...Array(times + 1).keys()];
       path = timesArray.map((t) => src.replace("%%", t.toString()));
     } else if (data.type === VolumeFileFormat.DATA) {
-      const volumeInfo = createTestVolume();
+      const volumeInfo = createTestVolume(data.dtype || "uint8");
       options.fileType = VolumeFileFormat.DATA;
       options.rawArrayOptions = { data: volumeInfo.data, metadata: volumeInfo.metadata };
     }
