@@ -163,4 +163,23 @@ export default class VolumeMaker {
       dtype
     );
   }
+
+  // take a list of TypedArrays and concatenate them into a single TypedArray of the same Type:
+  static concatenateArrays(arrays: TypedArray<NumberType>[], dtype: NumberType): TypedArray<NumberType> {
+    if (arrays.length === 0) {
+      throw new Error("Cannot concatenate empty array list");
+    }
+
+    const totalLength = arrays.reduce((acc, arr) => acc + arr.length, 0);
+
+    // Create a new array of the same type as the input arrays
+    const result = new ARRAY_CONSTRUCTORS[dtype](totalLength);
+
+    let offset = 0;
+    for (const arr of arrays) {
+      result.set(arr, offset);
+      offset += arr.length;
+    }
+    return result;
+  }
 }

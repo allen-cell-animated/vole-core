@@ -24,7 +24,7 @@ import {
 import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
 import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8, ColorizeFeature, type NumberType, type TypedArray, ARRAY_CONSTRUCTORS } from "../src/types";
+import { DATARANGE_UINT8, ColorizeFeature, type NumberType } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
@@ -1059,25 +1059,6 @@ function goToZSlice(slice: number): boolean {
   // update UI if successful
 }
 
-// take a list of TypedArrays and concatenate them into a single TypedArray of the same Type:
-function concatenateArrays(arrays: TypedArray<NumberType>[], dtype: NumberType): TypedArray<NumberType> {
-  if (arrays.length === 0) {
-    throw new Error("Cannot concatenate empty array list");
-  }
-
-  const totalLength = arrays.reduce((acc, arr) => acc + arr.length, 0);
-
-  // Create a new array of the same type as the input arrays
-  const result = new ARRAY_CONSTRUCTORS[dtype](totalLength);
-
-  let offset = 0;
-  for (const arr of arrays) {
-    result.set(arr, offset);
-    offset += arr.length;
-  }
-  return result;
-}
-
 function createTestVolume(dtype: NumberType): RawArrayLoaderOptions {
   const sizeX = 64;
   const sizeY = 64;
@@ -1099,7 +1080,7 @@ function createTestVolume(dtype: NumberType): RawArrayLoaderOptions {
     VolumeMaker.createTorus(sizeX, sizeY, sizeZ, 24, 8),
     VolumeMaker.createCone(sizeX, sizeY, sizeZ, 24, 24),
   ];
-  const alldata = concatenateArrays(channelVolumes, dtype);
+  const alldata = VolumeMaker.concatenateArrays(channelVolumes, dtype);
   return {
     metadata: imgData,
     data: {
