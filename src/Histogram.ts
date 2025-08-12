@@ -76,8 +76,7 @@ export default class Histogram {
 
   // return the bin index of the given data value
   public static findBin(dataValue: number, dataMin: number, binSize: number): number {
-    const binIndex = Math.floor((dataValue - dataMin) / binSize);
-    return binIndex;
+    return Math.floor((dataValue - dataMin) / binSize);
   }
 
   /** Returns the integer bin index for the given value. */
@@ -91,8 +90,7 @@ export default class Histogram {
    * Note that this can return a value outside the range of 0 to NBINS - 1.
    */
   public findFractionalBinOfValue(value: number): number {
-    const binIndex = (value - this.min) / this.binSize;
-    return binIndex;
+    return (value - this.min) / this.binSize;
   }
 
   /**
