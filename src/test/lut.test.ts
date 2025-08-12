@@ -118,17 +118,35 @@ describe("test histogram", () => {
   });
 
   describe("maps from values to bins", () => {
-    const histogram = new Histogram(new Uint8Array([0, 127, 128, 255]));
+    const histogram = new Histogram(new Uint8Array([0, 0, 127, 128, 255]));
+
+    it("has non-zero histogram values where expected", () => {
+      expect(histogram.getBin(0)).to.equal(2);
+      expect(histogram.getBin(127)).to.equal(1);
+      expect(histogram.getBin(128)).to.equal(1);
+      expect(histogram.getBin(255)).to.equal(1);
+    });
+
+    it("has zero values where expected", () => {
+      expect(histogram.getBin(1)).to.equal(0);
+      expect(histogram.getBin(126)).to.equal(0);
+      expect(histogram.getBin(129)).to.equal(0);
+    });
 
     it("maps values to the correct bins", () => {
       expect(histogram.findBinOfValue(0)).to.equal(0);
+      expect(histogram.findFractionalBinOfValue(0)).to.equal(0);
       expect(histogram.findBinOfValue(127)).to.equal(127);
+      expect(histogram.findFractionalBinOfValue(127)).to.equal(127);
       expect(histogram.findBinOfValue(255)).to.equal(255);
+      expect(histogram.findFractionalBinOfValue(255)).to.equal(255);
     });
 
     it("gets out-of-bound bins for values", () => {
       expect(histogram.findBinOfValue(257)).to.equal(257);
+      expect(histogram.findFractionalBinOfValue(257)).to.equal(257);
       expect(histogram.findBinOfValue(-1)).to.equal(-1);
+      expect(histogram.findFractionalBinOfValue(-1)).to.equal(-1);
     });
 
     it("can get interpolated bin values", () => {

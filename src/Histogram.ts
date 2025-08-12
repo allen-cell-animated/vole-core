@@ -75,18 +75,14 @@ export default class Histogram {
   }
 
   // return the bin index of the given data value
-  public static findBin(dataValue: number, dataMin: number, binSize: number, numBins: number): number {
-    let binIndex = Math.floor((dataValue - dataMin) / binSize);
-    // for values that lie exactly on last bin we need to subtract one
-    if (binIndex === numBins) {
-      binIndex--;
-    }
+  public static findBin(dataValue: number, dataMin: number, binSize: number): number {
+    const binIndex = Math.floor((dataValue - dataMin) / binSize);
     return binIndex;
   }
 
   /** Returns the integer bin index for the given value. */
   public findBinOfValue(value: number): number {
-    return Histogram.findBin(value, this.min, this.binSize, NBINS);
+    return Histogram.findBin(value, this.min, this.binSize);
   }
 
   /**
@@ -275,7 +271,7 @@ export default class Histogram {
     for (let i = 0; i < arr.length; i++) {
       const item = arr[i];
 
-      const binIndex = Histogram.findBin(item, min, binSize, numBins);
+      const binIndex = Histogram.findBin(item, min, binSize);
       bins[binIndex]++;
     }
 
