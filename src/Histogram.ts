@@ -79,11 +79,6 @@ export default class Histogram {
     return Math.floor((dataValue - dataMin) / binSize);
   }
 
-  /** Returns the integer bin index for the given value. */
-  public findBinOfValue(value: number): number {
-    return Histogram.findBin(value, this.min, this.binSize);
-  }
-
   /**
    * Returns a fractional bin index for the given value. If a value
    * is not exactly a bin boundary, returns an interpolated index.
@@ -91,6 +86,11 @@ export default class Histogram {
    */
   public findFractionalBinOfValue(value: number): number {
     return (value - this.min) / this.binSize;
+  }
+
+  /** Returns the integer bin index for the given value. */
+  public findBinOfValue(value: number): number {
+    return Math.floor(this.findFractionalBinOfValue(value));
   }
 
   /**
