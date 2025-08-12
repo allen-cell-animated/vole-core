@@ -270,7 +270,8 @@ export default class Histogram {
 
     const bins = new Uint32Array(numBins).fill(0);
 
-    const binSize = (max - min) / numBins === 0 ? 1 : (max - min) / (numBins - 1);
+    // Add 1 so the last bin includes the max value.
+    const binSize = (max + 1 - min) / numBins === 0 ? 1 : (max + 1 - min) / numBins;
     for (let i = 0; i < arr.length; i++) {
       const item = arr[i];
 

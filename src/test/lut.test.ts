@@ -126,10 +126,15 @@ describe("test histogram", () => {
       expect(histogram.findBinOfValue(255)).to.equal(255);
     });
 
+    it("gets out-of-bound bins for values", () => {
+      expect(histogram.findBinOfValue(256)).to.equal(256);
+      expect(histogram.findBinOfValue(-1)).to.equal(-1);
+    });
+
     it("can get interpolated bin values", () => {
+      expect(histogram.findBinOfValue(3.5)).to.equal(3.5);
+      expect(histogram.findFractionalBinOfValue(147.4)).to.equal(147.4);
       expect(histogram.findFractionalBinOfValue(-1.5)).to.equal(-1.5);
-      expect(histogram.findFractionalBinOfValue(255)).to.equal(255);
-      expect(histogram.findBinOfValue(255)).to.equal(255);
     });
   });
 
