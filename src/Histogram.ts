@@ -84,9 +84,19 @@ export default class Histogram {
     return binIndex;
   }
 
-  // return the bin index of the given data value
+  /** Returns the integer bin index for the given value. */
   public findBinOfValue(value: number): number {
     return Histogram.findBin(value, this.min, this.binSize, NBINS);
+  }
+
+  /**
+   * Returns a fractional bin index for the given value. If a value
+   * is not exactly a bin boundary, returns an interpolated index.
+   * Note that this can return a value outside the range of 0 to NBINS - 1.
+   */
+  public findFractionalBinOfValue(value: number): number {
+    const binIndex = (value - this.min) / this.binSize;
+    return binIndex;
   }
 
   /**
@@ -260,7 +270,7 @@ export default class Histogram {
 
     const bins = new Uint32Array(numBins).fill(0);
 
-    const binSize = (max - min) / numBins === 0 ? 1 : (max - min) / numBins;
+    const binSize = (max - min) / numBins === 0 ? 1 : (max - min) / (numBins - 1);
     for (let i = 0; i < arr.length; i++) {
       const item = arr[i];
 

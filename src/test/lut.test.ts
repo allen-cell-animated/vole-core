@@ -3,6 +3,8 @@ import { Lut, remapLut, remapControlPoints } from "../Lut";
 import Histogram from "../Histogram";
 import VolumeMaker from "../VolumeMaker";
 
+import { describe, expect, it } from "vitest";
+
 function clamp(val, cmin, cmax) {
   return Math.min(Math.max(cmin, val), cmax);
 }
@@ -112,6 +114,22 @@ describe("test histogram", () => {
     const secondlut = new Lut().createFromControlPoints(lutObj.controlPoints);
     it("generates consistent lut from control points", () => {
       expect(secondlut.lut).to.eql(lutObj.lut);
+    });
+  });
+
+  describe("maps from values to bins", () => {
+    const histogram = new Histogram(new Uint8Array([0, 127, 128, 255]));
+
+    it("maps values to the correct bins", () => {
+      expect(histogram.findBinOfValue(0)).to.equal(0);
+      expect(histogram.findBinOfValue(127)).to.equal(127);
+      expect(histogram.findBinOfValue(255)).to.equal(255);
+    });
+
+    it("can get interpolated bin values", () => {
+      expect(histogram.findFractionalBinOfValue(-1.5)).to.equal(-1.5);
+      expect(histogram.findFractionalBinOfValue(255)).to.equal(255);
+      expect(histogram.findBinOfValue(255)).to.equal(255);
     });
   });
 
