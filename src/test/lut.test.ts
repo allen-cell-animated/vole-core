@@ -118,11 +118,11 @@ describe("test histogram", () => {
   });
 
   describe("histogram bin size calculation", () => {
+    // Tests an example given in a comment in `Histogram.calculateHistogram`
     const calculateHistogramFnName = "calculateHistogram";
 
     it("sizes float bins so the max value is the upper bound", () => {
       const floatData = new Float32Array([0, 1, 2, 3]);
-      const isFloatData = true;
       const result = Histogram[calculateHistogramFnName](floatData, 4);
       expect(result.binSize).toEqual(0.75);
       expect(result.min).toEqual(0);
@@ -131,7 +131,6 @@ describe("test histogram", () => {
 
     it("has bin size is 1 when bin count equals data range", () => {
       const intData = new Uint8Array([0, 1, 2, 3]);
-      const isFloatData = false;
       const result = Histogram[calculateHistogramFnName](intData, 4);
       expect(result.binSize).toEqual(1);
       expect(result.min).toEqual(0);
@@ -155,7 +154,7 @@ describe("test histogram", () => {
       expect(histogram.getBin(129)).to.equal(0);
     });
 
-    it("maps integer values to the correct bins", () => {
+    it("maps integer values 1:1 with bin indices", () => {
       expect(histogram.findBinOfValue(0)).to.equal(0);
       expect(histogram.findFractionalBinOfValue(0)).to.equal(0);
 
@@ -196,16 +195,18 @@ describe("test histogram", () => {
 
     it("uses the min value as an inclusive lower bound", () => {
       expect(histogram.findBinOfValue(1.6)).to.equal(0);
+      expect(histogram.findFractionalBinOfValue(1.6)).toBeCloseTo(0);
     });
 
     it("uses the max value as an inclusive upper bound", () => {
+      expect(histogram.findBinOfValue(8.8999)).to.equal(255);
       expect(histogram.findBinOfValue(8.9)).to.equal(255);
       expect(histogram.findBinOfValue(8.901)).to.equal(256);
     });
   });
 
   describe("get values from bin indices", () => {
-    it("gets correct absolute values for integer bin indices", () => {
+    it("gets correct absolute values for 1:1 integer bin indices", () => {
       const histogram = new Histogram(new Uint8Array([0, 255]));
       expect(histogram.getValueFromBin(0)).to.equal(0);
       expect(histogram.getValueFromBin(33)).to.equal(33);

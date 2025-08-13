@@ -92,7 +92,7 @@ export default class Histogram {
     isFloatType: boolean,
     castToInt: boolean
   ): number {
-    let binIndex = (dataValue - dataMin) / binSize;
+    const binIndex = (dataValue - dataMin) / binSize;
     if (!castToInt) {
       return binIndex;
     }
@@ -113,9 +113,9 @@ export default class Histogram {
   }
 
   /**
-   * Returns a fractional bin index for the given value. If a value
-   * is not exactly a bin boundary, returns an interpolated index.
-   * Note that this can return a value outside the range of 0 to NBINS - 1.
+   * Returns a fractional bin index for the given value. If a value is not a bin
+   * boundary, returns an interpolated index. Note that this can return a value
+   * outside the range of 0 to NBINS - 1.
    */
   public findFractionalBinOfValue(value: number): number {
     return Histogram.findBin(value, this.min, this.max, this.binSize, this.isFloatType, false);
@@ -322,6 +322,7 @@ export default class Histogram {
     //
     // |----|----|----|----|
     // 0  0.75  1.5  2.25  3 <- inclusive
+    //
     const isFloatType = arr instanceof Float32Array || arr instanceof Float64Array;
     let binSize: number;
     if (isFloatType) {
