@@ -117,7 +117,29 @@ describe("test histogram", () => {
     });
   });
 
-  describe("maps from values to bins", () => {
+  describe("histogram bin size calculation", () => {
+    const calculateHistogramFnName = "calculateHistogram";
+
+    it("sizes float bins so the max value is the upper bound", () => {
+      const floatData = new Float32Array([0, 1, 2, 3]);
+      const isFloatData = true;
+      const result = Histogram[calculateHistogramFnName](floatData, 4);
+      expect(result.binSize).toEqual(0.75);
+      expect(result.min).toEqual(0);
+      expect(result.max).toEqual(3);
+    });
+
+    it("has bin size is 1 when bin count equals data range", () => {
+      const intData = new Uint8Array([0, 1, 2, 3]);
+      const isFloatData = false;
+      const result = Histogram[calculateHistogramFnName](intData, 4);
+      expect(result.binSize).toEqual(1);
+      expect(result.min).toEqual(0);
+      expect(result.max).toEqual(3);
+    });
+  });
+
+  describe("integer values to bins", () => {
     const histogram = new Histogram(new Uint8Array([0, 0, 127, 128, 255]));
 
     it("has non-zero histogram values where expected", () => {
@@ -133,26 +155,78 @@ describe("test histogram", () => {
       expect(histogram.getBin(129)).to.equal(0);
     });
 
-    it("maps values to the correct bins", () => {
+    it("maps integer values to the correct bins", () => {
       expect(histogram.findBinOfValue(0)).to.equal(0);
       expect(histogram.findFractionalBinOfValue(0)).to.equal(0);
+
       expect(histogram.findBinOfValue(127)).to.equal(127);
       expect(histogram.findFractionalBinOfValue(127)).to.equal(127);
+
       expect(histogram.findBinOfValue(255)).to.equal(255);
       expect(histogram.findFractionalBinOfValue(255)).to.equal(255);
+    });
+
+    it("has bin bounds at integer values", () => {
+      expect(histogram.findBinOfValue(0.999)).to.equal(0);
+      expect(histogram.findBinOfValue(1)).to.equal(1);
+      expect(histogram.findBinOfValue(1.001)).to.equal(1);
+
+      expect(histogram.findBinOfValue(254.999)).to.equal(254);
+      expect(histogram.findBinOfValue(255)).to.equal(255);
+      expect(histogram.findBinOfValue(255.001)).to.equal(255);
     });
 
     it("gets out-of-bound bins for values", () => {
       expect(histogram.findBinOfValue(257)).to.equal(257);
       expect(histogram.findFractionalBinOfValue(257)).to.equal(257);
+
       expect(histogram.findBinOfValue(-1)).to.equal(-1);
       expect(histogram.findFractionalBinOfValue(-1)).to.equal(-1);
     });
 
-    it("can get interpolated bin values", () => {
+    it("can get fractional bin values", () => {
       expect(histogram.findFractionalBinOfValue(3.5)).to.equal(3.5);
       expect(histogram.findFractionalBinOfValue(147.4)).to.equal(147.4);
       expect(histogram.findFractionalBinOfValue(-1.5)).to.equal(-1.5);
+    });
+  });
+
+  describe("float values to bins", () => {
+    const histogram = new Histogram(new Float32Array([1.6, 3.4, 8.9]));
+
+    it("uses the min value as an inclusive lower bound", () => {
+      expect(histogram.findBinOfValue(1.6)).to.equal(0);
+    });
+
+    it("uses the max value as an inclusive upper bound", () => {
+      expect(histogram.findBinOfValue(8.9)).to.equal(255);
+      expect(histogram.findBinOfValue(8.901)).to.equal(256);
+    });
+  });
+
+  describe("get values from bin indices", () => {
+    it("gets correct absolute values for integer bin indices", () => {
+      const histogram = new Histogram(new Uint8Array([0, 255]));
+      expect(histogram.getValueFromBin(0)).to.equal(0);
+      expect(histogram.getValueFromBin(33)).to.equal(33);
+      expect(histogram.getValueFromBin(241)).to.equal(241);
+      expect(histogram.getValueFromBin(255)).to.equal(255);
+    });
+
+    it("gets correct absolute values for fractional bin indices", () => {
+      const histogram = new Histogram(new Uint8Array([0, 255]));
+      expect(histogram.getValueFromBin(0.5)).to.equal(0.5);
+      expect(histogram.getValueFromBin(33.5)).to.equal(33.5);
+      expect(histogram.getValueFromBin(241.5)).to.equal(241.5);
+      expect(histogram.getValueFromBin(255.5)).to.equal(255.5);
+    });
+
+    it("gets correct absolute values for float histogram bin indices", () => {
+      const histogram = new Histogram(new Float32Array([0, 674.3]));
+      expect(histogram.getValueFromBin(histogram.findFractionalBinOfValue(0.7655))).to.equal(0.7655);
+      expect(histogram.getValueFromBin(histogram.findFractionalBinOfValue(483.2))).to.equal(483.2);
+      expect(histogram.getValueFromBin(histogram.findFractionalBinOfValue(300.0001))).to.equal(300.0001);
+      expect(histogram.getValueFromBin(histogram.findFractionalBinOfValue(3.141592))).to.equal(3.141592);
     });
   });
 
