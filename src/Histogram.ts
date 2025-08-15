@@ -1,4 +1,4 @@
-import { type TypedArray, type NumberType, isFloatType } from "./types.js";
+import { type TypedArray, type NumberType, isFloatTypeArray } from "./types.js";
 
 const NBINS = 256;
 
@@ -101,11 +101,11 @@ export default class Histogram {
   }
 
   /**
-   * Returns a raw data value from a given (integer or fractional) bin index.
+   * Returns an absolute data value from a given (integer or fractional) bin index.
    * Note that, if the bin index is outside of the bin range, the returned value
    * will also be outside the value range.
    */
-  public getValueFromBin(binIndex: number): number {
+  public getValueFromBinIndex(binIndex: number): number {
     return this.min + binIndex * this.binSize;
   }
 
@@ -302,7 +302,7 @@ export default class Histogram {
     // 0  0.75  1.5  2.25  3 <- inclusive
     //
     let binSize: number;
-    if (isFloatType(arr)) {
+    if (isFloatTypeArray(arr)) {
       binSize = max - min === 0 ? 1 : (max - min) / numBins;
     } else {
       binSize = max + 1 - min === 0 ? 1 : (max + 1 - min) / numBins;

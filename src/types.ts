@@ -53,7 +53,7 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
-export function isFloatType(array: TypedArray<NumberType>): array is Float32Array | Float64Array {
+export function isFloatTypeArray(array: TypedArray<NumberType>): array is Float32Array | Float64Array {
   return array instanceof Float32Array || array instanceof Float64Array;
 }
 
