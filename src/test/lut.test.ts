@@ -175,12 +175,16 @@ describe("test histogram", () => {
       expect(histogram.findBinOfValue(255.001)).to.equal(255);
     });
 
-    it("gets out-of-bound bins for values", () => {
-      expect(histogram.findBinOfValue(257)).to.equal(257);
+    it("can return out-of-bound fractional bin values", () => {
+      expect(histogram.findFractionalBinOfValue(256)).to.equal(256);
       expect(histogram.findFractionalBinOfValue(257)).to.equal(257);
-
-      expect(histogram.findBinOfValue(-1)).to.equal(-1);
       expect(histogram.findFractionalBinOfValue(-1)).to.equal(-1);
+    });
+
+    it("clamps out-of-bound integer bins for values", () => {
+      expect(histogram.findBinOfValue(256)).to.equal(255);
+      expect(histogram.findBinOfValue(257)).to.equal(255);
+      expect(histogram.findBinOfValue(-1)).to.equal(0);
     });
 
     it("can get fractional bin values", () => {
@@ -201,7 +205,13 @@ describe("test histogram", () => {
     it("uses the max value as an inclusive upper bound", () => {
       expect(histogram.findBinOfValue(8.8999)).to.equal(255);
       expect(histogram.findBinOfValue(8.9)).to.equal(255);
-      expect(histogram.findBinOfValue(8.901)).to.equal(256);
+    });
+
+    it("uses clamping when returning bins", () => {
+      expect(histogram.findBinOfValue(0)).to.equal(0);
+      expect(histogram.findBinOfValue(1.5999)).to.equal(0);
+      expect(histogram.findBinOfValue(8.901)).to.equal(255);
+      expect(histogram.findBinOfValue(95)).to.equal(255);
     });
   });
 
