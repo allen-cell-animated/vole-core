@@ -301,12 +301,9 @@ export default class Histogram {
     // |----|----|----|----|
     // 0  0.75  1.5  2.25  3 <- inclusive
     //
-    let binSize: number;
-    if (isFloatTypeArray(arr)) {
-      binSize = max - min === 0 ? 1 : (max - min) / numBins;
-    } else {
-      binSize = max + 1 - min === 0 ? 1 : (max + 1 - min) / numBins;
-    }
+
+    const binMax = isFloatTypeArray(arr) ? max : max + 1;
+    const binSize = binMax <= min ? 1 : (binMax - min) / numBins;
 
     for (let i = 0; i < arr.length; i++) {
       const item = arr[i];
