@@ -129,12 +129,28 @@ describe("test histogram", () => {
       expect(result.max).toEqual(3);
     });
 
-    it("has bin size is 1 when bin count equals data range", () => {
+    it("has bin size of 1 when bin count equals data range", () => {
       const intData = new Uint8Array([0, 1, 2, 3]);
       const result = Histogram[calculateHistogramFnName](intData, 4);
       expect(result.binSize).toEqual(1);
       expect(result.min).toEqual(0);
       expect(result.max).toEqual(3);
+    });
+
+    it("has bin size of 1 for float values when bin min equals bin max", () => {
+      const floatData = new Float32Array([150, 150, 150, 150]);
+      const result = Histogram[calculateHistogramFnName](floatData, 256);
+      expect(result.binSize).toEqual(1);
+      expect(result.min).toEqual(150);
+      expect(result.max).toEqual(150);
+    });
+
+    it("has fractional bin size for int values when bin min equals bin max", () => {
+      const floatData = new Uint8Array([150, 150, 150, 150]);
+      const result = Histogram[calculateHistogramFnName](floatData, 256);
+      expect(result.binSize).toEqual(1 / 256);
+      expect(result.min).toEqual(150);
+      expect(result.max).toEqual(150);
     });
   });
 
