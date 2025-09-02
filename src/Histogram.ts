@@ -1,4 +1,5 @@
 import { type TypedArray, type NumberType, isFloatTypeArray } from "./types.js";
+import { getDataRange } from "./utils/num_utils.js";
 
 const NBINS = 256;
 
@@ -279,14 +280,7 @@ export default class Histogram {
     // Find min and max in the array if the user did not provide them.
     // Note that this is a completely separate walk through the data array which could be expensive.
     if (dataMin === undefined || dataMax === undefined) {
-      for (let i = 1; i < arr.length; i++) {
-        const value = arr[i];
-        if (value < min) {
-          min = value;
-        } else if (value > max) {
-          max = value;
-        }
-      }
+      [min, max] = getDataRange(arr);
     }
 
     const bins = new Uint32Array(numBins).fill(0);
