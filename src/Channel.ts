@@ -235,7 +235,7 @@ export default class Channel {
     this.rebuildDataTexture(this.imgData.data, w, h);
 
     this.loaded = true;
-    this.histogram = new Histogram(bitsArray);
+    this.histogram = new Histogram(bitsArray, rawMin, rawMax);
     this.frame = frame;
 
     // reuse old lut but auto-remap it to new data range
@@ -300,7 +300,7 @@ export default class Channel {
     this.loaded = true;
     // update from current histogram?
     this.setRawDataRange(rawMin, rawMax);
-    this.histogram = new Histogram(this.volumeData);
+    this.histogram = new Histogram(this.volumeData, rawMin, rawMax);
   }
 
   // given this.volumeData, let's unpack it into a flat textureatlas and fill up this.imgData.
