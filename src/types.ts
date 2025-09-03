@@ -153,7 +153,7 @@ export interface VolumeChannelDisplayOptions {
   isosurfaceEnabled?: boolean;
   /**
    * Isovalue used to calculate the isosurface mesh, in a [0, 255] range.
-   * Intensity values below this will not be included in the isosurface.
+   * Isosurface is found at the set of all boundaries between voxels whose intensities span across this isovalue.
    */
   isovalue?: number;
   /** Opacity of the isosurface, in a [0, 1] range. */
