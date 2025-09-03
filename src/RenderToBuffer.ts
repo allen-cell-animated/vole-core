@@ -11,6 +11,11 @@ import {
 
 import { renderToBufferVertShader } from "./constants/basicShaders.js";
 
+export enum RenderPassType {
+  OPAQUE,
+  TRANSPARENT,
+}
+
 /**
  * Helper for render passes that just require a fragment shader: accepts a fragment shader and its
  * uniforms, and handles the ceremony of rendering a fullscreen quad with a simple vertex shader.
@@ -22,7 +27,11 @@ export default class RenderToBuffer {
   public mesh: Mesh;
   public camera: OrthographicCamera;
 
-  constructor(fragmentSrc: string, uniforms: { [key: string]: IUniform }, transparent = false) {
+  constructor(
+    fragmentSrc: string,
+    uniforms: { [key: string]: IUniform },
+    passType: RenderPassType = RenderPassType.OPAQUE
+  ) {
     this.scene = new Scene();
     this.geometry = new PlaneGeometry(2, 2);
 
@@ -30,7 +39,7 @@ export default class RenderToBuffer {
       vertexShader: renderToBufferVertShader,
       fragmentShader: fragmentSrc,
       uniforms,
-      transparent,
+      transparent: passType === RenderPassType.TRANSPARENT,
     });
 
     this.material.depthWrite = false;

@@ -1,9 +1,10 @@
 import { Color, Euler, Group, Vector3 } from "three";
-import { IDrawableObject } from "./types";
-import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
-import { LineSegments2 } from "three/addons/lines/LineSegments2";
-import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+
+import { IDrawableObject } from "./types.js";
+import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 

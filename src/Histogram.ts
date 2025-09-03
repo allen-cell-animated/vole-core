@@ -1,4 +1,4 @@
-import type { TypedArray, NumberType } from "./types.js";
+import { type TypedArray, type NumberType, isFloatTypeArray } from "./types.js";
 
 const NBINS = 256;
 
@@ -28,6 +28,7 @@ export default class Histogram {
   /** Index of the last bin (other than 0) with at least 1 value. */
   private dataMaxBin: number;
   private pixelCount: number;
+
   public maxBin: number;
 
   constructor(data: TypedArray<NumberType>) {
@@ -74,19 +75,38 @@ export default class Histogram {
     }
   }
 
-  // return the bin index of the given data value
-  public static findBin(dataValue: number, dataMin: number, binSize: number, numBins: number): number {
-    let binIndex = Math.floor((dataValue - dataMin) / binSize);
-    // for values that lie exactly on last bin we need to subtract one
-    if (binIndex === numBins) {
-      binIndex--;
+  private static findBin(dataValue: number, dataMin: number, binSize: number, castToInt: boolean): number {
+    const binIndex = (dataValue - dataMin) / binSize;
+    if (!castToInt) {
+      return binIndex;
     }
-    return binIndex;
+    return Math.max(Math.min(Math.floor(binIndex), NBINS - 1), 0);
   }
 
-  // return the bin index of the given data value
+  /**
+   * Returns the integer bin index for the given value. If a value is outside
+   * the histogram range, it will be clamped to the nearest bin.
+   */
   public findBinOfValue(value: number): number {
-    return Histogram.findBin(value, this.min, this.binSize, NBINS);
+    return Histogram.findBin(value, this.min, this.binSize, true);
+  }
+
+  /**
+   * Returns a fractional bin index for the given value. If a value is not a bin
+   * boundary, returns an interpolated index. Note that this can return a value
+   * outside the range of valid bins.
+   */
+  public findFractionalBinOfValue(value: number): number {
+    return Histogram.findBin(value, this.min, this.binSize, false);
+  }
+
+  /**
+   * Returns an absolute data value from a given (integer or fractional) bin index.
+   * Note that, if the bin index is outside of the bin range, the returned value
+   * will also be outside the value range.
+   */
+  public getValueFromBinIndex(binIndex: number): number {
+    return this.min + binIndex * this.binSize;
   }
 
   /**
@@ -260,11 +280,35 @@ export default class Histogram {
 
     const bins = new Uint32Array(numBins).fill(0);
 
-    const binSize = (max - min) / numBins === 0 ? 1 : (max - min) / numBins;
+    // Bins should have equal widths and span the data min to the data max. The
+    // handling of the max value is slightly different between integers and
+    // floats; in the float case, the last bin should have `max` as its
+    // inclusive upper bound, while in the integer case, the last bin should
+    // have an exclusive upper bound of `max + 1`.
+    //
+    // For example, let's say we have a data range of `[min=0, max=3]` and 4
+    // bins.
+    //
+    // If this is integer data, we want each bin to have ranges [0, 1), [1, 2),
+    // [2, 3), [3, 4), and a bin size of 1.
+    //
+    // |----|----|----|----|
+    // 0    1    2    3    4 <- exclusive
+    //
+    // For continuous (float) data, our bins should have ranges [0, 0.75),
+    // [0.75, 1.5), [1.5, 2.25), [2.25, 3] and a bin size of 0.75.
+    //
+    // |----|----|----|----|
+    // 0  0.75  1.5  2.25  3 <- inclusive
+    //
+
+    const binMax = isFloatTypeArray(arr) ? max : max + 1;
+    const binSize = binMax <= min ? 1 : (binMax - min) / numBins;
+
     for (let i = 0; i < arr.length; i++) {
       const item = arr[i];
 
-      const binIndex = Histogram.findBin(item, min, binSize, numBins);
+      const binIndex = Histogram.findBin(item, min, binSize, true);
       bins[binIndex]++;
     }
 
