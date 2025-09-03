@@ -67,13 +67,13 @@ bool isEdge(ivec2 uv, int id, int thickness) {
 
 void main(void) {
   ivec2 vUv = ivec2(int(gl_FragCoord.x / devicePixelRatio), int(gl_FragCoord.y / devicePixelRatio));
-  vec4 finalColor = vec4(0, 0, 0, 0.0);
 
   uint rawId = getId(vUv);
   int id = int(rawId) - ID_OFFSET;
-  if (id == highlightedId && isEdge(vUv, id, outlineThickness)) {
-    finalColor = vec4(outlineColor, outlineAlpha);
-  }
 
-  gl_FragColor = finalColor;
+  if (id == highlightedId && isEdge(vUv, id, outlineThickness)) {
+    gl_FragColor = vec4(outlineColor, outlineAlpha);
+  } else {
+    gl_FragColor = vec4(0, 0, 0, 0.0);
+  }
 }

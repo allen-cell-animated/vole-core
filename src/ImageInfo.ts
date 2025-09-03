@@ -14,12 +14,17 @@ export type ImageInfo = Readonly<{
   /** Offset of the loaded subregion into the total volume, in pixels, in XYZ order */
   subregionOffset: [number, number, number];
 
-  /** Number of channels in the image, accounting for convergence of multiple sources.
+  /**
+   * Number of channels in the image, accounting for convergence of multiple sources.
    * Because of multiple sources, which is not accounted for in ImageInfo,
    * that this could be different than the number of channels in the multiscaleLevelDims.
    * NOTE Currently there is one ImageInfo per Volume, not per source.
    */
   combinedNumChannels: number;
+  /**
+   * The number of channels in each source, in source order. The sum of this
+   * array is equal to `combinedNumChannels`.
+   */
   numChannelsPerSource: number[];
   /** The names of each channel */
   channelNames: string[];

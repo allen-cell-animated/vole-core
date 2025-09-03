@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import Volume from "../Volume";
 import VolumeMaker from "../VolumeMaker";
 import { LUT_ARRAY_LENGTH } from "../Lut";
@@ -12,6 +14,7 @@ const testimgdata: ImageInfo = {
   atlasTileDims: [7, 10],
   subregionSize: [204, 292, 65],
   subregionOffset: [0, 0, 0],
+  numChannelsPerSource: [9],
   combinedNumChannels: 9,
   channelNames: [
     "DRAQ5",
