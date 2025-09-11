@@ -239,7 +239,8 @@ export function buildDefaultMetadata(rawImageInfo: ImageInfo): Record<string, un
   };
   metadata["Multiresolution levels"] = rawImageInfo.multiscaleLevelDims;
   // TODO decide???? combined or not?
-  metadata["Channels"] = rawImageInfo.combinedNumChannels; //imageInfo.numChannels;
+  const totalChannels = imageInfo.numChannelsPerSource.reduce((a, b) => a + b, 0);
+  metadata["Channels"] = totalChannels;
   metadata["Time series frames"] = imageInfo.times || 1;
   // don't add User data if it's empty
   if (rawImageInfo.userData && !isEmpty(rawImageInfo.userData)) {

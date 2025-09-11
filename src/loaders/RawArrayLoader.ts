@@ -71,7 +71,7 @@ const convertImageInfo = (json: RawArrayInfo, dtype: NumberType): ImageInfo => {
     subregionSize: [json.sizeX, json.sizeY, json.sizeZ],
     subregionOffset: [0, 0, 0],
 
-    combinedNumChannels: json.sizeC,
+    numChannelsPerSource: [json.sizeC],
     channelNames: json.channelNames,
     channelColors: undefined,
 
@@ -148,7 +148,8 @@ class RawArrayLoader extends ThreadableVolumeLoader {
     };
     onUpdateMetadata(undefined, adjustedLoadSpec);
 
-    for (let chindex = 0; chindex < imageInfo.combinedNumChannels; ++chindex) {
+    const totalChannels = imageInfo.numChannelsPerSource.reduce((a, b) => a + b, 0);
+    for (let chindex = 0; chindex < totalChannels; ++chindex) {
       if (requestedChannels && requestedChannels.length > 0 && !requestedChannels.includes(chindex)) {
         continue;
       }

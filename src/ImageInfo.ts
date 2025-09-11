@@ -14,12 +14,11 @@ export type ImageInfo = Readonly<{
   /** Offset of the loaded subregion into the total volume, in pixels, in XYZ order */
   subregionOffset: [number, number, number];
 
-  /** Number of channels in the image, accounting for convergence of multiple sources.
-   * Because of multiple sources, which is not accounted for in ImageInfo,
-   * that this could be different than the number of channels in the multiscaleLevelDims.
-   * NOTE Currently there is one ImageInfo per Volume, not per source.
+  /**
+   * The number of channels in each source, in source order. The sum of this
+   * array is equal to `combinedNumChannels`.
    */
-  combinedNumChannels: number;
+  numChannelsPerSource: number[];
   /** The names of each channel */
   channelNames: string[];
   /** Optional overrides to default channel colors, in 0-255 range, RGB order */
@@ -55,7 +54,7 @@ export function defaultImageInfo(): ImageInfo {
     atlasTileDims: [1, 1],
     subregionSize: [1, 1, 1],
     subregionOffset: [0, 0, 0],
-    combinedNumChannels: 1,
+    numChannelsPerSource: [1],
     channelNames: ["0"],
     channelColors: [[255, 255, 255]],
     multiscaleLevel: 0,
@@ -89,7 +88,12 @@ export class CImageInfo {
 
   /** Number of channels in the image */
   get numChannels(): number {
-    return this.imageInfo.combinedNumChannels;
+    return this.imageInfo.numChannelsPerSource.reduce((a, b) => a + b, 0);
+  }
+
+  /** Number of channels per source, ordered by source index */
+  get numChannelsPerSource(): number[] {
+    return this.imageInfo.numChannelsPerSource;
   }
 
   /** XYZ size of the *original* (not downsampled) volume, in pixels */

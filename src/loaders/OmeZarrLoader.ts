@@ -329,11 +329,14 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const [spatialUnit, timeUnit] = this.getUnitSymbols();
 
-    // Now we care about other sources: # of channels is the `channelOffset` of the last source plus its # of channels
-    const sourceLast = this.sources[this.sources.length - 1];
-    const cLast = sourceLast.axesTCZYX[1];
-    const lastHasC = cLast > -1;
-    const numChannels = sourceLast.channelOffset + (lastHasC ? sourceLast.scaleLevels[levelToLoad].shape[cLast] : 1);
+    const numChannelsPerSource: number[] = [];
+    for (let i = 0; i < this.sources.length; i++) {
+      const source = this.sources[i];
+      const cIndex = source.axesTCZYX[1];
+      const sourceChannelCount = cIndex > -1 ? source.scaleLevels[levelToLoad].shape[cIndex] : 1;
+      numChannelsPerSource.push(sourceChannelCount);
+    }
+
     // we need to make sure that the corresponding matched shapes
     // use the min size of T
     let times = 1;
@@ -401,7 +404,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       subregionSize: [pxSizeLv.x, pxSizeLv.y, pxSizeLv.z],
       subregionOffset: [0, 0, 0],
 
-      combinedNumChannels: numChannels,
+      numChannelsPerSource,
       channelNames,
       multiscaleLevel: levelToLoad,
       multiscaleLevelDims: alldims,
@@ -529,7 +532,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const updatedImageInfo = this.updateImageInfoForLoad(imageInfo, loadSpec);
     onUpdateMetadata(updatedImageInfo);
-    const { combinedNumChannels, multiscaleLevel } = updatedImageInfo;
+    const { numChannelsPerSource, multiscaleLevel } = updatedImageInfo;
+    const combinedNumChannels = numChannelsPerSource.reduce((a, b) => a + b, 0);
     const channelIndexes = loadSpec.channels ?? Array.from({ length: combinedNumChannels }, (_, i) => i);
 
     const subscriber = this.requestQueue.addSubscriber();
