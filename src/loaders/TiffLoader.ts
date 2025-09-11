@@ -211,6 +211,7 @@ class TiffLoader extends ThreadableVolumeLoader {
     const tilesizey = Math.floor(targetSize / atlasDims.y);
 
     // load tiff and check metadata
+    const numChannelsPerSource = this.url.length > 1 ? Array(this.url.length).fill(1) : [dims.sizec];
 
     const imgdata: ImageInfo = {
       name: "TEST",
@@ -218,8 +219,7 @@ class TiffLoader extends ThreadableVolumeLoader {
       atlasTileDims: [atlasDims.x, atlasDims.y],
       subregionSize: [tilesizex, tilesizey, dims.sizez],
       subregionOffset: [0, 0, 0],
-      combinedNumChannels: dims.sizec,
-      numChannelsPerSource: [dims.sizec],
+      numChannelsPerSource: numChannelsPerSource,
       channelNames: dims.channelnames,
       multiscaleLevel: 0,
       multiscaleLevelDims: [
@@ -263,37 +263,40 @@ class TiffLoader extends ThreadableVolumeLoader {
 
     const channelProms: Promise<void>[] = [];
     // do each channel on a worker?
-    for (let channel = 0; channel < imageInfo.combinedNumChannels; ++channel) {
-      const thisChannelProm = new Promise<void>((resolve, reject) => {
-        const params: TiffWorkerParams = {
-          channel: channel,
-          // these are target xy sizes for the in-memory volume data
-          // they may or may not be the same size as original xy sizes
-          tilesizex: volumeSize.x,
-          tilesizey: volumeSize.y,
-          sizec: imageInfo.combinedNumChannels,
-          sizez: volumeSize.z,
-          dimensionOrder: dims.dimensionorder,
-          bytesPerSample: getBytesPerSample(dims.pixeltype),
-          url: this.url.length > 1 ? this.url[channel] : this.url[0], // if multiple urls, use the channel index to select the right one
-        };
+    for (let source = 0; source < imageInfo.numChannelsPerSource.length; ++source) {
+      const numChannels = imageInfo.numChannelsPerSource[source];
+      for (let channel = 0; channel < numChannels; ++channel) {
+        const thisChannelProm = new Promise<void>((resolve, reject) => {
+          const params: TiffWorkerParams = {
+            channel: channel,
+            // these are target xy sizes for the in-memory volume data
+            // they may or may not be the same size as original xy sizes
+            tilesizex: volumeSize.x,
+            tilesizey: volumeSize.y,
+            sizec: numChannels,
+            sizez: volumeSize.z,
+            dimensionOrder: dims.dimensionorder,
+            bytesPerSample: getBytesPerSample(dims.pixeltype),
+            url: this.url[source],
+          };
 
-        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
-        worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
-          if (e.data.isError) {
-            reject(deserializeError(e.data.error));
-            return;
-          }
-          const { data, dtype, channel, range } = e.data;
-          onData([channel], [dtype], [data], [range]);
-          worker.terminate();
-          resolve();
-        };
+          const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
+          worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
+            if (e.data.isError) {
+              reject(deserializeError(e.data.error));
+              return;
+            }
+            const { data, dtype, channel, range } = e.data;
+            onData([channel], [dtype], [data], [range]);
+            worker.terminate();
+            resolve();
+          };
 
-        worker.postMessage(params);
-      });
+          worker.postMessage(params);
+        });
 
-      channelProms.push(thisChannelProm);
+        channelProms.push(thisChannelProm);
+      }
     }
 
     // waiting for all channels to load allows errors to propagate to the caller via this promise

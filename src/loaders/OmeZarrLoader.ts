@@ -329,14 +329,12 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const [spatialUnit, timeUnit] = this.getUnitSymbols();
 
-    let numChannels = 0;
     const numChannelsPerSource: number[] = [];
     for (let i = 0; i < this.sources.length; i++) {
       const source = this.sources[i];
       const cIndex = source.axesTCZYX[1];
       const sourceChannelCount = cIndex > -1 ? source.scaleLevels[levelToLoad].shape[cIndex] : 1;
       numChannelsPerSource.push(sourceChannelCount);
-      numChannels += sourceChannelCount;
     }
 
     // we need to make sure that the corresponding matched shapes
@@ -406,7 +404,6 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       subregionSize: [pxSizeLv.x, pxSizeLv.y, pxSizeLv.z],
       subregionOffset: [0, 0, 0],
 
-      combinedNumChannels: numChannels,
       numChannelsPerSource,
       channelNames,
       multiscaleLevel: levelToLoad,
@@ -535,7 +532,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const updatedImageInfo = this.updateImageInfoForLoad(imageInfo, loadSpec);
     onUpdateMetadata(updatedImageInfo);
-    const { combinedNumChannels, multiscaleLevel } = updatedImageInfo;
+    const { numChannelsPerSource, multiscaleLevel } = updatedImageInfo;
+    const combinedNumChannels = numChannelsPerSource.reduce((a, b) => a + b, 0);
     const channelIndexes = loadSpec.channels ?? Array.from({ length: combinedNumChannels }, (_, i) => i);
 
     const subscriber = this.requestQueue.addSubscriber();

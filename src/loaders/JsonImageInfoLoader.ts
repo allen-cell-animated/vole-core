@@ -89,7 +89,6 @@ const convertImageInfo = (json: JsonImageInfo): ImageInfo => {
     atlasTileDims: [json.cols, json.rows],
     subregionSize: [json.tile_width, json.tile_height, json.tiles],
     subregionOffset: [0, 0, 0],
-    combinedNumChannels: json.channels,
     numChannelsPerSource: json.images.map((image) => image.channels.length),
     channelNames: json.channel_names,
     channelColors: json.channel_colors,

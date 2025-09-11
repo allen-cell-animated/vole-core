@@ -15,7 +15,6 @@ const testimgdata: ImageInfo = {
   subregionSize: [204, 292, 65],
   subregionOffset: [0, 0, 0],
   numChannelsPerSource: [9],
-  combinedNumChannels: 9,
   channelNames: [
     "DRAQ5",
     "EGFP",
@@ -55,8 +54,10 @@ function checkVolumeConstruction(v: Volume, imgdata: ImageInfo) {
   expect(v.physicalSize.x).to.equal(physicalSize.x);
   expect(v.physicalSize.y).to.equal(physicalSize.y);
   expect(v.physicalSize.z).to.equal(physicalSize.z);
-  expect(v.channelNames.length).to.equal(imgdata.combinedNumChannels);
-  expect(v.channels.length).to.equal(imgdata.combinedNumChannels);
+
+  const totalChannels = imgdata.numChannelsPerSource.reduce((a, b) => a + b, 0);
+  expect(v.channelNames.length).to.equal(totalChannels);
+  expect(v.channels.length).to.equal(totalChannels);
 
   const mx = Math.max(Math.max(v.normPhysicalSize.x, v.normPhysicalSize.y), v.normPhysicalSize.z);
   expect(mx).to.equal(1.0);
