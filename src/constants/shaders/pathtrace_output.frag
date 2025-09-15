@@ -23,7 +23,7 @@ void main() {
   pixelColor.rgb = XYZtoRGB(pixelColor.rgb);
 
   // pixelColor.rgb = pow(pixelColor.rgb, vec3(1.0/2.2));
-  pixelColor.rgb = 1.0-exp(-pixelColor.rgb*gInvExposure);
+  pixelColor.rgb = 1.0 - exp(-pixelColor.rgb * gInvExposure);
   pixelColor = clamp(pixelColor, 0.0, 1.0);
 
   pc_fragColor = pixelColor; // sqrt(pixelColor);
