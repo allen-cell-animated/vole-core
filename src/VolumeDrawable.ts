@@ -89,7 +89,7 @@ export default class VolumeDrawable {
 
     this.channelColors = this.volume.channelColorsDefault.slice();
 
-    this.channelOptions = new Array<VolumeChannelDisplayOptions>(this.volume.imageInfo.numChannels).fill({});
+    this.channelOptions = Array.from({ length: this.volume.imageInfo.numChannels }, () => ({}));
 
     this.fusion = this.channelColors.map((col, index) => {
       let rgbColor: number | [number, number, number];
