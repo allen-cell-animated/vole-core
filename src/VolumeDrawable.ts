@@ -905,10 +905,6 @@ export default class VolumeDrawable {
     return this.childObjects.has(line);
   }
 
-  hasLineObjects(): boolean {
-    return this.childObjects.size > 0;
-  }
-
   /**
    * Removes a Line3d object from the Volume, if it exists. Note that the
    * object's resources are not freed automatically (e.g. via `line.cleanup()`).

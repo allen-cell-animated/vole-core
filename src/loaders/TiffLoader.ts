@@ -219,7 +219,7 @@ class TiffLoader extends ThreadableVolumeLoader {
       atlasTileDims: [atlasDims.x, atlasDims.y],
       subregionSize: [tilesizex, tilesizey, dims.sizez],
       subregionOffset: [0, 0, 0],
-      numChannelsPerSource: numChannelsPerSource,
+      numChannelsPerSource,
       channelNames: dims.channelnames,
       multiscaleLevel: 0,
       multiscaleLevelDims: [
