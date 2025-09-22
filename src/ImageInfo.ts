@@ -5,8 +5,9 @@ export type ImageInfo = Readonly<{
   name: string;
 
   /**
-   * XY dimensions of the texture atlas used by `RayMarchedAtlasVolume` and `Atlas2DSlice`, in number of z-slice
-   * tiles (not pixels). Chosen by the loader to lay out the 3D volume in the squarest possible 2D texture atlas.
+   * XY dimensions of the texture atlas used by `RayMarchedAtlasVolume` and
+   * `Atlas2DSlice`, in number of z-slice tiles (not pixels). Chosen by the
+   * loader to lay out the 3D volume in the squarest possible 2D texture atlas.
    */
   atlasTileDims: [number, number];
   /** Size of the currently loaded subregion, in pixels, in XYZ order */
@@ -14,10 +15,7 @@ export type ImageInfo = Readonly<{
   /** Offset of the loaded subregion into the total volume, in pixels, in XYZ order */
   subregionOffset: [number, number, number];
 
-  /**
-   * The number of channels in each source, in source order. The sum of this
-   * array is equal to `combinedNumChannels`.
-   */
+  /** The number of channels in each source, in source order. */
   numChannelsPerSource: number[];
   /** The names of each channel */
   channelNames: string[];
@@ -31,9 +29,9 @@ export type ImageInfo = Readonly<{
   multiscaleLevel: number;
 
   /**
-   * An *optional* transform which may be supplied by image metadata. It is *not* applied by
-   * default, but may be read and fed to `View3d` methods: `setVolumeTransform`,
-   * `setVolumeRotation`, `setVolumeScale`.
+   * An *optional* transform which may be supplied by image metadata. It is
+   * *not* applied by default, but may be read and fed to `View3d` methods:
+   * `setVolumeTransform`, `setVolumeRotation`, `setVolumeScale`.
    */
   transform: {
     /** Translation of the volume from the center of space, in volume voxels in XYZ order */

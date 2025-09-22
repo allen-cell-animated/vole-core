@@ -134,26 +134,18 @@ export interface VolumeChannelDisplayOptions {
   enabled?: boolean;
   /** RGB color array, with values in the range of [0, 255]. */
   color?: [number, number, number];
-  /**
-   * RGB color array for specular (highlight) color, with values in the range of
-   * [0, 255].
-   */
+  /** RGB color array for specular (highlight) color, with values in the range of [0, 255]. */
   specularColor?: [number, number, number];
-  /**
-   * RGB color array for emissive (glow) color, with values in the range of [0,
-   * 255].
-   */
+  /** RGB color array for emissive (glow) color, with values in the range of [0, 255]. */
   emissiveColor?: [number, number, number];
-  /**
-   * Exponent factor controlling the glossiness ("shininess") of the material. 0
-   * is default.
-   */
+  /** Exponent factor controlling the glossiness ("shininess") of the material. 0 is default. */
   glossiness?: number;
   /** Whether the isosurface mesh should be rendered for this channel. */
   isosurfaceEnabled?: boolean;
   /**
    * Isovalue used to calculate the isosurface mesh, in a [0, 255] range.
-   * Isosurface is found at the set of all boundaries between voxels whose intensities span across this isovalue.
+   * Isosurface is found at the set of all boundaries between voxels whose
+   * intensities span across this isovalue.
    */
   isovalue?: number;
   /** Opacity of the isosurface, in a [0, 1] range. */
