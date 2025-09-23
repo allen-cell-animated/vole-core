@@ -5,8 +5,9 @@ export type ImageInfo = Readonly<{
   name: string;
 
   /**
-   * XY dimensions of the texture atlas used by `RayMarchedAtlasVolume` and `Atlas2DSlice`, in number of z-slice
-   * tiles (not pixels). Chosen by the loader to lay out the 3D volume in the squarest possible 2D texture atlas.
+   * XY dimensions of the texture atlas used by `RayMarchedAtlasVolume` and
+   * `Atlas2DSlice`, in number of z-slice tiles (not pixels). Chosen by the
+   * loader to lay out the 3D volume in the squarest possible 2D texture atlas.
    */
   atlasTileDims: [number, number];
   /** Size of the currently loaded subregion, in pixels, in XYZ order */
@@ -14,12 +15,8 @@ export type ImageInfo = Readonly<{
   /** Offset of the loaded subregion into the total volume, in pixels, in XYZ order */
   subregionOffset: [number, number, number];
 
-  /** Number of channels in the image, accounting for convergence of multiple sources.
-   * Because of multiple sources, which is not accounted for in ImageInfo,
-   * that this could be different than the number of channels in the multiscaleLevelDims.
-   * NOTE Currently there is one ImageInfo per Volume, not per source.
-   */
-  combinedNumChannels: number;
+  /** The number of channels in each source, in source order. */
+  numChannelsPerSource: number[];
   /** The names of each channel */
   channelNames: string[];
   /** Optional overrides to default channel colors, in 0-255 range, RGB order */
@@ -32,9 +29,9 @@ export type ImageInfo = Readonly<{
   multiscaleLevel: number;
 
   /**
-   * An *optional* transform which may be supplied by image metadata. It is *not* applied by
-   * default, but may be read and fed to `View3d` methods: `setVolumeTransform`,
-   * `setVolumeRotation`, `setVolumeScale`.
+   * An *optional* transform which may be supplied by image metadata. It is
+   * *not* applied by default, but may be read and fed to `View3d` methods:
+   * `setVolumeTransform`, `setVolumeRotation`, `setVolumeScale`.
    */
   transform: {
     /** Translation of the volume from the center of space, in volume voxels in XYZ order */
@@ -55,7 +52,7 @@ export function defaultImageInfo(): ImageInfo {
     atlasTileDims: [1, 1],
     subregionSize: [1, 1, 1],
     subregionOffset: [0, 0, 0],
-    combinedNumChannels: 1,
+    numChannelsPerSource: [1],
     channelNames: ["0"],
     channelColors: [[255, 255, 255]],
     multiscaleLevel: 0,
@@ -89,7 +86,12 @@ export class CImageInfo {
 
   /** Number of channels in the image */
   get numChannels(): number {
-    return this.imageInfo.combinedNumChannels;
+    return this.imageInfo.numChannelsPerSource.reduce((a, b) => a + b, 0);
+  }
+
+  /** Number of channels per source, ordered by source index */
+  get numChannelsPerSource(): number[] {
+    return this.imageInfo.numChannelsPerSource;
   }
 
   /** XYZ size of the *original* (not downsampled) volume, in pixels */
