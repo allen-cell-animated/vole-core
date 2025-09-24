@@ -25,13 +25,12 @@ vec3 XYZtoRGB(vec3 xyz) {
   return xyz * XYZ_2_RGB;
 }
 
-void main()
-{
+void main() {
   vec4 pixelColor = texture(tTexture0, vUv);
   // TODO TONE MAP!!!!!!
   pixelColor.rgb = XYZtoRGB(pixelColor.rgb);
 
-  pixelColor.rgb = 1.0-exp(-pixelColor.rgb*gInvExposure);
+  pixelColor.rgb = 1.0 - exp(-pixelColor.rgb * gInvExposure);
   pixelColor = clamp(pixelColor, 0.0, 1.0);
 
   /////////////////////
@@ -54,7 +53,7 @@ void main()
     for (int j = -gDenoiseWindowRadius; j <= gDenoiseWindowRadius; j++) {
 
       // boundary checking?
-      vec3 clrIJ = texture(tTexture0, vUv + vec2(float(i)/gDenoisePixelSize.x, float(j)/gDenoisePixelSize.y)).rgb;
+      vec3 clrIJ = texture(tTexture0, vUv + vec2(float(i) / gDenoisePixelSize.x, float(j) / gDenoisePixelSize.y)).rgb;
       //vec3 clrIJ = texelFetch(tTexture0, ivec2(gl_FragCoord.xy) + ivec2(i,j), 0).rgb;
 
       rgbsample = XYZtoRGB(clrIJ);
@@ -64,7 +63,7 @@ void main()
 
       clrIJ = rgbsample;
 
-      float distanceIJ = (clr00.x-clrIJ.x)*(clr00.x-clrIJ.x) + (clr00.y-clrIJ.y)*(clr00.y-clrIJ.y) + (clr00.z-clrIJ.z)*(clr00.z-clrIJ.z);
+      float distanceIJ = (clr00.x - clrIJ.x) * (clr00.x - clrIJ.x) + (clr00.y - clrIJ.y) * (clr00.y - clrIJ.y) + (clr00.z - clrIJ.z) * (clr00.z - clrIJ.z);
 
       // gDenoiseNoise = 1/h^2
       //
@@ -82,7 +81,7 @@ void main()
 
   clr.rgb *= SumWeights;
 
-  float LerpQ = (fCount > gDenoiseLerpThreshold) ? gDenoiseLerpC : 1.0f - gDenoiseLerpC;
+  float LerpQ = (fCount > gDenoiseLerpThreshold) ? gDenoiseLerpC : 1.0 - gDenoiseLerpC;
 
   clr.rgb = mix(clr.rgb, clr00.rgb, LerpQ);
   clr.rgb = clamp(clr.rgb, 0.0, 1.0);
