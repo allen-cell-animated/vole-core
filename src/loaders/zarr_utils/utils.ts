@@ -9,7 +9,11 @@ import type {
   ZarrSource,
 } from "./types.js";
 
-/** Attempts to parse `color` as a 24-bit hexadecimal color. */
+/**
+ * Attempts to parse `color` as a 24-bit (6-digit) hexadecimal color with a possible leading `#`.
+ *
+ * Six-digit hex is the only allowable color representation in the OMERO metadata spec.
+ */
 export function parseHexColor(color: string | undefined): [number, number, number] | undefined {
   if (color === undefined) {
     return undefined;
