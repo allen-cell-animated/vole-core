@@ -10,13 +10,29 @@ import type {
 } from "./types.js";
 
 /** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
-export function getSourceChannelNames(src: ZarrSource): string[] {
+export function getSourceChannelMeta(src: ZarrSource): {
+  names: string[];
+  colors: ([number, number, number] | undefined)[];
+} {
   if (src.omeroMetadata?.channels) {
-    return src.omeroMetadata.channels.map(({ label }, idx) => label ?? `Channel ${idx + src.channelOffset}`);
+    const { channels } = src.omeroMetadata;
+    const names: string[] = [];
+    const colors: ([number, number, number] | undefined)[] = [];
+
+    for (let i = 0; i < channels.length; i++) {
+      const channel = channels[i];
+      names.push(channel.label ?? `Channel ${i + src.channelOffset}`);
+      colors.push(parseHexColor(channel.color));
+    }
+
+    return { names, colors };
   }
+
   const cIdx = src.axesTCZYX[1];
   const length = cIdx < 0 ? 1 : src.scaleLevels[0].shape[cIdx];
-  return Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const names = Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const colors = Array.from({ length }, () => undefined);
+  return { names, colors };
 }
 
 /** Attempts to parse `color` as a 24-bit hexadecimal color. */

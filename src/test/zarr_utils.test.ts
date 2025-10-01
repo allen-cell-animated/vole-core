@@ -12,7 +12,7 @@ import {
 import {
   getDimensionCount,
   getScale,
-  getSourceChannelNames,
+  getSourceChannelMeta,
   matchSourceScaleLevels,
   orderByDimension,
   orderByTCZYX,
@@ -127,31 +127,31 @@ describe("zarr_utils", () => {
     it("extracts a list of channel labels from the given source", async () => {
       const names = ["foo", "bar", "baz"];
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
-      expect(getSourceChannelNames(source)).to.deep.equal(names);
+      expect(getSourceChannelMeta(source)).to.deep.equal(names);
     });
 
     it("does not resolve channel name collisions", async () => {
       const names = ["foo", "bar", "foo"];
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
-      expect(getSourceChannelNames(source)).to.deep.equal(names);
+      expect(getSourceChannelMeta(source)).to.deep.equal(names);
     });
 
     it('applies default names of the form "Channel N" for missing labels', async () => {
       const names = ["foo", "bar", undefined] as string[];
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
-      expect(getSourceChannelNames(source)).to.deep.equal(["foo", "bar", "Channel 2"]);
+      expect(getSourceChannelMeta(source)).to.deep.equal(["foo", "bar", "Channel 2"]);
     });
 
     it("applies default names when `omeroMetadata` is missing entirely", async () => {
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0);
       delete source.omeroMetadata;
-      expect(getSourceChannelNames(source)).to.deep.equal(["Channel 0", "Channel 1", "Channel 2"]);
+      expect(getSourceChannelMeta(source)).to.deep.equal(["Channel 0", "Channel 1", "Channel 2"]);
     });
 
     it("applies `channelOffset` to default names", async () => {
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 3);
       delete source.omeroMetadata;
-      expect(getSourceChannelNames(source)).to.deep.equal(["Channel 3", "Channel 4", "Channel 5"]);
+      expect(getSourceChannelMeta(source)).to.deep.equal(["Channel 3", "Channel 4", "Channel 5"]);
     });
   });
 
