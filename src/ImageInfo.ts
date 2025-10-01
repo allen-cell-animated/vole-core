@@ -20,7 +20,7 @@ export type ImageInfo = Readonly<{
   /** The names of each channel */
   channelNames: string[];
   /** Optional overrides to default channel colors, in 0-255 range, RGB order */
-  channelColors?: [number, number, number][];
+  channelColors?: ([number, number, number] | undefined)[];
 
   /** Dimensions of each scale level, at original size, from the first data source */
   multiscaleLevelDims: VolumeDims[];
@@ -142,7 +142,7 @@ export class CImageInfo {
   }
 
   /** Optional overrides to default channel colors, in 0-255 range */
-  get channelColors(): [number, number, number][] | undefined {
+  get channelColors(): ([number, number, number] | undefined)[] | undefined {
     return this.imageInfo.channelColors;
   }
 
