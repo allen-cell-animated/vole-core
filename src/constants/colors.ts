@@ -50,7 +50,7 @@ function HSVtoRGB(h: number | HSVColor, s: number, v: number): [number, number, 
 }
 
 // 1993 Park-Miller LCG
-function LCG(s) {
+function LCG(s: number) {
   return function () {
     s = Math.imul(48271, s) | 0 % 2147483647;
     return (s & 2147483647) / 2147483648;
