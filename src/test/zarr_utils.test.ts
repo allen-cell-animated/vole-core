@@ -16,6 +16,7 @@ import {
   matchSourceScaleLevels,
   orderByDimension,
   orderByTCZYX,
+  parseHexColor,
   remapAxesToTCZYX,
 } from "../loaders/zarr_utils/utils";
 
@@ -123,7 +124,14 @@ const expectSourcesEqual = (aArr: ZarrSource[], bArr: ZarrSource[]) => {
 };
 
 describe("zarr_utils", () => {
-  describe("getSourceChannelNames", () => {
+  describe("parseHexColor", () => {
+    it("parses a hex color", () => expect(parseHexColor("abcdef")).to.deep.equal([171, 205, 239]));
+    it("handles a leading # sign", () => expect(parseHexColor("#123456")).to.deep.equal([18, 52, 86]));
+    it("handles upper case letters", () => expect(parseHexColor("12CDE7")).to.deep.equal([18, 205, 231]));
+    it("returns undefined for invalid hex digits", () => expect(parseHexColor("1234x6")).to.be.undefined);
+    it("returns undefined for strings that are too long", () => expect(parseHexColor("123456789")).to.be.undefined);
+  });
+  describe("getSourceChannelMeta", () => {
     it("extracts a list of channel labels from the given source", async () => {
       const names = ["foo", "bar", "baz"];
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);

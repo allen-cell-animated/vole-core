@@ -21,9 +21,9 @@ export function parseHexColor(color: string | undefined): [number, number, numbe
     return undefined;
   }
 
-  const r = parseInt(trimmedColor.slice(0, 2));
-  const g = parseInt(trimmedColor.slice(2, 4));
-  const b = parseInt(trimmedColor.slice(4, 6));
+  const r = parseInt(trimmedColor.slice(0, 2), 16);
+  const g = parseInt(trimmedColor.slice(2, 4), 16);
+  const b = parseInt(trimmedColor.slice(4, 6), 16);
 
   if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
     return undefined;
