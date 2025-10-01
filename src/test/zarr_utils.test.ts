@@ -30,15 +30,19 @@ type ZarrSourceMockSpec = {
   paths?: string[];
 };
 
-const createMockOmeroMetadata = (numChannels: number, channelNames?: string[]): OmeroTransitionalMetadata => ({
+const createMockOmeroMetadata = (
+  numChannels: number,
+  channelNames?: string[],
+  colors?: (string | undefined)[]
+): OmeroTransitionalMetadata => ({
   id: 0,
   name: "0",
   version: "0.0",
-  channels: (channelNames ?? Array.from({ length: numChannels }, (_, i) => `channel ${i}`)).map((label) => ({
+  channels: (channelNames ?? Array.from({ length: numChannels }, (_, i) => `channel ${i}`)).map((label, i) => ({
     label,
     active: true,
     coefficient: 1,
-    color: "ffffffff",
+    color: colors && colors[i],
     family: "linear",
     inverted: false,
     window: { end: 1, max: 1, min: 0, start: 0 },
@@ -77,14 +81,21 @@ const createOneMockSource = async (
   scales: TCZYX<number>[],
   channelOffset: number,
   paths?: string[],
-  names?: string[]
+  names?: string[],
+  colors?: (string | undefined)[]
 ): Promise<ZarrSource> => ({
   scaleLevels: await createMockArrays(shapes),
   multiscaleMetadata: createMockMultiscaleMetadata(scales, paths),
-  omeroMetadata: createMockOmeroMetadata(shapes[0][1], names),
+  omeroMetadata: createMockOmeroMetadata(shapes[0][1], names, colors),
   axesTCZYX: [0, 1, 2, 3, 4],
   channelOffset,
 });
+
+/** For when we only care about the OMERO metadata */
+const createOneBasicMockSource = (names?: string[], colors?: (string | undefined)[]): Promise<ZarrSource> => {
+  const channels = names?.length ?? colors?.length ?? 1;
+  return createOneMockSource([[1, channels, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, undefined, names, colors);
+};
 
 const createMockSources = (specs: ZarrSourceMockSpec[]): Promise<ZarrSource[]> => {
   let channelOffset = 0;
@@ -134,19 +145,19 @@ describe("zarr_utils", () => {
   describe("getSourceChannelMeta", () => {
     it("extracts a list of channel labels from the given source", async () => {
       const names = ["foo", "bar", "baz"];
-      const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
+      const source = await createOneBasicMockSource(names);
       expect(getSourceChannelMeta(source).names).to.deep.equal(names);
     });
 
     it("does not resolve channel name collisions", async () => {
       const names = ["foo", "bar", "foo"];
-      const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
+      const source = await createOneBasicMockSource(names);
       expect(getSourceChannelMeta(source).names).to.deep.equal(names);
     });
 
     it('applies default names of the form "Channel N" for missing labels', async () => {
       const names = ["foo", "bar", undefined] as string[];
-      const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 0, ["1", "2", "3"], names);
+      const source = await createOneBasicMockSource(names);
       expect(getSourceChannelMeta(source).names).to.deep.equal(["foo", "bar", "Channel 2"]);
     });
 
@@ -160,6 +171,20 @@ describe("zarr_utils", () => {
       const source = await createOneMockSource([[1, 3, 1, 1, 1]], [[1, 1, 1, 1, 1]], 3);
       delete source.omeroMetadata;
       expect(getSourceChannelMeta(source).names).to.deep.equal(["Channel 3", "Channel 4", "Channel 5"]);
+    });
+
+    it("parses colors", async () => {
+      const source = await createOneBasicMockSource(undefined, ["eeeeee", "ABCDEF", "#121212"]);
+      expect(getSourceChannelMeta(source).colors).to.deep.equal([
+        [238, 238, 238],
+        [171, 205, 239],
+        [18, 18, 18],
+      ]);
+    });
+
+    it("leaves colors undefined where the color metadata is missing or invalid", async () => {
+      const source = await createOneBasicMockSource(undefined, [undefined, "808080", "orange", "ffffffff"]);
+      expect(getSourceChannelMeta(source).colors).to.deep.equal([undefined, [128, 128, 128], undefined, undefined]);
     });
   });
 
