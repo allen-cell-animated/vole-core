@@ -9,6 +9,29 @@ import type {
   ZarrSource,
 } from "./types.js";
 
+/** Attempts to parse `color` as a 24-bit hexadecimal color. */
+export function parseHexColor(color: string | undefined): [number, number, number] | undefined {
+  if (color === undefined) {
+    return undefined;
+  }
+
+  const trimmedColor = color.charAt(0) == "#" ? color.slice(1) : color;
+
+  if (trimmedColor.length !== 6) {
+    return undefined;
+  }
+
+  const r = parseInt(trimmedColor.slice(0, 2));
+  const g = parseInt(trimmedColor.slice(2, 4));
+  const b = parseInt(trimmedColor.slice(4, 6));
+
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return undefined;
+  }
+
+  return [r, g, b];
+}
+
 /** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
 export function getSourceChannelMeta(src: ZarrSource): {
   names: string[];
@@ -33,29 +56,6 @@ export function getSourceChannelMeta(src: ZarrSource): {
   const names = Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
   const colors = Array.from({ length }, () => undefined);
   return { names, colors };
-}
-
-/** Attempts to parse `color` as a 24-bit hexadecimal color. */
-export function parseHexColor(color: string | undefined): [number, number, number] | undefined {
-  if (color === undefined) {
-    return undefined;
-  }
-
-  const trimmedColor = color.charAt(0) == "#" ? color.slice(1) : color;
-
-  if (trimmedColor.length !== 6) {
-    return undefined;
-  }
-
-  const r = parseInt(trimmedColor.slice(0, 2));
-  const g = parseInt(trimmedColor.slice(2, 4));
-  const b = parseInt(trimmedColor.slice(4, 6));
-
-  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
-    return undefined;
-  }
-
-  return [r, g, b];
 }
 
 /** Turns `axesTCZYX` into the number of dimensions in the array */
