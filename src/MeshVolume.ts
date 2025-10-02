@@ -46,6 +46,10 @@ export default class MeshVolume implements IDrawableObject {
     this.meshRoot = new Object3D(); //create an empty container
     this.meshRoot.name = "Mesh Surface Group";
 
+    // compensating for generated isosurface vertex coordinates
+    // arguably this could be set on meshPivot
+    this.meshRoot.scale.setScalar(0.5);
+
     // handle transform ordering for giving the meshroot a rotation about a pivot point
     this.meshPivot = new Group();
     this.meshPivot.name = "MeshContainerNode";

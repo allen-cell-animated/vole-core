@@ -823,7 +823,7 @@ export default class VolumeDrawable {
 
     // remove old 3d object from scene
     if (this.renderMode === RenderMode.SLICE || this.renderMode === RenderMode.RAYMARCH) {
-      this.sceneRoot.remove(this.meshVolume.get3dObject());
+      this.childObjectsGroup.remove(this.meshVolume.get3dObject());
     }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
 
@@ -856,7 +856,7 @@ export default class VolumeDrawable {
       if (this.renderUpdateListener) {
         this.renderUpdateListener(0);
       }
-      this.sceneRoot.add(this.meshVolume.get3dObject());
+      this.childObjectsGroup.add(this.meshVolume.get3dObject());
     }
 
     // add new 3d object to scene

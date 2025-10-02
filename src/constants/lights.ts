@@ -4,7 +4,7 @@ const spotlightSettings = Object.freeze({
   angle: 36 * MathUtils.DEG2RAD,
   castShadow: false,
   color: 0xffffff,
-  intensity: 0.4,
+  intensity: 15.0,
   position: {
     x: -4,
     y: 3.5,
@@ -14,13 +14,13 @@ const spotlightSettings = Object.freeze({
 
 const ambientLightSettings = Object.freeze({
   color: 0xffffff,
-  intensity: 0.6,
+  intensity: 1.75,
 });
 
 const reflectedLightSettings = Object.freeze({
   castShadow: false,
   color: 0xff88aa,
-  intensity: 0.2,
+  intensity: 2.0,
   position: {
     x: 1,
     y: -5,
@@ -31,7 +31,7 @@ const reflectedLightSettings = Object.freeze({
 const fillLightSettings = Object.freeze({
   castShadow: false,
   color: 0xe8d1a9,
-  intensity: 0.15,
+  intensity: 1.5,
   position: {
     x: 2.5,
     y: 0.2,
