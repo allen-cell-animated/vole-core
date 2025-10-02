@@ -105,7 +105,7 @@ export default class Volume {
     this.numChannels = this.imageInfo.numChannels;
     this.channelNames = this.imageInfo.channelNames.slice();
     this.channelColorsDefault = this.imageInfo.channelColors
-      ? this.imageInfo.channelColors.slice()
+      ? this.imageInfo.channelColors.map((color, index) => color ?? getColorByChannelIndex(index))
       : this.channelNames.map((name, index) => getColorByChannelIndex(index));
     // fill in gaps
     if (this.channelColorsDefault.length < this.imageInfo.numChannels) {

@@ -74,7 +74,7 @@ export type OmeroTransitionalMetadata = {
   channels: {
     active?: boolean;
     coefficient?: number;
-    color: string;
+    color?: string;
     family?: string;
     inverted?: boolean;
     label?: string;

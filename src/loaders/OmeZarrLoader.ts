@@ -23,7 +23,7 @@ import {
 import ChunkPrefetchIterator from "./zarr_utils/ChunkPrefetchIterator.js";
 import {
   getScale,
-  getSourceChannelNames,
+  getSourceChannelMeta,
   matchSourceScaleLevels,
   orderByDimension,
   orderByTCZYX,
@@ -368,11 +368,13 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     // Channel names is the other place where we have to check every source
     // Track which channel names we've seen so far, so that we can rename them to avoid name collisions
     const channelNamesMap = new Map<string, number>();
-    const channelNames = this.sources.flatMap((src) => {
-      const sourceChannelNames = getSourceChannelNames(src);
+    const channelNames: string[] = [];
+    const channelColors: ([number, number, number] | undefined)[] = [];
+    for (const src of this.sources) {
+      const { names, colors } = getSourceChannelMeta(src);
 
       // Resolve name collisions
-      return sourceChannelNames.map((channelName) => {
+      const resolvedNames = names.map((channelName) => {
         const numMatchingChannels = channelNamesMap.get(channelName);
 
         if (numMatchingChannels !== undefined) {
@@ -384,7 +386,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
           return channelName;
         }
       });
-    });
+
+      channelNames.push(...resolvedNames);
+      channelColors.push(...colors);
+    }
 
     const alldims: VolumeDims[] = source0.scaleLevels.map((level, i) => {
       const dims = {
@@ -406,6 +411,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
       numChannelsPerSource,
       channelNames,
+      channelColors,
       multiscaleLevel: levelToLoad,
       multiscaleLevelDims: alldims,
 

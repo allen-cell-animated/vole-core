@@ -9,14 +9,57 @@ import type {
   ZarrSource,
 } from "./types.js";
 
-/** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
-export function getSourceChannelNames(src: ZarrSource): string[] {
-  if (src.omeroMetadata?.channels) {
-    return src.omeroMetadata.channels.map(({ label }, idx) => label ?? `Channel ${idx + src.channelOffset}`);
+/**
+ * Attempts to parse `color` as a 24-bit (6-digit) hexadecimal color with a possible leading `#`.
+ *
+ * Six-digit hex is the only allowable color representation in the OMERO metadata spec.
+ */
+export function parseHexColor(color: string | undefined): [number, number, number] | undefined {
+  if (color === undefined) {
+    return undefined;
   }
+
+  const trimmedColor = color.charAt(0) == "#" ? color.slice(1) : color;
+
+  if (trimmedColor.length !== 6) {
+    return undefined;
+  }
+
+  const r = parseInt(trimmedColor.slice(0, 2), 16);
+  const g = parseInt(trimmedColor.slice(2, 4), 16);
+  const b = parseInt(trimmedColor.slice(4, 6), 16);
+
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return undefined;
+  }
+
+  return [r, g, b];
+}
+
+/** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
+export function getSourceChannelMeta(src: ZarrSource): {
+  names: string[];
+  colors: ([number, number, number] | undefined)[];
+} {
+  if (src.omeroMetadata?.channels) {
+    const { channels } = src.omeroMetadata;
+    const names: string[] = [];
+    const colors: ([number, number, number] | undefined)[] = [];
+
+    for (let i = 0; i < channels.length; i++) {
+      const channel = channels[i];
+      names.push(channel.label ?? `Channel ${i + src.channelOffset}`);
+      colors.push(parseHexColor(channel.color));
+    }
+
+    return { names, colors };
+  }
+
   const cIdx = src.axesTCZYX[1];
   const length = cIdx < 0 ? 1 : src.scaleLevels[0].shape[cIdx];
-  return Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const names = Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const colors = Array.from({ length }, () => undefined);
+  return { names, colors };
 }
 
 /** Turns `axesTCZYX` into the number of dimensions in the array */
