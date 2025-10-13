@@ -19,21 +19,12 @@ export function parseHexColor(color: string | undefined): [number, number, numbe
     return undefined;
   }
 
-  const trimmedColor = color.charAt(0) == "#" ? color.slice(1) : color;
-
-  if (trimmedColor.length !== 6) {
+  const result = /^#?([a-fA-F\d]{2})([a-fA-F\d]{2})([a-fA-F\d]{2})$/i.exec(color);
+  if (result) {
+    return [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)];
+  } else {
     return undefined;
   }
-
-  const r = parseInt(trimmedColor.slice(0, 2), 16);
-  const g = parseInt(trimmedColor.slice(2, 4), 16);
-  const b = parseInt(trimmedColor.slice(4, 6), 16);
-
-  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
-    return undefined;
-  }
-
-  return [r, g, b];
 }
 
 /** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
