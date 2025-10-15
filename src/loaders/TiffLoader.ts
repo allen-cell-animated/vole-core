@@ -1,4 +1,4 @@
-import { fromUrl, GeoTIFFImage, type GeoTIFF } from "geotiff";
+import { fromUrl, type GeoTIFF, type GeoTIFFImage } from "geotiff";
 import { ErrorObject, deserializeError } from "serialize-error";
 
 import {
