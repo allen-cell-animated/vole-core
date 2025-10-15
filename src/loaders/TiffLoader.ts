@@ -1,4 +1,4 @@
-import { fromUrl, type GeoTIFF, type GeoTIFFImage } from "geotiff";
+import { fromUrl, GeoTIFFImage, type GeoTIFF } from "geotiff";
 import { ErrorObject, deserializeError } from "serialize-error";
 
 import {
@@ -159,6 +159,7 @@ class TiffLoader extends ThreadableVolumeLoader {
         this.dims = new OMEDims();
         this.dims.sizex = image.getWidth();
         this.dims.sizey = image.getHeight();
+        this.dims.sizez = await tiff.getImageCount();
         // TODO this is a big hack/assumption about only loading multi-source tiffs that are not OMETIFF.
         // We really have to check each url in the array for sizec to get the total number of channels
         // See combinedNumChannels in ImageInfo below.
