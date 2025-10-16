@@ -13,23 +13,20 @@ import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
 
-function prepareXML(xml: string): string {
+function trimNull(xml: string | undefined): string | undefined {
   // trim trailing unicode zeros?
-  // eslint-disable-next-line no-control-regex
-  const expr = /[\u0000]$/g;
-  return xml.trim().replace(expr, "").trim();
+  return xml && xml.trim().replace(/\0/g, "").trim();
 }
 
 function getOME(xml: string | undefined): Element | undefined {
-  if (xml === undefined) {
+  if (typeof xml !== "string") {
     return undefined;
   }
 
-  const prepared = prepareXML(xml);
   const parser = new DOMParser();
 
   try {
-    const xmlDoc = parser.parseFromString(prepared, "text/xml");
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
   } catch (e) {
     return undefined;
@@ -149,7 +146,10 @@ class TiffLoader extends ThreadableVolumeLoader {
         .getImage()
         .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
-      const omeEl = getOME(image.getFileDirectory().ImageDescription);
+      const image0DescriptionRaw: string = image.getFileDirectory().ImageDescription;
+      // Get rid of null terminator, if it's there (`JSON.parse` doesn't know what to do with it)
+      const image0Description = trimNull(image0DescriptionRaw);
+      const omeEl = getOME(image0Description);
 
       if (omeEl !== undefined) {
         const image0El = omeEl.getElementsByTagName("Image")[0];
@@ -157,13 +157,33 @@ class TiffLoader extends ThreadableVolumeLoader {
       } else {
         console.warn("Could not read OME-TIFF metadata from file. Doing our best with base TIFF metadata.");
         this.dims = new OMEDims();
-        this.dims.sizex = image.getWidth();
-        this.dims.sizey = image.getHeight();
+        let shape: number[] = [];
+        if (typeof image0Description === "string") {
+          try {
+            const description = JSON.parse(image0Description);
+            if (Array.isArray(description.shape)) {
+              shape = description.shape;
+            }
+            // eslint-disable-next-line no-empty
+          } catch (_e) {}
+        }
+
+        // if `ImageDescription` is valid JSON with a `shape` field, we expect it to be an array of [t?, c?, z?, y, x].
+        this.dims.sizex = shape[shape.length - 1] ?? image.getWidth();
+        this.dims.sizey = shape[shape.length - 2] ?? image.getHeight();
+        this.dims.sizez = shape[shape.length - 3] ?? (await tiff.getImageCount());
+
         // TODO this is a big hack/assumption about only loading multi-source tiffs that are not OMETIFF.
         // We really have to check each url in the array for sizec to get the total number of channels
         // See combinedNumChannels in ImageInfo below.
         // Also compare with how OMEZarrLoader does this.
-        this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
+        if (this.url.length > 1) {
+          // if multiple urls, assume one channel per url
+          this.dims.sizec = this.url.length;
+        } else {
+          this.dims.sizec = shape[shape.length - 4] ?? 1;
+        }
+
         this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
         this.dims.channelnames = Array.from({ length: this.dims.sizec }, (_, i) => "Channel" + i);
       }
