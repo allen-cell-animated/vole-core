@@ -13,23 +13,20 @@ import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
 
-function prepareXML(xml: string): string {
+function trimNull(xml: string | undefined): string | undefined {
   // trim trailing unicode zeros?
-  // eslint-disable-next-line no-control-regex
-  const expr = /[\u0000]$/g;
-  return xml.trim().replace(expr, "").trim();
+  return xml && xml.trim().replace(/\0/g, "").trim();
 }
 
 function getOME(xml: string | undefined): Element | undefined {
-  if (xml === undefined) {
+  if (typeof xml !== "string") {
     return undefined;
   }
 
-  const prepared = prepareXML(xml);
   const parser = new DOMParser();
 
   try {
-    const xmlDoc = parser.parseFromString(prepared, "text/xml");
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
   } catch (e) {
     return undefined;
@@ -151,7 +148,7 @@ class TiffLoader extends ThreadableVolumeLoader {
 
       const image0DescriptionRaw: string = image.getFileDirectory().ImageDescription;
       // Get rid of null terminator, if it's there (`JSON.parse` doesn't know what to do with it)
-      const image0Description = image0DescriptionRaw.trim().replace(/\0/g, "");
+      const image0Description = trimNull(image0DescriptionRaw);
       const omeEl = getOME(image0Description);
 
       if (omeEl !== undefined) {
@@ -161,13 +158,15 @@ class TiffLoader extends ThreadableVolumeLoader {
         console.warn("Could not read OME-TIFF metadata from file. Doing our best with base TIFF metadata.");
         this.dims = new OMEDims();
         let shape: number[] = [];
-        try {
-          const description = JSON.parse(image0Description);
-          if (Array.isArray(description.shape)) {
-            shape = description.shape;
-          }
-          // eslint-disable-next-line no-empty
-        } catch (_e) {}
+        if (typeof image0Description === "string") {
+          try {
+            const description = JSON.parse(image0Description);
+            if (Array.isArray(description.shape)) {
+              shape = description.shape;
+            }
+            // eslint-disable-next-line no-empty
+          } catch (_e) {}
+        }
 
         this.dims.sizex = shape[shape.length - 1] ?? image.getWidth();
         this.dims.sizey = shape[shape.length - 2] ?? image.getHeight();
