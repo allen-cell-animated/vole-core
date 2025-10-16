@@ -1,4 +1,5 @@
 import { type TypedArray, type NumberType, isFloatTypeArray } from "./types.js";
+import { getDataRange } from "./utils/num_utils.js";
 
 const NBINS = 256;
 
@@ -31,7 +32,11 @@ export default class Histogram {
 
   public maxBin: number;
 
-  constructor(data: TypedArray<NumberType>) {
+  constructor(
+    data: TypedArray<NumberType>,
+    dataMin: number | undefined = undefined,
+    dataMax: number | undefined = undefined
+  ) {
     this.dataMinBin = 0;
     this.dataMaxBin = 0;
     this.maxBin = 0;
@@ -41,7 +46,7 @@ export default class Histogram {
     this.binSize = 0;
 
     // build up the histogram
-    const hinfo = Histogram.calculateHistogram(data, NBINS);
+    const hinfo = Histogram.calculateHistogram(data, NBINS, dataMin, dataMax);
     this.bins = hinfo.bins;
     this.min = hinfo.min;
     this.max = hinfo.max;
@@ -258,24 +263,24 @@ export default class Histogram {
     return [b, e];
   }
 
-  private static calculateHistogram(arr: TypedArray<NumberType>, numBins = 1): HistogramData {
+  private static calculateHistogram(
+    arr: TypedArray<NumberType>,
+    numBins = 1,
+    dataMin: number | undefined = undefined,
+    dataMax: number | undefined = undefined
+  ): HistogramData {
     if (numBins < 1) {
       numBins = 1;
     }
 
-    // calculate min and max of arr
-    // TODO See convertChannel, which will also compute min and max!
-    // We could save a whole extra loop over the data, or have convertChannel compute the whole histogram.
-    // need to be careful about computing over chunks or whole ready-to-display volume
+    // ASSUMPTION: we will trust the min and max if provided.
+    let min: number = dataMin !== undefined ? dataMin : arr[0];
+    let max: number = dataMax !== undefined ? dataMax : arr[0];
 
-    let min = arr[0];
-    let max = arr[0];
-    for (let i = 1; i < arr.length; i++) {
-      if (arr[i] < min) {
-        min = arr[i];
-      } else if (arr[i] > max) {
-        max = arr[i];
-      }
+    // Find min and max in the array if the user did not provide them.
+    // Note that this is a completely separate walk through the data array which could be expensive.
+    if (dataMin === undefined || dataMax === undefined) {
+      [min, max] = getDataRange(arr);
     }
 
     const bins = new Uint32Array(numBins).fill(0);
