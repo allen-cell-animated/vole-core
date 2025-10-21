@@ -35,6 +35,7 @@ import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
 import Line3d from "./Line3d.js";
 import ContourPass from "./ContourPass.js";
+import VectorArrows from "./VectorArrows.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -70,6 +71,7 @@ export default class VolumeDrawable {
   private childObjectsGroup: Group;
   /** Set of drawable objects that are children of the volume's transform. */
   private childObjects: Set<IDrawableObject>;
+  private vectorArrows: VectorArrows;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -139,6 +141,15 @@ export default class VolumeDrawable {
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
+
+    this.vectorArrows = new VectorArrows();
+    // this.addVectorArrows(this.vectorArrows);
+    this.childObjects.add(this.vectorArrows);
+    this.vectorArrows.setArrowData(
+      new Float32Array([-0.25, 0.5, 0.5, 0, 0, 0]),
+      new Float32Array([0.5, -0.5, -0.5, 0.5, 0.5, 0.5])
+    );
+    this.sceneRoot.add(this.vectorArrows.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);
 
@@ -283,6 +294,7 @@ export default class VolumeDrawable {
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.childObjectsGroup.scale.copy(scale);
     this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
+    this.vectorArrows.setScale(scale);
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -903,6 +915,17 @@ export default class VolumeDrawable {
   /** Returns whether a line object exists as a child of the volume. */
   hasLineObject(line: Line3d): boolean {
     return this.childObjects.has(line);
+  }
+
+  addVectorArrows(vectorArrows: VectorArrows): void {
+    if (!this.childObjects.has(vectorArrows)) {
+      // this.childObjects.add(vectorArrows);
+      // this.childObjectsGroup.add(vectorArrows.get3dObject());
+      this.sceneRoot.add(vectorArrows.get3dObject());
+      vectorArrows.setResolution(this.settings.resolution.x, this.settings.resolution.y);
+      vectorArrows.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
+      console.log("added vector arrows to volume");
+    }
   }
 
   /**
