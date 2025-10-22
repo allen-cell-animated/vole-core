@@ -8,17 +8,24 @@ import {
   Color,
   DynamicDrawUsage,
   Matrix4,
+  BufferGeometry,
 } from "three";
 import { IDrawableObject } from "./types";
 import BaseDrawableObject from "./BaseDrawableObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
 const DEFAULT_CYLINDER_RADIUS = 0.001;
-const DEFAULT_CONE_RADIUS = DEFAULT_CYLINDER_RADIUS * 5;
+const CONE_RADIUS_MULT = 5;
+const CONE_HEIGHT_MULT = 20;
+
+const DEFAULT_INSTANCE_COUNT = 256;
 
 export default class VectorArrows extends BaseDrawableObject implements IDrawableObject {
   private coneInstancedMesh: InstancedMesh;
   private cylinderInstancedMesh: InstancedMesh;
+
+  private positions: Float32Array | null = null;
+  private deltas: Float32Array | null = null;
 
   // Temporary calculation objects. Optimization taken from three.js examples.
   private scaleCalculation: Vector3;
@@ -26,45 +33,82 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
 
   constructor() {
     super();
+    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
-    // TODO: Dynamic size?
-    const cylinderGeometry = new CylinderGeometry(DEFAULT_CYLINDER_RADIUS, DEFAULT_CYLINDER_RADIUS, 1, 8, 1, true);
-    const coneGeometry = new ConeGeometry(DEFAULT_CONE_RADIUS, DEFAULT_CONE_RADIUS * 4, 8);
+    // Passing these out isn't necessary but satisfies the compiler.
+    const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(DEFAULT_INSTANCE_COUNT);
+    this.coneInstancedMesh = coneInstancedMesh;
+    this.cylinderInstancedMesh = cylinderInstancedMesh;
+
+    this.scaleCalculation = new Vector3();
+    this.matrixCalculation = new Object3D();
+  }
+
+  /**
+   * Create new instanced meshes with the specified instance count.
+   * (If calling outside of the constructor, be sure to call `cleanup` first.)
+   */
+  private initInstancedMeshes(instanceCount: number): {
+    coneInstancedMesh: InstancedMesh;
+    cylinderInstancedMesh: InstancedMesh;
+  } {
+    this.cleanup();
     const basicMaterial = new MeshBasicMaterial({ color: "#f00" });
-    const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
-    // .multiply(new Matrix4().makeScale(7, 7, 7));
+    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows.generateGeometry(DEFAULT_CYLINDER_RADIUS);
 
+    const coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, instanceCount);
+    const cylinderInstancedMesh = new InstancedMesh(cylinderGeometry, basicMaterial, instanceCount);
+    coneInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+    cylinderInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+    coneInstancedMesh.frustumCulled = false;
+    cylinderInstancedMesh.frustumCulled = false;
+    coneInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    cylinderInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
+
+    this.meshPivot.add(coneInstancedMesh);
+    this.meshPivot.add(cylinderInstancedMesh);
+    this.meshes = [coneInstancedMesh, cylinderInstancedMesh];
+
+    return { coneInstancedMesh, cylinderInstancedMesh };
+  }
+
+  private static generateGeometry(lineWidth: number): { cone: BufferGeometry; cylinder: BufferGeometry } {
+    const cylinderGeometry = new CylinderGeometry(lineWidth, lineWidth, 1, 8, 1, true);
+    const coneRadius = CONE_RADIUS_MULT * lineWidth;
+    const coneHeight = CONE_HEIGHT_MULT * lineWidth;
+    const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 8);
+
+    // Rotate both to point along +Z axis
+    const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
     coneGeometry.applyMatrix4(defaultTransform);
     // Change cylinder pivot to be at the base.
     cylinderGeometry.applyMatrix4(defaultTransform.multiply(new Matrix4().makeTranslation(0, 0.5, 0)));
 
-    // https://github.com/mrdoob/three.js/blob/master/examples/webgl_instancing_scatter.html#L78-L99
-    // TODO: Change cylinder to have base at origin
-    // TODO: This currently limits us to 256 arrows. Make dynamic.
-    this.coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, 256);
-    this.cylinderInstancedMesh = new InstancedMesh(cylinderGeometry, basicMaterial, 256);
+    return { cone: coneGeometry, cylinder: cylinderGeometry };
+  }
 
-    this.scaleCalculation = new Vector3();
-    this.matrixCalculation = new Object3D();
+  private increaseInstanceCountMax(instanceCount: number): void {
+    let newInstanceCount = this.coneInstancedMesh.count ?? DEFAULT_INSTANCE_COUNT;
+    while (newInstanceCount < instanceCount) {
+      newInstanceCount *= 2;
+    }
+    // Delete existing meshes
+    this.cleanup();
+    const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(newInstanceCount);
+    this.coneInstancedMesh = coneInstancedMesh;
+    this.cylinderInstancedMesh = cylinderInstancedMesh;
 
-    this.coneInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    this.cylinderInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    this.coneInstancedMesh.frustumCulled = false;
-    this.cylinderInstancedMesh.frustumCulled = false;
-    this.coneInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
-    this.cylinderInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
-
-    this.meshPivot.add(this.coneInstancedMesh);
-    this.meshPivot.add(this.cylinderInstancedMesh);
-    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-
-    this.meshes = [this.coneInstancedMesh, this.cylinderInstancedMesh];
+    console.log("Increased VectorArrows instance count to", newInstanceCount);
   }
 
   setScale(scale: Vector3): void {
-    this.scale.copy(scale);
-    console.log("VectorArrows scale set to", this.scale);
-    // Do not set scale on meshPivot. Scaling will be handled per-arrow.
+    if (scale !== this.scale) {
+      this.scale.copy(scale);
+      if (this.positions && this.deltas) {
+        // Update arrows
+        this.setArrowData(this.positions, this.deltas);
+      }
+    }
   }
 
   updateArrow(index: number, src: Vector3, delta: Vector3): void {
@@ -73,9 +117,7 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     const length = delta.length();
     const dst = src.clone().add(delta);
     this.scaleCalculation.set(1, 1, length);
-    console.log("VectorArrows updateArrow index", index, "position", src, "delta", delta, "length", length);
 
-    // Position the cylinder halfway along the delta
     const cylinderPosition = src;
     this.matrixCalculation.scale.copy(this.scaleCalculation);
     this.matrixCalculation.position.copy(cylinderPosition);
@@ -100,12 +142,13 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     if (positions.length % 3 !== 0) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays length must be a multiple of 3");
     }
+    this.positions = positions;
+    this.deltas = deltas;
 
     const count = positions.length / 3;
     // Add more instances as needed
-    if (this.coneInstancedMesh.count !== count) {
-      this.coneInstancedMesh.count = count;
-      this.cylinderInstancedMesh.count = count;
+    if (this.coneInstancedMesh.count < count) {
+      this.increaseInstanceCountMax(count);
     }
 
     const tempSrc = new Vector3();

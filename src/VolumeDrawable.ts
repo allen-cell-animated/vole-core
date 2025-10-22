@@ -143,12 +143,22 @@ export default class VolumeDrawable {
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
     this.vectorArrows = new VectorArrows();
-    // this.addVectorArrows(this.vectorArrows);
     this.childObjects.add(this.vectorArrows);
-    this.vectorArrows.setArrowData(
-      new Float32Array([-0.25, 0.5, 0.5, 0.25, 0.25, 0.5, 0, 0, 0, 0, 0, 0, 0.5, 0, 0]),
-      new Float32Array([0.5, -0.5, -0.5, 0, 0.5, 0.25, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0, 0.25, 0])
-    );
+    const xOffsets = [-0.5, -0.25, 0, 0.25, 0.5];
+    const yOffsets = [-0.5, -0.25, 0, 0.25, 0.5];
+    const positions = new Float32Array(xOffsets.length * yOffsets.length * 3);
+    const deltas = new Float32Array(xOffsets.length * yOffsets.length * 3);
+    for (let i = 0; i < xOffsets.length; i++) {
+      for (let j = 0; j < yOffsets.length; j++) {
+        positions[(i * yOffsets.length + j) * 3 + 0] = xOffsets[i];
+        positions[(i * yOffsets.length + j) * 3 + 1] = yOffsets[j];
+        positions[(i * yOffsets.length + j) * 3 + 2] = 0;
+        deltas[(i * yOffsets.length + j) * 3 + 0] = 0;
+        deltas[(i * yOffsets.length + j) * 3 + 1] = 0;
+        deltas[(i * yOffsets.length + j) * 3 + 2] = 0.5;
+      }
+    }
+    this.vectorArrows.setArrowData(positions, deltas);
     this.sceneRoot.add(this.vectorArrows.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);

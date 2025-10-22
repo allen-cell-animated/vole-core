@@ -31,6 +31,7 @@ export default class BaseDrawableObject implements IDrawableObject {
   }
 
   cleanup(): void {
+    this.meshPivot.clear();
     this.forEachMesh((mesh) => {
       mesh.geometry.dispose();
       (mesh.material as Material).dispose();
