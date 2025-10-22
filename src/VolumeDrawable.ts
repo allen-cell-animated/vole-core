@@ -144,18 +144,27 @@ export default class VolumeDrawable {
 
     this.vectorArrows = new VectorArrows();
     this.childObjects.add(this.vectorArrows);
-    const xOffsets = [-0.5, -0.25, 0, 0.25, 0.5];
-    const yOffsets = [-0.5, -0.25, 0, 0.25, 0.5];
-    const positions = new Float32Array(xOffsets.length * yOffsets.length * 3);
-    const deltas = new Float32Array(xOffsets.length * yOffsets.length * 3);
-    for (let i = 0; i < xOffsets.length; i++) {
-      for (let j = 0; j < yOffsets.length; j++) {
-        positions[(i * yOffsets.length + j) * 3 + 0] = xOffsets[i];
-        positions[(i * yOffsets.length + j) * 3 + 1] = yOffsets[j];
-        positions[(i * yOffsets.length + j) * 3 + 2] = 0;
-        deltas[(i * yOffsets.length + j) * 3 + 0] = 0;
-        deltas[(i * yOffsets.length + j) * 3 + 1] = 0;
-        deltas[(i * yOffsets.length + j) * 3 + 2] = 0.5;
+    const x = [-0.5, -0.25, 0, 0.25, 0.5];
+    const y = [-0.5, -0.25, 0, 0.25, 0.5];
+    const z = [-0.5, -0.25, 0, 0.25, 0.5];
+    const d = [new Vector3(0, 0, 0.15), new Vector3(0.15, 0, 0), new Vector3(0, 0.15, 0)];
+    const positions = new Float32Array(x.length * y.length * z.length * d.length * 3);
+    const deltas = new Float32Array(x.length * y.length * z.length * d.length * 3);
+
+    for (let i = 0; i < x.length; i++) {
+      for (let j = 0; j < y.length; j++) {
+        for (let k = 0; k < z.length; k++) {
+          for (let l = 0; l < d.length; l++) {
+            const delta = d[l];
+            const idx = (((i * y.length + j) * z.length + k) * d.length + l) * 3;
+            positions[idx + 0] = x[i];
+            positions[idx + 1] = y[j];
+            positions[idx + 2] = z[k];
+            deltas[idx + 0] = delta.x;
+            deltas[idx + 1] = delta.y;
+            deltas[idx + 2] = delta.z;
+          }
+        }
       }
     }
     const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);

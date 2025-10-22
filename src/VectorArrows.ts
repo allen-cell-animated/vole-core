@@ -56,7 +56,6 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     coneInstancedMesh: InstancedMesh;
     cylinderInstancedMesh: InstancedMesh;
   } {
-    console.log("Initializing VectorArrows with instance count", instanceCount);
     this.cleanup();
     this.meshPivot.clear();
     const basicMaterial = new MeshBasicMaterial({ color: "#fff" });
@@ -86,6 +85,17 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
 
     // Rotate both to point along +Z axis
     const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
+    // TODO: Cone is currently centered in the middle of its height, which means
+    // the length may be slightly inaccurate/inconsistent with behavior in 2D
+    // mode. Fix by changing the pivot point and adjusting the length of the
+    // cylinder accordingly.
+    //
+    //     3D:            2D:
+    //     /\
+    //    /  \  <= dst =>  ^
+    //   /____\           /|\
+    //     ||              |
+    //
     coneGeometry.applyMatrix4(defaultTransform);
     // Change cylinder pivot to be at the base.
     cylinderGeometry.applyMatrix4(defaultTransform.multiply(new Matrix4().makeTranslation(0, 0.5, 0)));
@@ -94,6 +104,8 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
   }
 
   private increaseInstanceCountMax(instanceCount: number): void {
+    // Max instance count is set when instanced meshes are created. If we need
+    // to increase the max, we need to recreate the instanced meshes.
     let newInstanceCount = this.maxInstanceCount;
     while (newInstanceCount < instanceCount) {
       newInstanceCount *= 2;
@@ -178,17 +190,12 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
       tempSrc.multiply(this.scale).multiply(this.flipAxes);
       tempDelta.multiply(this.scale).multiply(this.flipAxes);
 
-      if (i === count - 1) {
-        console.log("VectorArrows arrow", i, "src", tempSrc, "delta", tempDelta);
-      }
-
       this.updateArrow(i, tempSrc, tempDelta);
 
       if (colors) {
         // Wrap colors if there are fewer colors than arrows
         const colorIndex = i % Math.round(colors.length / 3);
         const color = new Color().fromArray(colors, colorIndex * 3);
-        console.log("VectorArrows arrow", i, "color", color);
         this.coneInstancedMesh.setColorAt(i, color);
         this.cylinderInstancedMesh.setColorAt(i, color);
       }
