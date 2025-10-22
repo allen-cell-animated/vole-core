@@ -146,8 +146,8 @@ export default class VolumeDrawable {
     // this.addVectorArrows(this.vectorArrows);
     this.childObjects.add(this.vectorArrows);
     this.vectorArrows.setArrowData(
-      new Float32Array([-0.25, 0.5, 0.5, 0, 0, 0]),
-      new Float32Array([0.5, -0.5, -0.5, 0.5, 0.5, 0.5])
+      new Float32Array([-0.25, 0.5, 0.5, 0.25, 0.25, 0.5, 0, 0, 0, 0, 0, 0, 0.5, 0, 0]),
+      new Float32Array([0.5, -0.5, -0.5, 0, 0.5, 0.25, 0.5, 0.5, 0.5, -0.5, 0.5, -0.5, 0, 0.25, 0])
     );
     this.sceneRoot.add(this.vectorArrows.get3dObject());
 

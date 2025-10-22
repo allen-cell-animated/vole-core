@@ -35,7 +35,8 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     // .multiply(new Matrix4().makeScale(7, 7, 7));
 
     coneGeometry.applyMatrix4(defaultTransform);
-    cylinderGeometry.applyMatrix4(defaultTransform);
+    // Change cylinder pivot to be at the base.
+    cylinderGeometry.applyMatrix4(defaultTransform.multiply(new Matrix4().makeTranslation(0, 0.5, 0)));
 
     // https://github.com/mrdoob/three.js/blob/master/examples/webgl_instancing_scatter.html#L78-L99
     // TODO: Change cylinder to have base at origin
@@ -66,27 +67,28 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     // Do not set scale on meshPivot. Scaling will be handled per-arrow.
   }
 
-  updateArrow(index: number, position: Vector3, delta: Vector3): void {
+  updateArrow(index: number, src: Vector3, delta: Vector3): void {
     // Update the arrow cylinder
     // TODO: optimize to avoid creating new objects
     const length = delta.length();
-    const normal = delta.clone().normalize();
+    const dst = src.clone().add(delta);
     this.scaleCalculation.set(1, 1, length);
+    console.log("VectorArrows updateArrow index", index, "position", src, "delta", delta, "length", length);
 
     // Position the cylinder halfway along the delta
-    const cylinderPosition = position.clone().addScaledVector(normal, length * 0.5);
+    const cylinderPosition = src;
     this.matrixCalculation.scale.copy(this.scaleCalculation);
     this.matrixCalculation.position.copy(cylinderPosition);
-    this.matrixCalculation.lookAt(normal);
+    this.matrixCalculation.lookAt(dst);
     this.matrixCalculation.updateMatrix();
     this.cylinderInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
 
-    const conePosition = position.clone().add(delta);
-    this.scaleCalculation.set(1, 1, 1);
+    const conePosition = src.clone().add(delta);
     // TODO: shrink cone if length is very small
+    this.scaleCalculation.set(1, 1, 1);
     this.matrixCalculation.scale.copy(this.scaleCalculation);
     this.matrixCalculation.position.copy(conePosition);
-    this.matrixCalculation.lookAt(normal);
+    this.matrixCalculation.lookAt(dst.add(delta));
     this.matrixCalculation.updateMatrix();
     this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
   }
@@ -106,17 +108,21 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
       this.cylinderInstancedMesh.count = count;
     }
 
-    const tempPosition = new Vector3();
+    const tempSrc = new Vector3();
     const tempDelta = new Vector3();
     for (let i = 0; i < count; i++) {
       // Points and deltas scaled to world space
-      tempPosition.fromArray(positions, i * 3);
+      tempSrc.fromArray(positions, i * 3);
       tempDelta.fromArray(deltas, i * 3);
 
-      tempPosition.multiply(this.scale).multiply(this.flipAxes);
+      tempSrc.multiply(this.scale).multiply(this.flipAxes);
       tempDelta.multiply(this.scale).multiply(this.flipAxes);
 
-      this.updateArrow(i, tempPosition, tempDelta);
+      if (i === count - 1) {
+        console.log("VectorArrows arrow", i, "src", tempSrc, "delta", tempDelta);
+      }
+
+      this.updateArrow(i, tempSrc, tempDelta);
 
       this.cylinderInstancedMesh.setColorAt(i, new Color(0xff0000));
       this.coneInstancedMesh.setColorAt(i, new Color(0xff0000));
