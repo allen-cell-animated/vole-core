@@ -1,9 +1,10 @@
 import { Euler, Group, Material, Mesh, Vector3 } from "three";
-import { IDrawableObject } from "./types";
+import { IDrawableObject, ScaleInfo } from "./types";
 
 export default class BaseDrawableObject implements IDrawableObject {
   protected meshPivot: Group;
   protected scale: Vector3;
+  protected parentScale: Vector3;
   protected flipAxes: Vector3;
 
   /**
@@ -15,6 +16,7 @@ export default class BaseDrawableObject implements IDrawableObject {
   constructor() {
     this.meshPivot = new Group();
     this.scale = new Vector3(1, 1, 1);
+    this.parentScale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
 
     this.meshes = null;
@@ -57,6 +59,10 @@ export default class BaseDrawableObject implements IDrawableObject {
   setScale(scale: Vector3): void {
     this.scale.copy(scale);
     this.meshPivot.scale.copy(scale).multiply(this.flipAxes);
+  }
+
+  setScaleInfo(scaleInfo: ScaleInfo): void {
+    this.parentScale.copy(scaleInfo.parentScale);
   }
 
   setRotation(eulerXYZ: Euler): void {

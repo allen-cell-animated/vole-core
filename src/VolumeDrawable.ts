@@ -71,7 +71,6 @@ export default class VolumeDrawable {
   private childObjectsGroup: Group;
   /** Set of drawable objects that are children of the volume's transform. */
   private childObjects: Set<IDrawableObject>;
-  private vectorArrows: VectorArrows;
 
   private volumeRendering: VolumeRenderImpl;
   private pickRendering?: PickVolume;
@@ -142,12 +141,11 @@ export default class VolumeDrawable {
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
-    this.vectorArrows = new VectorArrows();
-    this.childObjects.add(this.vectorArrows);
+    const vectorArrows = new VectorArrows();
     const x = [-0.5, -0.25, 0, 0.25, 0.5];
     const y = [-0.5, -0.25, 0, 0.25, 0.5];
     const z = [-0.5, -0.25, 0, 0.25, 0.5];
-    const d = [new Vector3(0, 0, 0.15), new Vector3(0.15, 0, 0), new Vector3(0, 0.15, 0)];
+    const d = [new Vector3(0, 0, 0.1), new Vector3(0.1, 0, 0), new Vector3(0, 0.1, 0)];
     const positions = new Float32Array(x.length * y.length * z.length * d.length * 3);
     const deltas = new Float32Array(x.length * y.length * z.length * d.length * 3);
 
@@ -167,9 +165,9 @@ export default class VolumeDrawable {
         }
       }
     }
-    const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
-    this.vectorArrows.setArrowData(positions, deltas, colors);
-    this.sceneRoot.add(this.vectorArrows.get3dObject());
+    const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0.25, 1]);
+    vectorArrows.setArrowData(positions, deltas, colors);
+    this.addVectorArrows(vectorArrows);
 
     this.sceneRoot.position.set(0, 0, 0);
 
@@ -314,7 +312,9 @@ export default class VolumeDrawable {
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.childObjectsGroup.scale.copy(scale);
     this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
-    this.vectorArrows.setScale(scale);
+
+    this.childObjects.forEach((obj) => obj.setScaleInfo?.({ parentScale: scale }));
+
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -938,14 +938,9 @@ export default class VolumeDrawable {
   }
 
   addVectorArrows(vectorArrows: VectorArrows): void {
-    if (!this.childObjects.has(vectorArrows)) {
-      // this.childObjects.add(vectorArrows);
-      // this.childObjectsGroup.add(vectorArrows.get3dObject());
-      this.sceneRoot.add(vectorArrows.get3dObject());
-      vectorArrows.setResolution(this.settings.resolution.x, this.settings.resolution.y);
-      vectorArrows.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
-      console.log("added vector arrows to volume");
-    }
+    this.childObjectsGroup.add(vectorArrows.get3dObject());
+    this.childObjects.add(vectorArrows);
+    this.updateScale();
   }
 
   /**

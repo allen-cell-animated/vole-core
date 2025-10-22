@@ -10,7 +10,7 @@ import {
   Matrix4,
   BufferGeometry,
 } from "three";
-import { IDrawableObject } from "./types";
+import { IDrawableObject, ScaleInfo } from "./types";
 import BaseDrawableObject from "./BaseDrawableObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
@@ -128,6 +128,18 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     }
   }
 
+  setScaleInfo(scaleInfo: ScaleInfo): void {
+    if (scaleInfo.parentScale !== this.parentScale) {
+      this.parentScale.copy(scaleInfo.parentScale);
+      const invertScale = new Vector3(1, 1, 1).divide(this.parentScale);
+      this.meshPivot.scale.copy(invertScale);
+      if (this.positions && this.deltas) {
+        // Update arrows
+        this.setArrowData(this.positions, this.deltas);
+      }
+    }
+  }
+
   updateArrow(index: number, src: Vector3, delta: Vector3): void {
     // Update the arrow cylinder
     // TODO: optimize to avoid creating new objects
@@ -180,6 +192,8 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     this.coneInstancedMesh.count = count;
     this.cylinderInstancedMesh.count = count;
 
+    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.parentScale);
+
     const tempSrc = new Vector3();
     const tempDelta = new Vector3();
     for (let i = 0; i < count; i++) {
@@ -187,8 +201,8 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
       tempDelta.fromArray(deltas, i * 3);
 
       // Points and deltas scaled to volume space.
-      tempSrc.multiply(this.scale).multiply(this.flipAxes);
-      tempDelta.multiply(this.scale).multiply(this.flipAxes);
+      tempSrc.multiply(combinedScale);
+      tempDelta.multiply(combinedScale);
 
       this.updateArrow(i, tempSrc, tempDelta);
 
