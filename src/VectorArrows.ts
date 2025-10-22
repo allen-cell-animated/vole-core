@@ -21,6 +21,7 @@ const CONE_HEIGHT_MULT = 20;
 const DEFAULT_INSTANCE_COUNT = 256;
 
 export default class VectorArrows extends BaseDrawableObject implements IDrawableObject {
+  private maxInstanceCount: number;
   private coneInstancedMesh: InstancedMesh;
   private cylinderInstancedMesh: InstancedMesh;
 
@@ -36,9 +37,12 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
     // Passing these out isn't necessary but satisfies the compiler.
+    this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
     const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(DEFAULT_INSTANCE_COUNT);
     this.coneInstancedMesh = coneInstancedMesh;
     this.cylinderInstancedMesh = cylinderInstancedMesh;
+    this.coneInstancedMesh.count = 0;
+    this.cylinderInstancedMesh.count = 0;
 
     this.scaleCalculation = new Vector3();
     this.matrixCalculation = new Object3D();
@@ -52,8 +56,10 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     coneInstancedMesh: InstancedMesh;
     cylinderInstancedMesh: InstancedMesh;
   } {
+    console.log("Initializing VectorArrows with instance count", instanceCount);
     this.cleanup();
-    const basicMaterial = new MeshBasicMaterial({ color: "#f00" });
+    this.meshPivot.clear();
+    const basicMaterial = new MeshBasicMaterial({ color: "#fff" });
     const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows.generateGeometry(DEFAULT_CYLINDER_RADIUS);
 
     const coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, instanceCount);
@@ -88,7 +94,7 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
   }
 
   private increaseInstanceCountMax(instanceCount: number): void {
-    let newInstanceCount = this.coneInstancedMesh.count ?? DEFAULT_INSTANCE_COUNT;
+    let newInstanceCount = this.maxInstanceCount;
     while (newInstanceCount < instanceCount) {
       newInstanceCount *= 2;
     }
@@ -97,8 +103,7 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(newInstanceCount);
     this.coneInstancedMesh = coneInstancedMesh;
     this.cylinderInstancedMesh = cylinderInstancedMesh;
-
-    console.log("Increased VectorArrows instance count to", newInstanceCount);
+    this.maxInstanceCount = newInstanceCount;
   }
 
   setScale(scale: Vector3): void {
@@ -135,6 +140,13 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
   }
 
+  /**
+   *
+   *
+   * @param positions
+   * @param deltas
+   * @param colors
+   */
   setArrowData(positions: Float32Array, deltas: Float32Array, colors?: Float32Array): void {
     if (positions.length !== deltas.length) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
@@ -142,22 +154,27 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     if (positions.length % 3 !== 0) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays length must be a multiple of 3");
     }
+    if (colors && colors.length % 3 !== 0) {
+      throw new Error("VectorArrows.setArrowData: colors array length must be a multiple of 3");
+    }
     this.positions = positions;
     this.deltas = deltas;
 
+    // Update instance count and add more instances as needed
     const count = positions.length / 3;
-    // Add more instances as needed
-    if (this.coneInstancedMesh.count < count) {
+    if (this.maxInstanceCount < count) {
       this.increaseInstanceCountMax(count);
     }
+    this.coneInstancedMesh.count = count;
+    this.cylinderInstancedMesh.count = count;
 
     const tempSrc = new Vector3();
     const tempDelta = new Vector3();
     for (let i = 0; i < count; i++) {
-      // Points and deltas scaled to world space
       tempSrc.fromArray(positions, i * 3);
       tempDelta.fromArray(deltas, i * 3);
 
+      // Points and deltas scaled to volume space.
       tempSrc.multiply(this.scale).multiply(this.flipAxes);
       tempDelta.multiply(this.scale).multiply(this.flipAxes);
 
@@ -167,12 +184,18 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
 
       this.updateArrow(i, tempSrc, tempDelta);
 
-      this.cylinderInstancedMesh.setColorAt(i, new Color(0xff0000));
-      this.coneInstancedMesh.setColorAt(i, new Color(0xff0000));
+      if (colors) {
+        // Wrap colors if there are fewer colors than arrows
+        const colorIndex = i % Math.round(colors.length / 3);
+        const color = new Color().fromArray(colors, colorIndex * 3);
+        console.log("VectorArrows arrow", i, "color", color);
+        this.coneInstancedMesh.setColorAt(i, color);
+        this.cylinderInstancedMesh.setColorAt(i, color);
+      }
     }
-
     this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
     this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
+
     if (colors) {
       this.coneInstancedMesh.instanceColor!.needsUpdate = true;
       this.cylinderInstancedMesh.instanceColor!.needsUpdate = true;

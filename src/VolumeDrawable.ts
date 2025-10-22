@@ -158,7 +158,8 @@ export default class VolumeDrawable {
         deltas[(i * yOffsets.length + j) * 3 + 2] = 0.5;
       }
     }
-    this.vectorArrows.setArrowData(positions, deltas);
+    const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1]);
+    this.vectorArrows.setArrowData(positions, deltas, colors);
     this.sceneRoot.add(this.vectorArrows.get3dObject());
 
     this.sceneRoot.position.set(0, 0, 0);
