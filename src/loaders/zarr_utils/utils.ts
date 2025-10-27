@@ -82,24 +82,12 @@ export function remapAxesToTCZYX(axes: OMEAxis[]): TCZYX<number> {
   return axesTCZYX;
 }
 
-/** Remove the unused dimensions without changing the order */
-export function trimToDims<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<number>): T[] {
-  const specLen = getDimensionCount(orderTCZYX);
-  const result: T[] = Array(specLen);
-  let curIdx = 0;
-  orderTCZYX.forEach((val, idx) => {
-    if (val >= 0) {
-      result[curIdx++] = valsTCZYX[idx];
-    }
-  });
-  return result;
-}
-
 /** Reorder an array of values [T, C, Z, Y, X] to the given dimension order */
 export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<number>): T[] {
   const specLen = getDimensionCount(orderTCZYX);
   const result: T[] = Array(specLen);
 
+  let curIdx = 0;
   orderTCZYX.forEach((val, idx) => {
     if (val >= 0) {
       if (val >= specLen) {
@@ -107,7 +95,7 @@ export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<numbe
           type: VolumeLoadErrorType.INVALID_METADATA,
         });
       }
-      result[val] = valsTCZYX[idx];
+      result[curIdx++] = valsTCZYX[idx];
     }
   });
 
