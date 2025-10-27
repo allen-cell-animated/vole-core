@@ -228,13 +228,13 @@ describe("zarr_utils", () => {
   describe("orderByDimension", () => {
     it("orders an array in dimension order based on the given indices", () => {
       const order: TCZYX<number> = [3, 1, 4, 0, 2];
-      expect(orderByDimension(VALS_TCZYX, order)).to.deep.equal([4, 2, 5, 1, 3]);
+      expect(orderByDimension(VALS_TCZYX, order)).to.deep.equal([1, 2, 3, 4, 5]);
     });
 
     it("excludes the T, C, or Z dimension if its index is negative", () => {
-      expect(orderByDimension(VALS_TCZYX, [-1, 0, 1, 3, 2])).to.deep.equal([2, 3, 5, 4]);
-      expect(orderByDimension(VALS_TCZYX, [0, -1, 1, 3, 2])).to.deep.equal([1, 3, 5, 4]);
-      expect(orderByDimension(VALS_TCZYX, [0, 1, -1, 3, 2])).to.deep.equal([1, 2, 5, 4]);
+      expect(orderByDimension(VALS_TCZYX, [-1, 0, 1, 3, 2])).to.deep.equal([2, 3, 4, 5]);
+      expect(orderByDimension(VALS_TCZYX, [0, -1, 1, 3, 2])).to.deep.equal([1, 3, 4, 5]);
+      expect(orderByDimension(VALS_TCZYX, [0, 1, -1, 3, 2])).to.deep.equal([1, 2, 4, 5]);
     });
 
     it("throws an error if an axis index is out of bounds", () => {
