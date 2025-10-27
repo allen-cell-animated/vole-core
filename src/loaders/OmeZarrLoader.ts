@@ -28,6 +28,7 @@ import {
   orderByDimension,
   orderByTCZYX,
   remapAxesToTCZYX,
+  trimToDims,
 } from "./zarr_utils/utils.js";
 import type { PrefetchDirection, SubscriberId, TCZYX, ZarrSource, NumericZarrArray } from "./zarr_utils/types.js";
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
@@ -250,6 +251,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
   private orderByTCZYX<T>(valsDimension: T[], defaultValue: T, sourceIdx = 0): TCZYX<T> {
     return orderByTCZYX(valsDimension, this.sources[sourceIdx].axesTCZYX, defaultValue);
+  }
+
+  private trimToDims<T>(valsTCZYX: TCZYX<T>, sourceIdx = 0): T[] {
+    return trimToDims(valsTCZYX, this.sources[sourceIdx].axesTCZYX);
   }
 
   /**
@@ -565,7 +570,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const unorderedSpec = [loadSpec.time, sourceCh, slice(min.z, max.z), slice(min.y, max.y), slice(min.x, max.x)];
 
       const level = this.sources[sourceIdx].scaleLevels[multiscaleLevel];
-      const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
+      const sliceSpec = this.trimToDims(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
       console.log(level);
