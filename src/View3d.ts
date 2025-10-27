@@ -24,11 +24,13 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
+  IDrawableObject,
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./Line3d.js";
+import BaseDrawableObject from "./BaseDrawableObject.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;
@@ -971,35 +973,65 @@ export class View3d {
     }
   }
 
+  addObject(object: IDrawableObject): void {
+    if (this.image) {
+      this.image.addDrawableObject(object);
+      this.redraw();
+    }
+  }
+
   /**
    * Adds a Line3d object as a child of the Volume, if a volume has been added
    * to the view and the line is not already a child of it. Line positions will
    * be in the normalized coordinate space of the Volume, where the origin
    * (0,0,0) is at the center of the Volume and the extent is from -0.5 to 0.5
    * in each axis.
+   * @deprecated Will be removed in the next major release. Use `addDrawableObject` instead.
    */
   addLineObject(line: Line3d): void {
-    if (this.image) {
-      this.image.addLineObject(line);
-      this.redraw();
-    }
+    return this.addDrawableObject(line);
   }
 
-  /** Returns whether a Line3d object exists as a child of the volume. */
+  /** Returns whether a Line3d object exists as a child of the volume.
+   * @deprecated Will be removed in the next major release. Use `hasDrawableObject` instead.
+   */
   hasLineObject(line: Line3d): boolean {
-    if (this.image) {
-      return this.image.hasLineObject(line);
-    }
-    return false;
+    return this.hasDrawableObject(line);
   }
 
   /**
    * Removes a Line3d object from the Volume, if it exists. Note that the
    * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+   * @deprecated Will be removed in the next major release. Use `removeDrawableObject` instead.
    */
   removeLineObject(line: Line3d): void {
+    return this.removeDrawableObject(line);
+  }
+
+  /**
+   * Adds a drawable object as a child of the Volume, if it does not already
+   * exist. Objects will be in the normalized coordinate space of the Volume,
+   * where the origin (0,0,0) is at the center of the Volume and the extent is
+   * from -0.5 to 0.5 in each axis.
+   */
+  addDrawableObject(object: IDrawableObject): void {
     if (this.image) {
-      this.image.removeLineObject(line);
+      this.image.addDrawableObject(object);
+      this.redraw();
+    }
+  }
+
+  /** Returns whether a drawable object exists as a child of the volume. */
+  hasDrawableObject(object: IDrawableObject): boolean {
+    return this.image ? this.image.hasDrawableObject(object) : false;
+  }
+
+  /** Removes a drawable object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `object.cleanup()`).
+   */
+  removeDrawableObject(object: IDrawableObject): void {
+    if (this.image) {
+      this.image.removeDrawableObject(object);
       this.redraw();
     }
   }

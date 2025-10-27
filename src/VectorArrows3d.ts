@@ -20,7 +20,7 @@ const CONE_HEIGHT_MULT = 20;
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
-export default class VectorArrows extends BaseDrawableObject implements IDrawableObject {
+export default class VectorArrows3d extends BaseDrawableObject implements IDrawableObject {
   private maxInstanceCount: number;
   private coneInstancedMesh: InstancedMesh;
   private cylinderInstancedMesh: InstancedMesh;
@@ -59,7 +59,7 @@ export default class VectorArrows extends BaseDrawableObject implements IDrawabl
     this.cleanup();
     this.meshPivot.clear();
     const basicMaterial = new MeshBasicMaterial({ color: "#fff" });
-    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows.generateGeometry(DEFAULT_CYLINDER_RADIUS);
+    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows3d.generateGeometry(DEFAULT_CYLINDER_RADIUS);
 
     const coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, instanceCount);
     const cylinderInstancedMesh = new InstancedMesh(cylinderGeometry, basicMaterial, instanceCount);

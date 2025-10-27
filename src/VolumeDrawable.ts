@@ -35,7 +35,7 @@ import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
 import Line3d from "./Line3d.js";
 import ContourPass from "./ContourPass.js";
-import VectorArrows from "./VectorArrows.js";
+import VectorArrows3d from "./VectorArrows3d.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -141,7 +141,7 @@ export default class VolumeDrawable {
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
 
-    const vectorArrows = new VectorArrows();
+    const vectorArrows = new VectorArrows3d();
     const x = [-0.5, -0.25, 0, 0.25, 0.5];
     const y = [-0.5, -0.25, 0, 0.25, 0.5];
     const z = [-0.5, -0.25, 0, 0.25, 0.5];
@@ -167,7 +167,7 @@ export default class VolumeDrawable {
     }
     const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0.25, 1]);
     vectorArrows.setArrowData(positions, deltas, colors);
-    this.addVectorArrows(vectorArrows);
+    this.addDrawableObject(vectorArrows);
 
     this.sceneRoot.position.set(0, 0, 0);
 
@@ -918,39 +918,29 @@ export default class VolumeDrawable {
   }
 
   /**
-   * Adds a Line3d object as a child of the Volume, if it does not already
-   * exist. Line objects will be in the normalized coordinate space of the
-   * Volume, where the origin (0,0,0) is at the center of the Volume and the
-   * extent is from -0.5 to 0.5 in each axis.
+   * Adds a drawable object as a child of the Volume, if it does not already
+   * exist. Objects will be in the normalized coordinate space of the Volume,
+   * where the origin (0,0,0) is at the center of the Volume and the extent is
+   * from -0.5 to 0.5 in each axis.
    */
-  addLineObject(line: Line3d): void {
-    if (!this.childObjects.has(line)) {
-      this.childObjects.add(line);
-      this.childObjectsGroup.add(line.get3dObject());
-      line.setResolution(this.settings.resolution.x, this.settings.resolution.y);
-      line.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
-    }
-  }
-
-  /** Returns whether a line object exists as a child of the volume. */
-  hasLineObject(line: Line3d): boolean {
-    return this.childObjects.has(line);
-  }
-
-  addVectorArrows(vectorArrows: VectorArrows): void {
-    this.childObjectsGroup.add(vectorArrows.get3dObject());
-    this.childObjects.add(vectorArrows);
+  addDrawableObject(object: IDrawableObject): void {
+    this.childObjectsGroup.add(object.get3dObject());
+    this.childObjects.add(object);
     this.updateScale();
   }
 
-  /**
-   * Removes a Line3d object from the Volume, if it exists. Note that the
-   * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+  /** Returns whether a drawable object exists as a child of the volume. */
+  hasDrawableObject(object: IDrawableObject): boolean {
+    return this.childObjects.has(object);
+  }
+
+  /** Removes a drawable object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `object.cleanup()`).
    */
-  removeLineObject(line: Line3d): void {
-    if (this.childObjects.has(line)) {
-      this.childObjects.delete(line);
-      this.childObjectsGroup.remove(line.get3dObject());
+  removeDrawableObject(object: IDrawableObject): void {
+    if (this.childObjects.has(object)) {
+      this.childObjects.delete(object);
+      this.childObjectsGroup.remove(object.get3dObject());
     }
   }
 
