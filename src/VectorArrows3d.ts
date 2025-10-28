@@ -15,8 +15,8 @@ import BaseDrawableObject from "./BaseDrawableObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
 const DEFAULT_CYLINDER_RADIUS = 0.001;
-const CONE_RADIUS_MULT = 4;
-const CONE_HEIGHT_MULT = 10;
+const CONE_RADIUS_MULT = 3;
+const CONE_HEIGHT_MULT = 8;
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
@@ -28,6 +28,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
   private positions: Float32Array | null;
   private deltas: Float32Array | null;
   private colors: Float32Array | null;
+  private thickness: Float32Array | null;
 
   // Temporary calculation objects. Optimization taken from three.js examples.
   private scaleCalculation: Vector3;
@@ -48,6 +49,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.positions = null;
     this.deltas = null;
     this.colors = null;
+    this.thickness = null;
 
     this.scaleCalculation = new Vector3();
     this.matrixCalculation = new Object3D();
@@ -64,7 +66,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.cleanup();
     this.meshPivot.clear();
     const basicMaterial = new MeshBasicMaterial({ color: "#fff" });
-    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows3d.generateGeometry(DEFAULT_CYLINDER_RADIUS);
+    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows3d.generateGeometry(1);
 
     const coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, instanceCount);
     const cylinderInstancedMesh = new InstancedMesh(cylinderGeometry, basicMaterial, instanceCount);
@@ -83,25 +85,16 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
   }
 
   private static generateGeometry(lineWidth: number): { cone: BufferGeometry; cylinder: BufferGeometry } {
-    const cylinderGeometry = new CylinderGeometry(lineWidth, lineWidth, 1, 8, 1, true);
+    const cylinderGeometry = new CylinderGeometry(lineWidth, lineWidth, 1, 8, 1, false);
     const coneRadius = CONE_RADIUS_MULT * lineWidth;
     const coneHeight = CONE_HEIGHT_MULT * lineWidth;
     const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 8);
 
     // Rotate both to point along +Z axis
     const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
-    // TODO: Cone is currently centered in the middle of its height, which means
-    // the length may be slightly inaccurate/inconsistent with behavior in 2D
-    // mode. Fix by changing the pivot point and adjusting the length of the
-    // cylinder accordingly.
-    //
-    //     3D:            2D:
-    //     /\
-    //    /  \  <= dst =>  ^
-    //   /____\           /|\
-    //     ||              |
-    //
-    coneGeometry.applyMatrix4(defaultTransform);
+    // Change cone pivot to be at the tip.
+    const conePivotTransform = new Matrix4().makeTranslation(0, 0, -coneHeight / 2);
+    coneGeometry.applyMatrix4(conePivotTransform.multiply(defaultTransform));
     // Change cylinder pivot to be at the base.
     cylinderGeometry.applyMatrix4(defaultTransform.multiply(new Matrix4().makeTranslation(0, 0.5, 0)));
 
@@ -150,12 +143,13 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
   }
 
-  private updateArrow(index: number, src: Vector3, delta: Vector3): void {
+  private updateArrowTransform(index: number, src: Vector3, delta: Vector3, thickness: number): void {
     // Update the arrow cylinder
     // TODO: optimize to avoid creating new objects
+    const coneHeight = CONE_HEIGHT_MULT * thickness;
     const length = delta.length();
     const dst = src.clone().add(delta);
-    this.scaleCalculation.set(1, 1, length);
+    this.scaleCalculation.set(thickness, thickness, length - coneHeight);
 
     const cylinderPosition = src;
     this.matrixCalculation.scale.copy(this.scaleCalculation);
@@ -166,12 +160,32 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
 
     const conePosition = src.clone().add(delta);
     // TODO: shrink cone if length is very small
-    this.scaleCalculation.set(1, 1, 1);
+    this.scaleCalculation.set(thickness, thickness, thickness);
     this.matrixCalculation.scale.copy(this.scaleCalculation);
     this.matrixCalculation.position.copy(conePosition);
     this.matrixCalculation.lookAt(dst.add(delta));
     this.matrixCalculation.updateMatrix();
     this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
+  }
+
+  private updateArrows(): void {
+    if (!this.positions || !this.deltas) {
+      return;
+    }
+    const count = this.positions.length / 3;
+    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.parentScale);
+
+    const tempSrc = new Vector3();
+    const tempDelta = new Vector3();
+    for (let i = 0; i < count; i++) {
+      // Points and deltas scaled to volume space.
+      tempSrc.fromArray(this.positions, i * 3).multiply(combinedScale);
+      tempDelta.fromArray(this.deltas, i * 3).multiply(combinedScale);
+      const thickness = this.thickness ? this.thickness[i % this.thickness.length] : DEFAULT_CYLINDER_RADIUS;
+      this.updateArrowTransform(i, tempSrc, tempDelta, thickness);
+    }
+    this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
+    this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
   private applyColors(): void {
@@ -188,8 +202,12 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
       this.coneInstancedMesh.setColorAt(i, color);
       this.cylinderInstancedMesh.setColorAt(i, color);
     }
-    this.coneInstancedMesh.instanceColor!.needsUpdate = true;
-    this.cylinderInstancedMesh.instanceColor!.needsUpdate = true;
+    if (this.coneInstancedMesh.instanceColor) {
+      this.coneInstancedMesh.instanceColor.needsUpdate = true;
+    }
+    if (this.cylinderInstancedMesh.instanceColor) {
+      this.cylinderInstancedMesh.instanceColor.needsUpdate = true;
+    }
   }
 
   /**
@@ -211,10 +229,20 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.applyColors();
   }
 
+  public setThickness(thickness: Float32Array | number): void {
+    if (typeof thickness === "number") {
+      this.thickness = new Float32Array([thickness]);
+    } else {
+      this.thickness = new Float32Array(thickness);
+    }
+    // this.applyThickness();
+  }
+
   /**
-   * Sets the arrow count and the positions and deltas for each arrow.
-   * @param positions
-   * @param deltas
+   * Sets the positions and deltas for each arrow. The number of rendered arrows
+   * will be determined by the length of the positions/deltas arrays.
+   * @param positions Float32Array, where every three values is the XYZ position of the base of an arrow.
+   * @param deltas Float32Array, where every three values is the XYZ delta vector for each arrow.
    * @throws {Error} If positions and deltas arrays have different lengths or
    * if their length is not a multiple of 3.
    */
@@ -237,18 +265,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.coneInstancedMesh.count = count;
     this.cylinderInstancedMesh.count = count;
 
-    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.parentScale);
-
-    const tempSrc = new Vector3();
-    const tempDelta = new Vector3();
-    for (let i = 0; i < count; i++) {
-      // Points and deltas scaled to volume space.
-      tempSrc.fromArray(positions, i * 3).multiply(combinedScale);
-      tempDelta.fromArray(deltas, i * 3).multiply(combinedScale);
-      this.updateArrow(i, tempSrc, tempDelta);
-    }
-    this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
-    this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
+    this.updateArrows();
 
     if (didInstanceCountIncrease) {
       // Apply colors to new arrows as needed
