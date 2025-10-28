@@ -15,18 +15,19 @@ import BaseDrawableObject from "./BaseDrawableObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
 const DEFAULT_CYLINDER_RADIUS = 0.001;
-const CONE_RADIUS_MULT = 5;
-const CONE_HEIGHT_MULT = 20;
+const CONE_RADIUS_MULT = 4;
+const CONE_HEIGHT_MULT = 10;
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
 export default class VectorArrows3d extends BaseDrawableObject implements IDrawableObject {
-  private maxInstanceCount: number;
   private coneInstancedMesh: InstancedMesh;
   private cylinderInstancedMesh: InstancedMesh;
 
-  private positions: Float32Array | null = null;
-  private deltas: Float32Array | null = null;
+  private maxInstanceCount: number;
+  private positions: Float32Array | null;
+  private deltas: Float32Array | null;
+  private colors: Float32Array | null;
 
   // Temporary calculation objects. Optimization taken from three.js examples.
   private scaleCalculation: Vector3;
@@ -43,6 +44,10 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.cylinderInstancedMesh = cylinderInstancedMesh;
     this.coneInstancedMesh.count = 0;
     this.cylinderInstancedMesh.count = 0;
+
+    this.positions = null;
+    this.deltas = null;
+    this.colors = null;
 
     this.scaleCalculation = new Vector3();
     this.matrixCalculation = new Object3D();
@@ -118,7 +123,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.maxInstanceCount = newInstanceCount;
   }
 
-  setScale(scale: Vector3): void {
+  public setScale(scale: Vector3): void {
     if (scale !== this.scale) {
       this.scale.copy(scale);
       if (this.positions && this.deltas) {
@@ -128,7 +133,12 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
   }
 
-  setScaleInfo(scaleInfo: ScaleInfo): void {
+  /**
+   * If parented to a scaled object, this function should be called and the
+   * parent scale passed in. This prevents arrows from being distorted by the
+   * parent's scale.
+   */
+  public setScaleInfo(scaleInfo: ScaleInfo): void {
     if (scaleInfo.parentScale !== this.parentScale) {
       this.parentScale.copy(scaleInfo.parentScale);
       const invertScale = new Vector3(1, 1, 1).divide(this.parentScale);
@@ -140,7 +150,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
   }
 
-  updateArrow(index: number, src: Vector3, delta: Vector3): void {
+  private updateArrow(index: number, src: Vector3, delta: Vector3): void {
     // Update the arrow cylinder
     // TODO: optimize to avoid creating new objects
     const length = delta.length();
@@ -164,28 +174,63 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
   }
 
+  private applyColors(): void {
+    if (!this.colors) {
+      return;
+    }
+    const count = this.coneInstancedMesh.count;
+    const colorCount = Math.round(this.colors.length / 3);
+    const color = new Color();
+    for (let i = 0; i < count; i++) {
+      // Wrap colors if there are fewer colors than arrows
+      const colorIndex = i % colorCount;
+      color.fromArray(this.colors, colorIndex * 3);
+      this.coneInstancedMesh.setColorAt(i, color);
+      this.cylinderInstancedMesh.setColorAt(i, color);
+    }
+    this.coneInstancedMesh.instanceColor!.needsUpdate = true;
+    this.cylinderInstancedMesh.instanceColor!.needsUpdate = true;
+  }
+
   /**
-   *
-   *
+   * Sets the colors for the arrows as either a single Color or an array of RGB values.
+   * If there are more arrows than colors, colors will be repeated in order.
+   * @param colors Color object or numeric array of RGB values in the [0, 1] range.
+   * @throws {Error} If colors array length is not a multiple of 3.
+   */
+  public setColors(colors: Float32Array | Color): void {
+    if (colors instanceof Color) {
+      this.colors = new Float32Array(3);
+      colors.toArray(this.colors);
+    } else {
+      if (colors.length % 3 !== 0) {
+        throw new Error("VectorArrows.setColors: colors array length must be a multiple of 3.");
+      }
+      this.colors = new Float32Array(colors);
+    }
+    this.applyColors();
+  }
+
+  /**
+   * Sets the arrow count and the positions and deltas for each arrow.
    * @param positions
    * @param deltas
-   * @param colors
+   * @throws {Error} If positions and deltas arrays have different lengths or
+   * if their length is not a multiple of 3.
    */
-  setArrowData(positions: Float32Array, deltas: Float32Array, colors?: Float32Array): void {
+  public setArrowData(positions: Float32Array, deltas: Float32Array): void {
     if (positions.length !== deltas.length) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
     }
     if (positions.length % 3 !== 0) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays length must be a multiple of 3");
     }
-    if (colors && colors.length % 3 !== 0) {
-      throw new Error("VectorArrows.setArrowData: colors array length must be a multiple of 3");
-    }
     this.positions = positions;
     this.deltas = deltas;
 
     // Update instance count and add more instances as needed
     const count = positions.length / 3;
+    const didInstanceCountIncrease = this.coneInstancedMesh.count < count;
     if (this.maxInstanceCount < count) {
       this.increaseInstanceCountMax(count);
     }
@@ -197,29 +242,17 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     const tempSrc = new Vector3();
     const tempDelta = new Vector3();
     for (let i = 0; i < count; i++) {
-      tempSrc.fromArray(positions, i * 3);
-      tempDelta.fromArray(deltas, i * 3);
-
       // Points and deltas scaled to volume space.
-      tempSrc.multiply(combinedScale);
-      tempDelta.multiply(combinedScale);
-
+      tempSrc.fromArray(positions, i * 3).multiply(combinedScale);
+      tempDelta.fromArray(deltas, i * 3).multiply(combinedScale);
       this.updateArrow(i, tempSrc, tempDelta);
-
-      if (colors) {
-        // Wrap colors if there are fewer colors than arrows
-        const colorIndex = i % Math.round(colors.length / 3);
-        const color = new Color().fromArray(colors, colorIndex * 3);
-        this.coneInstancedMesh.setColorAt(i, color);
-        this.cylinderInstancedMesh.setColorAt(i, color);
-      }
     }
     this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
     this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
 
-    if (colors) {
-      this.coneInstancedMesh.instanceColor!.needsUpdate = true;
-      this.cylinderInstancedMesh.instanceColor!.needsUpdate = true;
+    if (didInstanceCountIncrease) {
+      // Apply colors to new arrows as needed
+      this.applyColors();
     }
   }
 }

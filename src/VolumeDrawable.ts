@@ -33,9 +33,7 @@ import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
-import Line3d from "./Line3d.js";
 import ContourPass from "./ContourPass.js";
-import VectorArrows3d from "./VectorArrows3d.js";
 
 type ColorArray = [number, number, number];
 type ColorObject = { r: number; g: number; b: number };
@@ -140,34 +138,6 @@ export default class VolumeDrawable {
     this.sceneRoot.add(this.volumeRendering.get3dObject());
     // draw meshes last (as overlay) for pathtrace? (or not at all?)
     //this.PT && this.sceneRoot.add(this.meshVolume.get3dObject());
-
-    const vectorArrows = new VectorArrows3d();
-    const x = [-0.5, -0.25, 0, 0.25, 0.5];
-    const y = [-0.5, -0.25, 0, 0.25, 0.5];
-    const z = [-0.5, -0.25, 0, 0.25, 0.5];
-    const d = [new Vector3(0, 0, 0.1), new Vector3(0.1, 0, 0), new Vector3(0, 0.1, 0)];
-    const positions = new Float32Array(x.length * y.length * z.length * d.length * 3);
-    const deltas = new Float32Array(x.length * y.length * z.length * d.length * 3);
-
-    for (let i = 0; i < x.length; i++) {
-      for (let j = 0; j < y.length; j++) {
-        for (let k = 0; k < z.length; k++) {
-          for (let l = 0; l < d.length; l++) {
-            const delta = d[l];
-            const idx = (((i * y.length + j) * z.length + k) * d.length + l) * 3;
-            positions[idx + 0] = x[i];
-            positions[idx + 1] = y[j];
-            positions[idx + 2] = z[k];
-            deltas[idx + 0] = delta.x;
-            deltas[idx + 1] = delta.y;
-            deltas[idx + 2] = delta.z;
-          }
-        }
-      }
-    }
-    const colors = new Float32Array([1, 0, 0, 0, 1, 0, 0, 0.25, 1]);
-    vectorArrows.setArrowData(positions, deltas, colors);
-    this.addDrawableObject(vectorArrows);
 
     this.sceneRoot.position.set(0, 0, 0);
 
