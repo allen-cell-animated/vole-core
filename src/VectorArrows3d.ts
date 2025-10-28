@@ -28,7 +28,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
   private positions: Float32Array | null;
   private deltas: Float32Array | null;
   private colors: Float32Array | null;
-  private thickness: Float32Array | null;
+  private thickness: Float32Array;
 
   // Temporary calculation objects. Optimization taken from three.js examples.
   private scaleCalculation: Vector3;
@@ -49,7 +49,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.positions = null;
     this.deltas = null;
     this.colors = null;
-    this.thickness = null;
+    this.thickness = new Float32Array([DEFAULT_CYLINDER_RADIUS]);
 
     this.scaleCalculation = new Vector3();
     this.matrixCalculation = new Object3D();
@@ -88,7 +88,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     const cylinderGeometry = new CylinderGeometry(lineWidth, lineWidth, 1, 8, 1, false);
     const coneRadius = CONE_RADIUS_MULT * lineWidth;
     const coneHeight = CONE_HEIGHT_MULT * lineWidth;
-    const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 8);
+    const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 12);
 
     // Rotate both to point along +Z axis
     const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
@@ -143,7 +143,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
   }
 
-  private updateArrowTransform(index: number, src: Vector3, delta: Vector3, thickness: number): void {
+  private updateSingleArrowTransform(index: number, src: Vector3, delta: Vector3, thickness: number): void {
     // Update the arrow cylinder
     // TODO: optimize to avoid creating new objects
     const coneHeight = CONE_HEIGHT_MULT * thickness;
@@ -168,7 +168,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
   }
 
-  private updateArrows(): void {
+  private updateArrowTransforms(): void {
     if (!this.positions || !this.deltas) {
       return;
     }
@@ -181,14 +181,14 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
       // Points and deltas scaled to volume space.
       tempSrc.fromArray(this.positions, i * 3).multiply(combinedScale);
       tempDelta.fromArray(this.deltas, i * 3).multiply(combinedScale);
-      const thickness = this.thickness ? this.thickness[i % this.thickness.length] : DEFAULT_CYLINDER_RADIUS;
-      this.updateArrowTransform(i, tempSrc, tempDelta, thickness);
+      const thickness = this.thickness[i % this.thickness.length] ?? DEFAULT_CYLINDER_RADIUS;
+      this.updateSingleArrowTransform(i, tempSrc, tempDelta, thickness);
     }
     this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
     this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  private applyColors(): void {
+  private updateColors(): void {
     if (!this.colors) {
       return;
     }
@@ -226,27 +226,34 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
       }
       this.colors = new Float32Array(colors);
     }
-    this.applyColors();
-  }
-
-  public setThickness(thickness: Float32Array | number): void {
-    if (typeof thickness === "number") {
-      this.thickness = new Float32Array([thickness]);
-    } else {
-      this.thickness = new Float32Array(thickness);
-    }
-    // this.applyThickness();
+    this.updateColors();
   }
 
   /**
-   * Sets the positions and deltas for each arrow. The number of rendered arrows
-   * will be determined by the length of the positions/deltas arrays.
-   * @param positions Float32Array, where every three values is the XYZ position of the base of an arrow.
-   * @param deltas Float32Array, where every three values is the XYZ delta vector for each arrow.
-   * @throws {Error} If positions and deltas arrays have different lengths or
-   * if their length is not a multiple of 3.
+   * Sets all arrows to a uniform thickness (default is `0.001`). To set
+   * per-arrow thickness, pass an array of values into `setArrowData` instead.
+   * @param thickness Thickness value to set for all arrows.
    */
-  public setArrowData(positions: Float32Array, deltas: Float32Array): void {
+  public setThickness(thickness: number): void {
+    this.thickness = new Float32Array([thickness]);
+    this.updateArrowTransforms();
+  }
+
+  /**
+   * Sets the per-arrow data. The number of rendered arrows will be determined
+   * by the length of the `positions` and `deltas` arrays.
+   * @param positions Float32Array, where every three values is the XYZ position
+   * of the base of an arrow.
+   * @param deltas Float32Array, where every three values is the XYZ delta
+   * vector for each arrow.
+   * @param thickness Optional Float32Array of thickness values for each arrow.
+   * If provided, overrides the single thickness value set by `setThickness`. If
+   * fewer thickness values are provided than arrows, the values will be
+   * repeated in order.
+   * @throws {Error} If positions and deltas arrays have different lengths or if
+   * their length is not a multiple of 3.
+   */
+  public setArrowData(positions: Float32Array, deltas: Float32Array, thickness?: Float32Array): void {
     if (positions.length !== deltas.length) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
     }
@@ -255,6 +262,9 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
     this.positions = positions;
     this.deltas = deltas;
+    if (thickness) {
+      this.thickness = thickness;
+    }
 
     // Update instance count and add more instances as needed
     const count = positions.length / 3;
@@ -265,11 +275,11 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     this.coneInstancedMesh.count = count;
     this.cylinderInstancedMesh.count = count;
 
-    this.updateArrows();
+    this.updateArrowTransforms();
 
     if (didInstanceCountIncrease) {
       // Apply colors to new arrows as needed
-      this.applyColors();
+      this.updateColors();
     }
   }
 }
