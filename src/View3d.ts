@@ -984,7 +984,8 @@ export class View3d {
     return this.addDrawableObject(line);
   }
 
-  /** Returns whether a Line3d object exists as a child of the volume.
+  /**
+   * Returns whether a Line3d object exists as a child of the volume.
    * @deprecated Will be removed in the next major release. Use `hasDrawableObject` instead.
    */
   hasLineObject(line: Line3d): boolean {
@@ -1018,7 +1019,8 @@ export class View3d {
     return this.image ? this.image.hasDrawableObject(object) : false;
   }
 
-  /** Removes a drawable object from the Volume, if it exists. Note that the
+  /**
+   * Removes a drawable object from the Volume, if it exists. Note that the
    * object's resources are not freed automatically (e.g. via `object.cleanup()`).
    */
   removeDrawableObject(object: IDrawableObject): void {
