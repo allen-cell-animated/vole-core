@@ -67,7 +67,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
    * @returns
    * - `head`: BufferGeometry for the arrowhead, a cone pointing along the +Z
    *   axis, with the pivot at the tip of the cone. Height and radius are based
-   *   on constant values (`CONE_BASE_HEIGHT` and `CONE_BASE_RADIUS`).
+   *   on constant values (`HEAD_BASE_HEIGHT` and `HEAD_BASE_RADIUS`).
    * - `shaft`: BufferGeometry for the cylindrical arrow shaft. The cylinder
    *   points along the +Z axis, with the pivot at the base of the cylinder.
    *   Height is 1 and diameter is 1.
