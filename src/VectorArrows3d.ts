@@ -230,7 +230,7 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
       // Points and deltas scaled to volume space.
       tempSrc.fromArray(this.positions, i * 3).multiply(combinedScale);
       tempDelta.fromArray(this.deltas, i * 3).multiply(combinedScale);
-      tempDiameter = this.diameter[i % this.diameter.length] ?? DEFAULT_DIAMETER;
+      tempDiameter = this.diameter[i % this.diameter.length];
       this.updateSingleArrowTransform(i, tempSrc, tempDelta, tempDiameter);
     }
     this.headInstancedMesh.instanceMatrix.needsUpdate = true;
