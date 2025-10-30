@@ -1,6 +1,18 @@
 import { Euler, Group, Material, Mesh, Vector3 } from "three";
 import { IDrawableObject } from "./types";
 
+/**
+ * Abstract base class for drawable 3D objects.
+ *
+ * Provides default implementations for some methods in the IDrawableObject
+ * interface, including handling for visibility, transformations, and cleanup.
+ *
+ * As a default, subclasses should:
+ * 1. Add all meshes that need to be disposed of during cleanup to the `meshes`
+ *    array.
+ * 2. Add all meshes as children of the `meshPivot` group for transformation
+ *    handling (rotation, scaling, translation).
+ */
 export default class BaseDrawableObject implements IDrawableObject {
   protected meshPivot: Group;
   protected scale: Vector3;
