@@ -16,6 +16,7 @@ import { IDrawableObject, ScaleInfo } from "./types";
 export default class BaseDrawableObject implements IDrawableObject {
   protected meshPivot: Group;
   protected scale: Vector3;
+  /** Scale of the parent mesh, if provided. (1, 1, 1) by default. */
   protected parentScale: Vector3;
   protected flipAxes: Vector3;
 

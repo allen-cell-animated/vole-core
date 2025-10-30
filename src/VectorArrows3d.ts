@@ -14,91 +14,123 @@ import { IDrawableObject, ScaleInfo } from "./types";
 import BaseDrawableObject from "./BaseDrawableObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
-const DEFAULT_CYLINDER_RADIUS = 0.001;
-const CONE_RADIUS_MULT = 3;
-const CONE_HEIGHT_MULT = 8;
+const DEFAULT_DIAMETER = 0.002;
+
+// Unscaled arrowhead dimensions. These will be scaled by the diameter.
+const HEAD_BASE_RADIUS = 1.5;
+const HEAD_BASE_HEIGHT = 4;
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
+/**
+ * A drawable vector arrow field, which uses instanced meshes for performance.
+ */
 export default class VectorArrows3d extends BaseDrawableObject implements IDrawableObject {
-  private coneInstancedMesh: InstancedMesh;
-  private cylinderInstancedMesh: InstancedMesh;
+  private headInstancedMesh: InstancedMesh;
+  private shaftInstancedMesh: InstancedMesh;
 
   private maxInstanceCount: number;
   private positions: Float32Array | null;
   private deltas: Float32Array | null;
   private colors: Float32Array | null;
-  private thickness: Float32Array;
+  private diameter: Float32Array;
 
   // Temporary calculation objects. Optimization taken from three.js examples.
-  private scaleCalculation: Vector3;
-  private matrixCalculation: Object3D;
+  private tempDst: Vector3;
+  private tempScale: Vector3;
+  private tempMatrix: Object3D;
 
   constructor() {
     super();
     this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
-    // Passing these out isn't necessary but satisfies the compiler.
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
-    const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(DEFAULT_INSTANCE_COUNT);
-    this.coneInstancedMesh = coneInstancedMesh;
-    this.cylinderInstancedMesh = cylinderInstancedMesh;
-    this.coneInstancedMesh.count = 0;
-    this.cylinderInstancedMesh.count = 0;
+    const { headMesh: headMesh, shaftMesh: shaftMesh } = this.initInstancedMeshes(DEFAULT_INSTANCE_COUNT);
+    this.headInstancedMesh = headMesh;
+    this.shaftInstancedMesh = shaftMesh;
+    this.headInstancedMesh.count = 0;
+    this.shaftInstancedMesh.count = 0;
 
     this.positions = null;
     this.deltas = null;
     this.colors = null;
-    this.thickness = new Float32Array([DEFAULT_CYLINDER_RADIUS]);
+    this.diameter = new Float32Array([DEFAULT_DIAMETER]);
 
-    this.scaleCalculation = new Vector3();
-    this.matrixCalculation = new Object3D();
+    this.tempDst = new Vector3();
+    this.tempScale = new Vector3();
+    this.tempMatrix = new Object3D();
   }
 
   /**
-   * Create new instanced meshes with the specified instance count.
-   * (If calling outside of the constructor, be sure to call `cleanup` first.)
+   * Returns (unscaled) buffer geometry for the head and shaft parts of the
+   * arrow.
+   * @returns
+   * - `head`: BufferGeometry for the arrowhead, a cone pointing along the +Z
+   *   axis, with the pivot at the tip of the cone. Height and radius are based
+   *   on constant values (`CONE_BASE_HEIGHT` and `CONE_BASE_RADIUS`).
+   * - `shaft`: BufferGeometry for the cylindrical arrow shaft. The cylinder
+   *   points along the +Z axis, with the pivot at the base of the cylinder.
+   *   Height is 1 and diameter is 1.
+   *
+   * ```txt
+   *  ^ +Z axis ^
+   *  _____      x
+   * |     |    / \
+   * |     |   /   \
+   *  --x--   /-----\
+   *
+   *   x = pivot (0,0,0)
+   * ```
+   */
+  private static generateGeometry(): { head: BufferGeometry; shaft: BufferGeometry } {
+    // TODO: Currently the shape of the arrow head is fixed. Allow configuring
+    // this in the future?
+    const cylinderGeometry = new CylinderGeometry(0.5, 0.5, 1, 8, 1, false);
+    const coneRadius = HEAD_BASE_RADIUS;
+    const coneHeight = HEAD_BASE_HEIGHT;
+    const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 12);
+
+    // Rotate both to point along +Z axis
+    const rotateToPositiveZ = new Matrix4().makeRotationX(Math.PI / 2);
+    // Change cone pivot to be at the tip.
+    const coneTranslation = new Matrix4().makeTranslation(0, 0, -coneHeight / 2);
+    coneGeometry.applyMatrix4(coneTranslation.multiply(rotateToPositiveZ));
+    // Change cylinder pivot to be at the base.
+    const cylinderTranslation = new Matrix4().makeTranslation(0, 0, 0.5);
+    cylinderGeometry.applyMatrix4(cylinderTranslation.multiply(rotateToPositiveZ));
+
+    return { head: coneGeometry, shaft: cylinderGeometry };
+  }
+
+  /**
+   * Create new instanced meshes with the specified instance count, and adds
+   * them to the mesh pivot and internal meshes array for future cleanup.
+   *
+   * If calling outside of the constructor, be sure to call `cleanup()` first.
    */
   private initInstancedMeshes(instanceCount: number): {
-    coneInstancedMesh: InstancedMesh;
-    cylinderInstancedMesh: InstancedMesh;
+    headMesh: InstancedMesh;
+    shaftMesh: InstancedMesh;
   } {
     this.cleanup();
     this.meshPivot.clear();
     const basicMaterial = new MeshBasicMaterial({ color: "#fff" });
-    const { cone: coneGeometry, cylinder: cylinderGeometry } = VectorArrows3d.generateGeometry(1);
+    const { head: headGeometry, shaft: shaftGeometry } = VectorArrows3d.generateGeometry();
 
-    const coneInstancedMesh = new InstancedMesh(coneGeometry, basicMaterial, instanceCount);
-    const cylinderInstancedMesh = new InstancedMesh(cylinderGeometry, basicMaterial, instanceCount);
-    coneInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    cylinderInstancedMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    coneInstancedMesh.frustumCulled = false;
-    cylinderInstancedMesh.frustumCulled = false;
-    coneInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
-    cylinderInstancedMesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    const headMesh = new InstancedMesh(headGeometry, basicMaterial, instanceCount);
+    const shaftMesh = new InstancedMesh(shaftGeometry, basicMaterial, instanceCount);
+    headMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+    shaftMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+    headMesh.frustumCulled = false;
+    shaftMesh.frustumCulled = false;
+    headMesh.instanceMatrix.setUsage(DynamicDrawUsage);
+    shaftMesh.instanceMatrix.setUsage(DynamicDrawUsage);
 
-    this.meshPivot.add(coneInstancedMesh);
-    this.meshPivot.add(cylinderInstancedMesh);
-    this.meshes = [coneInstancedMesh, cylinderInstancedMesh];
+    this.meshPivot.add(headMesh);
+    this.meshPivot.add(shaftMesh);
+    this.meshes = [headMesh, shaftMesh];
 
-    return { coneInstancedMesh, cylinderInstancedMesh };
-  }
-
-  private static generateGeometry(lineWidth: number): { cone: BufferGeometry; cylinder: BufferGeometry } {
-    const cylinderGeometry = new CylinderGeometry(lineWidth, lineWidth, 1, 8, 1, false);
-    const coneRadius = CONE_RADIUS_MULT * lineWidth;
-    const coneHeight = CONE_HEIGHT_MULT * lineWidth;
-    const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 12);
-
-    // Rotate both to point along +Z axis
-    const defaultTransform = new Matrix4().makeRotationX(Math.PI / 2);
-    // Change cone pivot to be at the tip.
-    const conePivotTransform = new Matrix4().makeTranslation(0, 0, -coneHeight / 2);
-    coneGeometry.applyMatrix4(conePivotTransform.multiply(defaultTransform));
-    // Change cylinder pivot to be at the base.
-    cylinderGeometry.applyMatrix4(defaultTransform.multiply(new Matrix4().makeTranslation(0, 0.5, 0)));
-
-    return { cone: coneGeometry, cylinder: cylinderGeometry };
+    return { headMesh, shaftMesh };
   }
 
   private increaseInstanceCountMax(instanceCount: number): void {
@@ -110,9 +142,10 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
     // Delete existing meshes
     this.cleanup();
-    const { coneInstancedMesh, cylinderInstancedMesh } = this.initInstancedMeshes(newInstanceCount);
-    this.coneInstancedMesh = coneInstancedMesh;
-    this.cylinderInstancedMesh = cylinderInstancedMesh;
+    const { headMesh, shaftMesh } = this.initInstancedMeshes(newInstanceCount);
+    this.initInstancedMeshes(newInstanceCount);
+    this.headInstancedMesh = headMesh;
+    this.shaftInstancedMesh = shaftMesh;
     this.maxInstanceCount = newInstanceCount;
   }
 
@@ -128,47 +161,63 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
 
   /**
    * If parented to a scaled object, this function should be called and the
-   * parent scale passed in. This prevents arrows from being distorted by the
+   * parent scale passed in to prevent arrows from being distorted by the
    * parent's scale.
    */
   public setScaleInfo(scaleInfo: ScaleInfo): void {
     if (scaleInfo.parentScale !== this.parentScale) {
       this.parentScale.copy(scaleInfo.parentScale);
+
+      // Scale is inverted on mesh pivot to cancel out parent scaling (though
+      // translation and rotation are still affected by parent). This allows
+      // arrows to be scaled 1:1 with world space, regardless of parent scale,
+      // and prevents distortion. Parent scaling is applied to arrow positions
+      // and deltas, rather than the meshes themselves.
       const invertScale = new Vector3(1, 1, 1).divide(this.parentScale);
       this.meshPivot.scale.copy(invertScale);
+
       if (this.positions && this.deltas) {
-        // Update arrows
         this.setArrowData(this.positions, this.deltas);
       }
     }
   }
 
-  private updateSingleArrowTransform(index: number, src: Vector3, delta: Vector3, thickness: number): void {
-    // Update the arrow cylinder
-    // TODO: optimize to avoid creating new objects
-    const coneHeight = CONE_HEIGHT_MULT * thickness;
+  private updateSingleArrowTransform(index: number, src: Vector3, delta: Vector3, diameter: number): void {
+    // Update the arrow shaft
+    const headHeight = HEAD_BASE_HEIGHT * diameter;
     const length = delta.length();
-    const dst = src.clone().add(delta);
-    this.scaleCalculation.set(thickness, thickness, length - coneHeight);
+    const shaftHeight = Math.max(length - headHeight, 0);
+    if (shaftHeight < 1e-6) {
+      // If the shaft height is too small, scale to 0.
+      this.tempScale.set(0, 0, 0);
+    } else {
+      this.tempScale.set(diameter, diameter, shaftHeight);
+    }
 
-    const cylinderPosition = src;
-    this.matrixCalculation.scale.copy(this.scaleCalculation);
-    this.matrixCalculation.position.copy(cylinderPosition);
-    this.matrixCalculation.lookAt(dst);
-    this.matrixCalculation.updateMatrix();
-    this.cylinderInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
+    this.tempMatrix.scale.copy(this.tempScale);
+    this.tempMatrix.position.copy(src);
+    this.tempDst.copy(src).add(delta);
+    this.tempMatrix.lookAt(this.tempDst);
+    this.tempMatrix.updateMatrix();
+    this.shaftInstancedMesh.setMatrixAt(index, this.tempMatrix.matrix);
 
-    const conePosition = src.clone().add(delta);
-    // TODO: shrink cone if length is very small
-    this.scaleCalculation.set(thickness, thickness, thickness);
-    this.matrixCalculation.scale.copy(this.scaleCalculation);
-    this.matrixCalculation.position.copy(conePosition);
-    this.matrixCalculation.lookAt(dst.add(delta));
-    this.matrixCalculation.updateMatrix();
-    this.coneInstancedMesh.setMatrixAt(index, this.matrixCalculation.matrix);
+    if (length < headHeight) {
+      // If head is longer than the total length, shrink the head to match
+      // length. TODO: Is it okay to do this automatically?
+      const newDiameter = length / HEAD_BASE_HEIGHT;
+      this.tempScale.set(newDiameter, newDiameter, newDiameter);
+    } else {
+      this.tempScale.set(diameter, diameter, diameter);
+    }
+    this.tempMatrix.scale.copy(this.tempScale);
+    this.tempMatrix.position.copy(this.tempDst);
+    this.tempDst.add(delta);
+    this.tempMatrix.lookAt(this.tempDst);
+    this.tempMatrix.updateMatrix();
+    this.headInstancedMesh.setMatrixAt(index, this.tempMatrix.matrix);
   }
 
-  private updateArrowTransforms(): void {
+  private updateAllArrowTransforms(): void {
     if (!this.positions || !this.deltas) {
       return;
     }
@@ -177,36 +226,36 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
 
     const tempSrc = new Vector3();
     const tempDelta = new Vector3();
+    let tempDiameter: number;
     for (let i = 0; i < count; i++) {
       // Points and deltas scaled to volume space.
       tempSrc.fromArray(this.positions, i * 3).multiply(combinedScale);
       tempDelta.fromArray(this.deltas, i * 3).multiply(combinedScale);
-      const thickness = this.thickness[i % this.thickness.length] ?? DEFAULT_CYLINDER_RADIUS;
-      this.updateSingleArrowTransform(i, tempSrc, tempDelta, thickness);
+      tempDiameter = this.diameter[i % this.diameter.length] ?? DEFAULT_DIAMETER;
+      this.updateSingleArrowTransform(i, tempSrc, tempDelta, tempDiameter);
     }
-    this.coneInstancedMesh.instanceMatrix.needsUpdate = true;
-    this.cylinderInstancedMesh.instanceMatrix.needsUpdate = true;
+    this.headInstancedMesh.instanceMatrix.needsUpdate = true;
+    this.shaftInstancedMesh.instanceMatrix.needsUpdate = true;
   }
 
-  private updateColors(): void {
+  private applyColors(): void {
     if (!this.colors) {
       return;
     }
-    const count = this.coneInstancedMesh.count;
     const colorCount = Math.round(this.colors.length / 3);
     const color = new Color();
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < this.headInstancedMesh.count; i++) {
       // Wrap colors if there are fewer colors than arrows
       const colorIndex = i % colorCount;
       color.fromArray(this.colors, colorIndex * 3);
-      this.coneInstancedMesh.setColorAt(i, color);
-      this.cylinderInstancedMesh.setColorAt(i, color);
+      this.headInstancedMesh.setColorAt(i, color);
+      this.shaftInstancedMesh.setColorAt(i, color);
     }
-    if (this.coneInstancedMesh.instanceColor) {
-      this.coneInstancedMesh.instanceColor.needsUpdate = true;
+    if (this.headInstancedMesh.instanceColor) {
+      this.headInstancedMesh.instanceColor.needsUpdate = true;
     }
-    if (this.cylinderInstancedMesh.instanceColor) {
-      this.cylinderInstancedMesh.instanceColor.needsUpdate = true;
+    if (this.shaftInstancedMesh.instanceColor) {
+      this.shaftInstancedMesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -226,34 +275,34 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
       }
       this.colors = new Float32Array(colors);
     }
-    this.updateColors();
+    this.applyColors();
   }
 
   /**
-   * Sets all arrows to a uniform thickness (default is `0.001`). To set
-   * per-arrow thickness, pass an array of values into `setArrowData` instead.
-   * @param thickness Thickness value to set for all arrows.
+   * Sets all arrows to a uniform diameter (default is `0.002`). To set
+   * per-arrow diameter, pass an array of values into `setArrowData` instead.
+   * @param diameter Diameter value to set for all arrows.
    */
-  public setThickness(thickness: number): void {
-    this.thickness = new Float32Array([thickness]);
-    this.updateArrowTransforms();
+  public setDiameter(diameter: number): void {
+    this.diameter = new Float32Array([diameter]);
+    this.updateAllArrowTransforms();
   }
 
   /**
-   * Sets the per-arrow data. The number of rendered arrows will be determined
-   * by the length of the `positions` and `deltas` arrays.
+   * Sets the per-arrow data. The number of rendered arrows is equal to
+   * `positions.length / 3`.
    * @param positions Float32Array, where every three values is the XYZ position
    * of the base of an arrow.
    * @param deltas Float32Array, where every three values is the XYZ delta
    * vector for each arrow.
-   * @param thickness Optional Float32Array of thickness values for each arrow.
-   * If provided, overrides the single thickness value set by `setThickness`. If
-   * fewer thickness values are provided than arrows, the values will be
-   * repeated in order.
+   * @param diameters Optional Float32Array of diameter thickness values for
+   * each arrow's shaft. If provided, overrides a single diameter value set by
+   * `setDiameter`. If fewer diameter values are provided than arrows, the
+   * values will be repeated in order.
    * @throws {Error} If positions and deltas arrays have different lengths or if
    * their length is not a multiple of 3.
    */
-  public setArrowData(positions: Float32Array, deltas: Float32Array, thickness?: Float32Array): void {
+  public setArrowData(positions: Float32Array, deltas: Float32Array, diameters?: Float32Array): void {
     if (positions.length !== deltas.length) {
       throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
     }
@@ -262,24 +311,24 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     }
     this.positions = positions;
     this.deltas = deltas;
-    if (thickness) {
-      this.thickness = thickness;
+    if (diameters) {
+      this.diameter = diameters;
     }
 
-    // Update instance count and add more instances as needed
+    // Update instance count, add more instances as needed.
     const count = positions.length / 3;
-    const didInstanceCountIncrease = this.coneInstancedMesh.count < count;
+    const didInstanceCountIncrease = this.headInstancedMesh.count < count;
     if (this.maxInstanceCount < count) {
       this.increaseInstanceCountMax(count);
     }
-    this.coneInstancedMesh.count = count;
-    this.cylinderInstancedMesh.count = count;
+    this.headInstancedMesh.count = count;
+    this.shaftInstancedMesh.count = count;
 
-    this.updateArrowTransforms();
+    this.updateAllArrowTransforms();
 
     if (didInstanceCountIncrease) {
       // Apply colors to new arrows as needed
-      this.updateColors();
+      this.applyColors();
     }
   }
 }
