@@ -143,7 +143,6 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     // Delete existing meshes
     this.cleanup();
     const { headMesh, shaftMesh } = this.initInstancedMeshes(newInstanceCount);
-    this.initInstancedMeshes(newInstanceCount);
     this.headInstancedMesh = headMesh;
     this.shaftInstancedMesh = shaftMesh;
     this.maxInstanceCount = newInstanceCount;
