@@ -87,6 +87,7 @@ export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<numbe
   const specLen = getDimensionCount(orderTCZYX);
   const result: T[] = Array(specLen);
 
+  let curIdx = 0;
   orderTCZYX.forEach((val, idx) => {
     if (val >= 0) {
       if (val >= specLen) {
@@ -94,7 +95,7 @@ export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<numbe
           type: VolumeLoadErrorType.INVALID_METADATA,
         });
       }
-      result[val] = valsTCZYX[idx];
+      result[curIdx++] = valsTCZYX[idx];
     }
   });
 
