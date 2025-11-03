@@ -2,43 +2,53 @@ import { Euler, Group, Material, Mesh, Vector3 } from "three";
 import { IDrawableObject } from "./types";
 
 /**
- * Abstract base class for drawable 3D objects.
+ * Abstract base class for drawable 3D mesh objects.
  *
  * Provides default implementations for some methods in the IDrawableObject
  * interface, including handling for visibility, transformations, and cleanup.
  *
- * As a default, subclasses should:
- * 1. Add all meshes that need to be disposed of during cleanup to the `meshes`
- *    array.
- * 2. Add all meshes as children of the `meshPivot` group for transformation
- *    handling (rotation, scaling, translation).
+ * As a default, subclasses should call `this.addChildMesh(mesh)` to register
+ * any meshes that should be managed by the base class.
  */
-export default class BaseDrawableObject implements IDrawableObject {
-  protected meshPivot: Group;
+export default abstract class BaseDrawableMesh implements IDrawableObject {
+  /**
+   * Pivot group that all child meshes are parented to. Transformations are
+   * applied to this group.
+   */
+  protected readonly meshPivot: Group;
   protected scale: Vector3;
   protected flipAxes: Vector3;
 
   /**
-   * Mesh or array of meshes that should be disposed of during cleanup. Also
-   * used for toggling visibility.
+   * Child meshes that are part of this drawable object.
    */
-  protected meshes: Mesh | Mesh[] | null;
+  protected readonly meshes: Set<Mesh>;
 
   constructor() {
     this.meshPivot = new Group();
     this.scale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
 
-    this.meshes = null;
+    this.meshes = new Set<Mesh>();
   }
 
-  forEachMesh(callback: (mesh: Mesh) => void): void {
-    if (this.meshes) {
-      if (Array.isArray(this.meshes)) {
-        this.meshes.forEach((mesh) => callback(mesh));
-      } else {
-        callback(this.meshes);
-      }
+  protected addChildMesh(mesh: Mesh): void {
+    if (!this.meshes.has(mesh)) {
+      this.meshes.add(mesh);
+      this.meshPivot.add(mesh);
+    }
+  }
+
+  protected removeChildMesh(mesh: Mesh): void {
+    if (this.meshes.has(mesh)) {
+      this.meshes.delete(mesh);
+      this.meshPivot.remove(mesh);
+    }
+  }
+
+  protected forEachMesh(callback: (mesh: Mesh) => void): void {
+    for (const mesh of this.meshes) {
+      callback(mesh);
     }
   }
 
@@ -47,6 +57,8 @@ export default class BaseDrawableObject implements IDrawableObject {
       mesh.geometry.dispose();
       (mesh.material as Material).dispose();
     });
+    this.meshPivot.clear();
+    this.meshes.clear();
   }
 
   doRender(): void {

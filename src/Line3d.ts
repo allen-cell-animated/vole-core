@@ -5,7 +5,7 @@ import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js
 
 import { IDrawableObject } from "./types.js";
 import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
-import BaseDrawableObject from "./BaseDrawableObject.js";
+import BaseDrawableMesh from "./BaseDrawableMesh.js";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
@@ -13,7 +13,7 @@ const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
  * Simple wrapper for a 3D line segments object, with controls for vertex data,
  * color, width, and segments visible.
  */
-export default class Line3d extends BaseDrawableObject implements IDrawableObject {
+export default class Line3d extends BaseDrawableMesh implements IDrawableObject {
   private lineMesh: LineSegments2;
   private bufferSize: number;
 
@@ -32,13 +32,11 @@ export default class Line3d extends BaseDrawableObject implements IDrawableObjec
     // artifacts can occur where contours are drawn around lines. This layer
     // (MESH_NO_PICK_OCCLUSION_LAYER) does not occlude/interact with the pick
     // buffer but still writes depth information for the volume.
+    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.frustumCulled = false;
 
-    this.meshPivot.add(this.lineMesh);
-    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-
-    this.meshes = this.lineMesh;
+    this.addChildMesh(this.lineMesh);
   }
 
   // Line-specific functions
