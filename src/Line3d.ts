@@ -5,7 +5,7 @@ import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js
 
 import { IDrawableObject } from "./types.js";
 import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
-import BaseDrawableMesh from "./BaseDrawableMesh.js";
+import BaseDrawableMeshObject from "./BaseDrawableMeshObject.js";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
@@ -13,7 +13,7 @@ const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
  * Simple wrapper for a 3D line segments object, with controls for vertex data,
  * color, width, and segments visible.
  */
-export default class Line3d extends BaseDrawableMesh implements IDrawableObject {
+export default class Line3d extends BaseDrawableMeshObject implements IDrawableObject {
   private lineMesh: LineSegments2;
   private bufferSize: number;
 

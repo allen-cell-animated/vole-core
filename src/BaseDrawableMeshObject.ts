@@ -10,7 +10,7 @@ import { IDrawableObject } from "./types";
  * As a default, subclasses should call `this.addChildMesh(mesh)` to register
  * any meshes that should be managed by the base class.
  */
-export default abstract class BaseDrawableMesh implements IDrawableObject {
+export default abstract class BaseDrawableMeshObject implements IDrawableObject {
   /**
    * Pivot group that all child meshes are parented to. Transformations are
    * applied to this group.
@@ -19,46 +19,28 @@ export default abstract class BaseDrawableMesh implements IDrawableObject {
   protected scale: Vector3;
   protected flipAxes: Vector3;
 
-  /**
-   * Child meshes that are part of this drawable object.
-   */
-  protected readonly meshes: Set<Mesh>;
-
   constructor() {
     this.meshPivot = new Group();
     this.scale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
-
-    this.meshes = new Set<Mesh>();
   }
 
   protected addChildMesh(mesh: Mesh): void {
-    if (!this.meshes.has(mesh)) {
-      this.meshes.add(mesh);
-      this.meshPivot.add(mesh);
-    }
+    this.meshPivot.add(mesh);
   }
 
   protected removeChildMesh(mesh: Mesh): void {
-    if (this.meshes.has(mesh)) {
-      this.meshes.delete(mesh);
-      this.meshPivot.remove(mesh);
-    }
-  }
-
-  protected forEachMesh(callback: (mesh: Mesh) => void): void {
-    for (const mesh of this.meshes) {
-      callback(mesh);
-    }
+    this.meshPivot.remove(mesh);
   }
 
   cleanup(): void {
-    this.forEachMesh((mesh) => {
-      mesh.geometry.dispose();
-      (mesh.material as Material).dispose();
+    this.meshPivot.traverse((obj) => {
+      if (obj instanceof Mesh) {
+        obj.geometry.dispose();
+        (obj.material as Material).dispose();
+      }
     });
     this.meshPivot.clear();
-    this.meshes.clear();
   }
 
   doRender(): void {
