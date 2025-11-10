@@ -2,55 +2,48 @@ import { Euler, Group, Material, Mesh, Vector3 } from "three";
 import { IDrawableObject, ScaleInfo } from "./types";
 
 /**
- * Abstract base class for drawable 3D objects.
+ * Abstract base class for drawable 3D mesh objects.
  *
  * Provides default implementations for some methods in the IDrawableObject
  * interface, including handling for visibility, transformations, and cleanup.
  *
- * As a default, subclasses should:
- * 1. Add all meshes that need to be disposed of during cleanup to the `meshes`
- *    array.
- * 2. Add all meshes as children of the `meshPivot` group for transformation
- *    handling (rotation, scaling, translation).
+ * As a default, subclasses should call `this.addChildMesh(mesh)` to register
+ * any meshes that should be managed by the base class.
  */
-export default class BaseDrawableObject implements IDrawableObject {
-  protected meshPivot: Group;
+export default abstract class BaseDrawableMeshObject implements IDrawableObject {
+  /**
+   * Pivot group that all child meshes are parented to. Transformations are
+   * applied to this group.
+   */
+  protected readonly meshPivot: Group;
   protected scale: Vector3;
   /** Scale of the parent mesh, if provided. (1, 1, 1) by default. */
   protected parentScale: Vector3;
   protected flipAxes: Vector3;
-
-  /**
-   * Mesh or array of meshes that should be disposed of during cleanup. Also
-   * used for toggling visibility.
-   */
-  protected meshes: Mesh | Mesh[] | null;
 
   constructor() {
     this.meshPivot = new Group();
     this.scale = new Vector3(1, 1, 1);
     this.parentScale = new Vector3(1, 1, 1);
     this.flipAxes = new Vector3(1, 1, 1);
-
-    this.meshes = null;
   }
 
-  forEachMesh(callback: (mesh: Mesh) => void): void {
-    if (this.meshes) {
-      if (Array.isArray(this.meshes)) {
-        this.meshes.forEach((mesh) => callback(mesh));
-      } else {
-        callback(this.meshes);
-      }
-    }
+  protected addChildMesh(mesh: Mesh): void {
+    this.meshPivot.add(mesh);
+  }
+
+  protected removeChildMesh(mesh: Mesh): void {
+    this.meshPivot.remove(mesh);
   }
 
   cleanup(): void {
-    this.meshPivot.clear();
-    this.forEachMesh((mesh) => {
-      mesh.geometry.dispose();
-      (mesh.material as Material).dispose();
+    this.meshPivot.traverse((obj) => {
+      if (obj instanceof Mesh) {
+        obj.geometry.dispose();
+        (obj.material as Material).dispose();
+      }
     });
+    this.meshPivot.clear();
   }
 
   doRender(): void {

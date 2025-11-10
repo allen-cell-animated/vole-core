@@ -894,9 +894,11 @@ export default class VolumeDrawable {
    * from -0.5 to 0.5 in each axis.
    */
   addDrawableObject(object: IDrawableObject): void {
-    this.childObjectsGroup.add(object.get3dObject());
-    this.childObjects.add(object);
-    this.updateScale();
+    if (!this.childObjects.has(object)) {
+      this.childObjectsGroup.add(object.get3dObject());
+      this.childObjects.add(object);
+      this.updateScale();
+    }
   }
 
   /** Returns whether a drawable object exists as a child of the volume. */
