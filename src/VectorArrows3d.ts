@@ -11,7 +11,7 @@ import {
   BufferGeometry,
 } from "three";
 import { IDrawableObject, ScaleInfo } from "./types";
-import BaseDrawableObject from "./BaseDrawableObject";
+import BaseDrawableMeshObject from "./BaseDrawableMeshObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
 const DEFAULT_DIAMETER = 0.002;
@@ -25,7 +25,7 @@ const DEFAULT_INSTANCE_COUNT = 256;
 /**
  * A drawable vector arrow field, which uses instanced meshes for performance.
  */
-export default class VectorArrows3d extends BaseDrawableObject implements IDrawableObject {
+export default class VectorArrows3d extends BaseDrawableMeshObject implements IDrawableObject {
   private headInstancedMesh: InstancedMesh;
   private shaftInstancedMesh: InstancedMesh;
 
@@ -126,9 +126,8 @@ export default class VectorArrows3d extends BaseDrawableObject implements IDrawa
     headMesh.instanceMatrix.setUsage(DynamicDrawUsage);
     shaftMesh.instanceMatrix.setUsage(DynamicDrawUsage);
 
-    this.meshPivot.add(headMesh);
-    this.meshPivot.add(shaftMesh);
-    this.meshes = [headMesh, shaftMesh];
+    this.addChildMesh(headMesh);
+    this.addChildMesh(shaftMesh);
 
     return { headMesh, shaftMesh };
   }
