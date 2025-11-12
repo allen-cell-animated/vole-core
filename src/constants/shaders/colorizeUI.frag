@@ -41,6 +41,10 @@ uniform uint highlightedId;
 
 uniform bool useRepeatingCategoricalColors;
 
+uniform bool useColorByIntensity;
+/** Base color used when coloring by intensity. Alpha determines blending. */
+uniform vec4 baseColor;
+
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;
 
@@ -58,6 +62,9 @@ uint getId(ivec2 uv) {
   uint rawId = texelFetch(srcTexture, uv, 0).r;
   if (rawId == 0u) {
     return BACKGROUND_ID;
+  }
+  if (useColorByIntensity) {
+    return rawId;
   }
   uvec4 c = getUintFromTex(segIdToGlobalId, int(rawId - segIdOffset));
   // Note: IDs are offset by `1` to reserve `0` for segmentations that don't
@@ -124,6 +131,10 @@ vec4 getObjectColor(ivec2 sUv, float opacity) {
   // if (id - 1u == highlightedId) {
   //   return vec4(outlineColor, 1.0);
   // }
+
+  if (useColorByIntensity) {
+    return mix(vec4(baseColor.rgb, 1.0), getCategoricalColor(float(id)), baseColor.a);
+  }
 
   float featureVal = getFeatureVal(id);
   uint outlierVal = getOutlierVal(id);

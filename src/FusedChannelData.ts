@@ -19,6 +19,9 @@ import {
   Texture,
   LinearFilter,
   Vector2,
+  Vector4,
+  FloatType,
+  RedIntegerFormat,
 } from "three";
 
 import Channel from "./Channel.js";
@@ -128,14 +131,24 @@ export default class FusedChannelData {
   }
 
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
+    const mockFeatureData = new DataTexture(new Float32Array(1), 1, 1, RedFormat, FloatType);
+    mockFeatureData.internalFormat = "R32F";
+    mockFeatureData.needsUpdate = true;
+    const mockOutlierData = new DataTexture(new Uint8Array(1), 1, 1, RedIntegerFormat, UnsignedByteType);
+    mockOutlierData.internalFormat = "R8UI";
+    mockOutlierData.needsUpdate = true;
+    const mockInRangeData = new DataTexture(new Uint8Array(1), 1, 1, RedIntegerFormat, UnsignedByteType);
+    mockInRangeData.internalFormat = "R8UI";
+    mockInRangeData.needsUpdate = true;
+
     return new ShaderMaterial({
       uniforms: {
         highlightedId: { value: -1 },
         featureData: {
-          value: null,
+          value: mockFeatureData,
         },
-        outlierData: { value: null },
-        inRangeIds: { value: null },
+        outlierData: { value: mockOutlierData },
+        inRangeIds: { value: mockInRangeData },
         srcTexture: {
           value: null,
         },
@@ -151,8 +164,10 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        segIdToGlobalId: { value: new DataTexture() },
+        segIdToGlobalId: { value: new DataTexture(new Uint8Array(1), 1, 1, RedFormat) },
         segIdOffset: { value: 0 },
+        useColorByIntensity: { value: false },
+        baseColor: { value: new Vector4(1, 1, 1, 1) },
       },
       fragmentShader: fragShaderSrc,
       ...this.fuseMaterialProps,
@@ -233,14 +248,16 @@ export default class FusedChannelData {
         if (!channels[chIndex].loaded) {
           continue;
         }
-        const isColorize = combination[i].feature !== undefined;
+        const isFeatureColorize = combination[i].feature !== undefined;
+        const isColorize = channels[chIndex].colorPaletteAlpha > 0.0;
+
         // add a draw call per channel here.
         // must clone the material to keep a unique set of uniforms
-        const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
+        const mat = this.getShader(channels[chIndex].dtype, isFeatureColorize || isColorize).clone();
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
         mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
         const feature = combination[i].feature;
-        if (isColorize && feature) {
+        if (isFeatureColorize && feature) {
           mat.uniforms.featureData.value = feature.idsToFeatureValue;
           mat.uniforms.outlierData.value = feature.outlierData;
           mat.uniforms.inRangeIds.value = feature.inRangeIds;
@@ -254,6 +271,7 @@ export default class FusedChannelData {
           mat.uniforms.outlierDrawMode.value = feature.outlierDrawMode;
           mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
           mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
+          mat.uniforms.useColorByIntensity.value = false;
 
           const frame = channels[chIndex].frame;
           let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(frame);
@@ -265,6 +283,17 @@ export default class FusedChannelData {
           }
           mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
           mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
+        } else if (isColorize) {
+          if (!combination) {
+            continue;
+          }
+          // Colorize mode
+          let rgbColor = combination[i].rgbColor;
+          rgbColor = Array.isArray(rgbColor) ? rgbColor : [rgbColor, rgbColor, rgbColor];
+          const channelColor = [...rgbColor, channels[chIndex].colorPaletteAlpha];
+          mat.uniforms.baseColor.value = new Vector4().fromArray(channelColor);
+          mat.uniforms.useColorByIntensity.value = true;
+          mat.uniforms.colorRamp.value = channels[chIndex].lutTexture;
         } else {
           // the lut texture is spanning only the data range of the channel, not the datatype range
           mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
