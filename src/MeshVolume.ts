@@ -323,11 +323,13 @@ export default class MeshVolume implements IDrawableObject {
     }
   }
 
-  saveChannelIsosurface(channelIndex: number, type: string, namePrefix: string): void {
+  saveChannelIsosurface(channelIndex: number, type: string, name?: string): void {
     const meshrep = this.meshrep[channelIndex];
     if (!meshrep) {
       return;
     }
+
+    const namePrefix = name !== undefined ? `${name}_` : "";
 
     if (type === "STL") {
       this.exportSTL(meshrep, namePrefix + "_" + this.volume.channelNames[channelIndex]);
