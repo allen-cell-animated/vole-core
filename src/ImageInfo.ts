@@ -2,7 +2,7 @@ import { type VolumeDims, volumeSize, physicalPixelSize } from "./VolumeDims.js"
 import { Vector3, Vector2 } from "three";
 
 export type ImageInfo = Readonly<{
-  name: string;
+  name?: string;
 
   /**
    * XY dimensions of the texture atlas used by `RayMarchedAtlasVolume` and

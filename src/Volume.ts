@@ -31,7 +31,7 @@ export default class Volume {
   public loadSpecRequired: Required<LoadSpec>;
   public channelLoadCallback?: PerChannelCallback;
   public imageMetadata: Record<string, unknown>;
-  public name: string;
+  public name?: string;
 
   public channels: Channel[];
   public numChannels: number;
