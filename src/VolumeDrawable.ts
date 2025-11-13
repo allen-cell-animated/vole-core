@@ -282,6 +282,9 @@ export default class VolumeDrawable {
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.childObjectsGroup.scale.copy(scale);
     this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
+
+    this.childObjects.forEach((obj) => obj.onParentTransformUpdated?.());
+
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);

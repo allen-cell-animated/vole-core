@@ -107,6 +107,10 @@ export interface IDrawableObject {
   get3dObject(): Group;
   setTranslation(translation: Vector3): void;
   setScale(scale: Vector3): void;
+  /**
+   * Optional. Should be called when parent transforms are updated.
+   */
+  onParentTransformUpdated?(): void;
   setRotation(eulerXYZ: Euler): void;
   setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
   setOrthoThickness(thickness: number): void;

@@ -25,6 +25,7 @@ import { VolumeLoadError, VolumeLoadErrorType } from "./loaders/VolumeLoadError.
 import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Line3d from "./Line3d.js";
+import VectorArrows3d from "./VectorArrows3d.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -36,6 +37,7 @@ export {
   Histogram,
   Lut,
   Line3d,
+  VectorArrows3d,
   remapControlPoints,
   View3d,
   Volume,
