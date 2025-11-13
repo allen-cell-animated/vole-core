@@ -64,7 +64,7 @@ export default abstract class BaseDrawableMeshObject implements IDrawableObject 
     this.meshPivot.scale.copy(scale).multiply(this.flipAxes);
   }
 
-  updateTransform(): void {
+  onParentTransformUpdated(): void {
     // no op
   }
 

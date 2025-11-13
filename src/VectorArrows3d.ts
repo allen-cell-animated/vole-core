@@ -69,7 +69,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
     this.tempScale = new Vector3();
     this.tempMatrix = new Object3D();
 
-    this.updateTransform();
+    this.onParentTransformUpdated();
   }
 
   /**
@@ -160,7 +160,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
 
   public setScale(scale: Vector3): void {
     if (scale !== this.scale) {
-      this.updateTransform();
+      this.onParentTransformUpdated();
       this.scale.copy(scale);
       if (this.positions && this.deltas) {
         // Update arrows
@@ -173,7 +173,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
    * Called when scaling of parent transforms has been updated or whenever
    * vector data is updated.
    */
-  public updateTransform(): void {
+  public onParentTransformUpdated(): void {
     // Measure world scale by temporarily resetting mesh pivot scale
     this.meshPivot.scale.set(1, 1, 1);
     let newWorldScale = new Vector3();

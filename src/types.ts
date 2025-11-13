@@ -110,7 +110,7 @@ export interface IDrawableObject {
   /**
    * Optional. Should be called when parent transforms are updated.
    */
-  updateTransform?(): void;
+  onParentTransformUpdated?(): void;
   setRotation(eulerXYZ: Euler): void;
   setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
   setOrthoThickness(thickness: number): void;
