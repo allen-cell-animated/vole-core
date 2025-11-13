@@ -10,7 +10,7 @@ import {
   Matrix4,
   BufferGeometry,
 } from "three";
-import { IDrawableObject, ScaleInfo } from "./types";
+import { IDrawableObject } from "./types";
 import BaseDrawableMeshObject from "./BaseDrawableMeshObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
@@ -26,6 +26,13 @@ const DEFAULT_INSTANCE_COUNT = 256;
  * A drawable vector arrow field, which uses instanced meshes for performance.
  */
 export default class VectorArrows3d extends BaseDrawableMeshObject implements IDrawableObject {
+  /**
+   * Scale of this object in world coordinates, when unscaled. Used to
+   * compensate for parent transforms in order to keep arrow meshes from being
+   * distorted.
+   */
+  protected worldScale: Vector3;
+
   private headInstancedMesh: InstancedMesh;
   private shaftInstancedMesh: InstancedMesh;
 
@@ -42,6 +49,8 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
 
   constructor() {
     super();
+    this.worldScale = new Vector3(1, 1, 1);
+
     this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
 
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
@@ -59,6 +68,8 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
     this.tempDst = new Vector3();
     this.tempScale = new Vector3();
     this.tempMatrix = new Object3D();
+
+    this.updateTransform();
   }
 
   /**
@@ -149,6 +160,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
 
   public setScale(scale: Vector3): void {
     if (scale !== this.scale) {
+      this.updateTransform();
       this.scale.copy(scale);
       if (this.positions && this.deltas) {
         // Update arrows
@@ -158,22 +170,26 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
   }
 
   /**
-   * If parented to a scaled object, this function should be called and the
-   * parent scale passed in to prevent arrows from being distorted by the
-   * parent's scale.
+   * Called when scaling of parent transforms has been updated or whenever
+   * vector data is updated.
    */
-  public setScaleInfo(scaleInfo: ScaleInfo): void {
-    if (scaleInfo.parentScale !== this.parentScale) {
-      this.parentScale.copy(scaleInfo.parentScale);
+  public updateTransform(): void {
+    // Measure world scale by temporarily resetting mesh pivot scale
+    this.meshPivot.scale.set(1, 1, 1);
+    let newWorldScale = new Vector3();
+    newWorldScale = this.meshPivot.getWorldScale(newWorldScale);
 
-      // Scale is inverted on mesh pivot to cancel out parent scaling (though
-      // translation and rotation are still affected by parent). This allows
-      // arrows to be scaled 1:1 with world space, regardless of parent scale,
-      // and prevents distortion. Parent scaling is applied to arrow positions
-      // and deltas, rather than the meshes themselves.
-      const invertScale = new Vector3(1, 1, 1).divide(this.parentScale);
-      this.meshPivot.scale.copy(invertScale);
+    // Scale is inverted on mesh pivot to cancel out parent transforms (though
+    // translation and rotation are still affected by any parent transforms).
+    // This allows arrows meshes to be scaled 1:1 with world space, regardless
+    // of parent transforms, and prevents distortion or skewing of the mesh.
+    // Parent scaling is  applied to arrow positions and deltas (see
+    // `updateAllArrowTransforms`), rather than the meshes themselves.
+    const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
+    this.meshPivot.scale.copy(invertScale);
 
+    if (!newWorldScale.equals(this.worldScale)) {
+      this.worldScale.copy(newWorldScale);
       if (this.positions && this.deltas) {
         this.setArrowData(this.positions, this.deltas);
       }
@@ -220,7 +236,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
       return;
     }
     const count = this.positions.length / 3;
-    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.parentScale);
+    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.worldScale);
 
     const tempSrc = new Vector3();
     const tempDelta = new Vector3();

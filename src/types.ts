@@ -100,10 +100,6 @@ export interface ColorizeFeature {
   hideOutOfRange: boolean;
 }
 
-export type ScaleInfo = {
-  parentScale: Vector3;
-};
-
 export interface IDrawableObject {
   cleanup(): void;
   setVisible(visible: boolean): void;
@@ -111,7 +107,10 @@ export interface IDrawableObject {
   get3dObject(): Group;
   setTranslation(translation: Vector3): void;
   setScale(scale: Vector3): void;
-  setScaleInfo?(scaleInfo: ScaleInfo): void;
+  /**
+   * Optional. Should be called when parent transforms are updated.
+   */
+  updateTransform?(): void;
   setRotation(eulerXYZ: Euler): void;
   setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
   setOrthoThickness(thickness: number): void;
