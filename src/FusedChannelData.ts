@@ -277,15 +277,15 @@ export default class FusedChannelData {
           mat.uniforms.useColorByIntensity.value = false;
 
           const frame = channels[chIndex].frame;
-          let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(frame);
-          if (!globalIdLookupInfo) {
+          const globalIdLookupInfo = feature.frameToGlobalIdLookup.get(frame);
+          if (globalIdLookupInfo) {
+            mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
+            mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
+          } else {
             console.warn(
               `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
             );
-            globalIdLookupInfo = { texture: new DataTexture(Uint32Array[0]), minSegId: 1 };
           }
-          mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
-          mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
         } else if (isColorize) {
           if (!combination) {
             continue;
