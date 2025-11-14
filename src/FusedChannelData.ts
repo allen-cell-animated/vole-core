@@ -140,6 +140,9 @@ export default class FusedChannelData {
     const mockInRangeData = new DataTexture(new Uint8Array(1), 1, 1, RedIntegerFormat, UnsignedByteType);
     mockInRangeData.internalFormat = "R8UI";
     mockInRangeData.needsUpdate = true;
+    const mockSegIdToGlobalId = new DataTexture(new Uint8Array(1), 1, 1, RedIntegerFormat, UnsignedByteType);
+    mockSegIdToGlobalId.internalFormat = "R8UI";
+    mockSegIdToGlobalId.needsUpdate = true;
 
     return new ShaderMaterial({
       uniforms: {
@@ -164,8 +167,8 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        segIdToGlobalId: { value: new DataTexture(new Uint8Array(1), 1, 1, RedFormat) },
-        segIdOffset: { value: 0 },
+        segIdToGlobalId: { value: mockSegIdToGlobalId },
+        segIdOffset: { value: 1 },
         useColorByIntensity: { value: false },
         baseColor: { value: new Vector4(1, 1, 1, 1) },
       },
