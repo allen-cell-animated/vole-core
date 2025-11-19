@@ -6,6 +6,7 @@ const { slice } = zarr;
 import type { ImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import VolumeCache from "../VolumeCache.js";
+import { getDataRange } from "../utils/num_utils.js";
 import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
 import {
   ThreadableVolumeLoader,
@@ -42,18 +43,7 @@ function convertChannel(
   dtype: zarr.NumberDataType
 ): { data: zarr.TypedArray<zarr.NumberDataType>; dtype: zarr.NumberDataType; min: number; max: number } {
   // get min and max
-  // TODO FIXME Histogram will also compute min and max!
-  let min = channelData[0];
-  let max = channelData[0];
-  for (let i = 0; i < channelData.length; i++) {
-    const val = channelData[i];
-    if (val < min) {
-      min = val;
-    }
-    if (val > max) {
-      max = val;
-    }
-  }
+  const [min, max] = getDataRange(channelData);
 
   if (dtype === "float64") {
     // convert to float32
@@ -568,7 +558,6 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
-      console.log(level);
       const result = await zarr
         .get(level, sliceSpec, { opts: { subscriber, reportChunk } })
         .catch(
