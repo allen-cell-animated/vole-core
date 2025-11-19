@@ -14,11 +14,13 @@ import { IDrawableObject } from "./types";
 import BaseDrawableMeshObject from "./BaseDrawableMeshObject";
 import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel";
 
-const DEFAULT_DIAMETER = 0.002;
-
-// Unscaled arrowhead dimensions. These will be scaled by the diameter.
+// Unscaled arrowhead dimensions.
+const SHAFT_BASE_RADIUS = 0.5;
 const HEAD_BASE_RADIUS = 1.5;
 const HEAD_BASE_HEIGHT = 4;
+
+/** Default arrow shaft thickness, in world units. */
+const DEFAULT_DIAMETER = 0.002;
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
@@ -96,7 +98,14 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
   private static generateGeometry(): { head: BufferGeometry; shaft: BufferGeometry } {
     // TODO: Currently the shape of the arrow head is fixed. Allow configuring
     // this in the future?
-    const cylinderGeometry = new CylinderGeometry(0.5, 0.5, 1, 8, 1, false);
+    const cylinderGeometry = new CylinderGeometry(
+      SHAFT_BASE_RADIUS,
+      SHAFT_BASE_RADIUS,
+      2 * SHAFT_BASE_RADIUS, // height
+      8, // radial segments
+      1, // height segments
+      false // capped ends
+    );
     const coneRadius = HEAD_BASE_RADIUS;
     const coneHeight = HEAD_BASE_HEIGHT;
     const coneGeometry = new ConeGeometry(coneRadius, coneHeight, 12);
@@ -245,7 +254,6 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
       // Points and deltas scaled to volume space.
       tempSrc.fromArray(this.positions, i * 3).multiply(combinedScale);
       tempDelta.fromArray(this.deltas, i * 3).multiply(combinedScale);
-      // Fallback in case 0-length diameter array is provided
       tempDiameter = this.diameter[i % this.diameter.length] ?? DEFAULT_DIAMETER;
       this.updateSingleArrowTransform(i, tempSrc, tempDelta, tempDiameter);
     }

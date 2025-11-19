@@ -64,10 +64,6 @@ export default abstract class BaseDrawableMeshObject implements IDrawableObject 
     this.meshPivot.scale.copy(scale).multiply(this.flipAxes);
   }
 
-  onParentTransformUpdated(): void {
-    // no op
-  }
-
   setRotation(eulerXYZ: Euler): void {
     this.meshPivot.rotation.copy(eulerXYZ);
   }
