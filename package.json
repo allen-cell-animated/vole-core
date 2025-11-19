@@ -1,6 +1,6 @@
 {
   "name": "@aics/vole-core",
-  "version": "4.3.1",
+  "version": "4.4.0",
   "description": "volume renderer for 3d, 4d, or 5d imaging data with OME-Zarr support",
   "main": "es/index.js",
   "type": "module",
