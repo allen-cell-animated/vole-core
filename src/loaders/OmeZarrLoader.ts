@@ -393,7 +393,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     });
 
     const imgdata: ImageInfo = {
-      name: source0.omeroMetadata?.name || "Volume",
+      name: source0.omeroMetadata?.name,
 
       atlasTileDims: [atlasTileDims.x, atlasTileDims.y],
       subregionSize: [pxSizeLv.x, pxSizeLv.y, pxSizeLv.z],
