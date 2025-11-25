@@ -34,6 +34,7 @@ function getOME(xml: string | undefined): Element | undefined {
 }
 
 class OMEDims {
+  name: string | undefined = undefined;
   sizex = 0;
   sizey = 0;
   sizez = 1;
@@ -99,14 +100,15 @@ function getOMEDims(imageEl: Element): OMEDims {
   const dims = new OMEDims();
 
   const pixelsEl = imageEl.getElementsByTagName("Pixels")[0];
+  dims.name = imageEl.getAttribute("Name") ?? "";
   dims.sizex = Number(getAttributeOrError(pixelsEl, "SizeX"));
   dims.sizey = Number(getAttributeOrError(pixelsEl, "SizeY"));
   dims.sizez = Number(pixelsEl.getAttribute("SizeZ"));
   dims.sizec = Number(pixelsEl.getAttribute("SizeC"));
   dims.sizet = Number(pixelsEl.getAttribute("SizeT"));
-  dims.unit = pixelsEl.getAttribute("PhysicalSizeXUnit") || "";
-  dims.pixeltype = pixelsEl.getAttribute("Type") || "";
-  dims.dimensionorder = pixelsEl.getAttribute("DimensionOrder") || "XYZCT";
+  dims.unit = pixelsEl.getAttribute("PhysicalSizeXUnit") ?? "";
+  dims.pixeltype = pixelsEl.getAttribute("Type") ?? "";
+  dims.dimensionorder = pixelsEl.getAttribute("DimensionOrder") ?? "XYZCT";
   dims.pixelsizex = Number(pixelsEl.getAttribute("PhysicalSizeX"));
   dims.pixelsizey = Number(pixelsEl.getAttribute("PhysicalSizeY"));
   dims.pixelsizez = Number(pixelsEl.getAttribute("PhysicalSizeZ"));
@@ -234,7 +236,7 @@ class TiffLoader extends ThreadableVolumeLoader {
     const numChannelsPerSource = this.url.length > 1 ? Array(this.url.length).fill(1) : [dims.sizec];
 
     const imgdata: ImageInfo = {
-      name: "TEST",
+      name: dims.name,
 
       atlasTileDims: [atlasDims.x, atlasDims.y],
       subregionSize: [tilesizex, tilesizey, dims.sizez],
@@ -252,7 +254,7 @@ class TiffLoader extends ThreadableVolumeLoader {
             (dims.pixelsizey * dims.sizey) / tilesizey,
             (dims.pixelsizex * dims.sizex) / tilesizex,
           ],
-          spaceUnit: dims.unit || "",
+          spaceUnit: dims.unit ?? "",
           timeUnit: "",
           dataType: getDtype(dims.pixeltype),
         },
