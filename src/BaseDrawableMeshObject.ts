@@ -1,5 +1,6 @@
 import { Euler, Group, Material, Mesh, Vector3 } from "three";
-import { IDrawableObject } from "./types";
+
+import { IDrawableObject } from "./types.js";
 
 /**
  * Abstract base class for drawable 3D mesh objects.
