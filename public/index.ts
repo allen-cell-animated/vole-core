@@ -106,6 +106,10 @@ const TEST_DATA: Record<string, TestDataSpec> = {
     type: VolumeFileFormat.ZARR,
     url: "https://uk1s3.embassy.ebi.ac.uk/idr/zarr/v0.4/idr0062A/6001240.zarr",
   },
+  zarrHumanOrganAtlas: {
+    type: VolumeFileFormat.ZARR,
+    url: "gs://ucl-hip-ct-35a68e99feaae8932b1d44da0358940b/A186/lung-right/24.132um_complete-organ_bm18.ome.zarr/",
+  },
   opencell: { type: "opencell", url: "" },
   cfeJson: {
     type: VolumeFileFormat.JSON,
