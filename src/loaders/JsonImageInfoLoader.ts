@@ -11,6 +11,7 @@ import type { VolumeDims } from "../VolumeDims.js";
 import VolumeCache, { isChunk } from "../VolumeCache.js";
 import type { TypedArray, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
+import { remapUri } from "../utils/url_utils.js";
 
 interface PackedChannelsImage {
   name: string;
@@ -144,7 +145,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
       return cachedInfo;
     }
 
-    const response = await fetch(this.urls[time]);
+    const response = await fetch(remapUri(this.urls[time]));
     const imageInfo = (await response.json()) as JsonImageInfo;
 
     imageInfo.pixel_size_unit = imageInfo.pixel_size_unit || "μm";

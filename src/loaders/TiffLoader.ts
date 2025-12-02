@@ -12,6 +12,7 @@ import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./Vol
 import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
+import { remapUri } from "../utils/url_utils.js";
 
 function trimNull(xml: string | undefined): string | undefined {
   // trim trailing unicode zeros?
@@ -138,7 +139,7 @@ class TiffLoader extends ThreadableVolumeLoader {
 
   private async loadOmeDims(): Promise<OMEDims> {
     if (!this.dims) {
-      const tiff = await fromUrl(this.url[0], { allowFullFile: true }).catch<GeoTIFF>(
+      const tiff = await fromUrl(remapUri(this.url[0]), { allowFullFile: true }).catch<GeoTIFF>(
         wrapVolumeLoadError(`Could not open TIFF file at ${this.url[0]}`, VolumeLoadErrorType.NOT_FOUND)
       );
       // DO NOT DO THIS, ITS SLOW
@@ -299,7 +300,7 @@ class TiffLoader extends ThreadableVolumeLoader {
             sizez: volumeSize.z,
             dimensionOrder: dims.dimensionorder,
             bytesPerSample: getBytesPerSample(dims.pixeltype),
-            url: this.url[source],
+            url: remapUri(this.url[source]),
           };
 
           const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
