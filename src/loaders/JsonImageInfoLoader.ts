@@ -286,7 +286,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
         return;
       }
 
-      const response = await fetch(image.name, { mode: "cors" });
+      const response = await fetch(remapUri(image.name), { mode: "cors" });
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
 
