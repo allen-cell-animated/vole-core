@@ -34,6 +34,7 @@ import type { PrefetchDirection, SubscriberId, TCZYX, ZarrSource, NumericZarrArr
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
 import wrapArray, { RelaxedFetchStore } from "./zarr_utils/wrappers.js";
 import { assertMetadataHasMultiscales, toOMEZarrMetaV4, validateOMEZarrMetadata } from "./zarr_utils/validation.js";
+import { remapUri } from "../utils/url_utils.js";
 
 const CHUNK_REQUEST_CANCEL_REASON = "chunk request cancelled";
 
@@ -142,7 +143,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     if (!queue) {
       queue = new SubscribableRequestQueue(fetchOptions?.concurrencyLimit, fetchOptions?.prefetchConcurrencyLimit);
     }
-    const urlsArr = Array.isArray(urls) ? urls : [urls];
+    const urlsArr = (Array.isArray(urls) ? urls : [urls]).map(remapUri);
     const scenesArr = Array.isArray(scenes) ? scenes : [scenes];
 
     // Create one `ZarrSource` per URL

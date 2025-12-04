@@ -12,6 +12,7 @@ import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./Vol
 import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
+import { remapUri } from "../utils/url_utils.js";
 
 function trimNull(xml: string | undefined): string | undefined {
   // trim trailing unicode zeros?
@@ -128,12 +129,12 @@ const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSiz
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
 class TiffLoader extends ThreadableVolumeLoader {
-  url: string[];
+  private url: string[];
   dims?: OMEDims;
 
   constructor(url: string[]) {
     super();
-    this.url = url;
+    this.url = url.map(remapUri);
   }
 
   private async loadOmeDims(): Promise<OMEDims> {
