@@ -129,17 +129,17 @@ const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSiz
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
 class TiffLoader extends ThreadableVolumeLoader {
-  url: string[];
+  private url: string[];
   dims?: OMEDims;
 
   constructor(url: string[]) {
     super();
-    this.url = url;
+    this.url = url.map(remapUri);
   }
 
   private async loadOmeDims(): Promise<OMEDims> {
     if (!this.dims) {
-      const tiff = await fromUrl(remapUri(this.url[0]), { allowFullFile: true }).catch<GeoTIFF>(
+      const tiff = await fromUrl(this.url[0], { allowFullFile: true }).catch<GeoTIFF>(
         wrapVolumeLoadError(`Could not open TIFF file at ${this.url[0]}`, VolumeLoadErrorType.NOT_FOUND)
       );
       // DO NOT DO THIS, ITS SLOW
@@ -300,7 +300,7 @@ class TiffLoader extends ThreadableVolumeLoader {
             sizez: volumeSize.z,
             dimensionOrder: dims.dimensionorder,
             bytesPerSample: getBytesPerSample(dims.pixeltype),
-            url: remapUri(this.url[source]),
+            url: this.url[source],
           };
 
           const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
