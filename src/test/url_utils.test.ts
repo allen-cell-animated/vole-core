@@ -27,6 +27,10 @@ describe("remapUrl", () => {
     );
   });
 
+  it("maps VAST file paths", () => {
+    expect(remapUri("/allen/aics/example/data.zarr")).toBe("https://vast-files.int.allencell.org/example/data.zarr");
+  });
+
   it("maps example Human Organ Atlas GCS URL", () => {
     expect(
       remapUri(
