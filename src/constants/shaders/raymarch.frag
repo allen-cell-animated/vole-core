@@ -321,8 +321,8 @@ void main() {
     }
   }
 
-  vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, //intersections of box
-  clipNear, clipFar, textureAtlas);
+  //tnear and tfar are intersections of box
+  vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar, textureAtlas);
 
   C = clamp(C, 0.0, 1.0);
   gl_FragColor = C;
