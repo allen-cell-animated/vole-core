@@ -10,12 +10,12 @@ precision highp sampler3D;
 #define INV_2_PI (0.5/PI)
 #define INV_4_PI (0.25/PI)
 
-const vec3 BLACK = vec3(0,0,0);
-const vec3 WHITE = vec3(1.0,1.0,1.0);
+const vec3 BLACK = vec3(0, 0, 0);
+const vec3 WHITE = vec3(1.0, 1.0, 1.0);
 const int ShaderType_Brdf = 0;
 const int ShaderType_Phase = 1;
 const int ShaderType_Mixed = 2;
-const float MAX_RAY_LEN = 1500000.0f;
+const float MAX_RAY_LEN = 1500000.0;
 
 in vec2 vUv;
 
@@ -32,26 +32,26 @@ struct Camera {
 uniform Camera gCamera;
 
 struct Light {
-  float   mTheta;
-  float   mPhi;
-  float   mWidth;
-  float   mHalfWidth;
-  float   mHeight;
-  float   mHalfHeight;
-  float   mDistance;
-  float   mSkyRadius;
-  vec3    mP;
-  vec3    mTarget;
-  vec3    mN;
-  vec3    mU;
-  vec3    mV;
-  float   mArea;
-  float   mAreaPdf;
-  vec3    mColor;
-  vec3    mColorTop;
-  vec3    mColorMiddle;
-  vec3    mColorBottom;
-  int     mT;
+  float mTheta;
+  float mPhi;
+  float mWidth;
+  float mHalfWidth;
+  float mHeight;
+  float mHalfHeight;
+  float mDistance;
+  float mSkyRadius;
+  vec3 mP;
+  vec3 mTarget;
+  vec3 mN;
+  vec3 mU;
+  vec3 mV;
+  float mArea;
+  float mAreaPdf;
+  vec3 mColor;
+  vec3 mColorTop;
+  vec3 mColorMiddle;
+  vec3 mColorBottom;
+  int mT;
 };
 const int NUM_LIGHTS = 2;
 uniform Light gLights[2];
@@ -93,11 +93,10 @@ uniform vec2 uResolution;
 uniform sampler2D tPreviousTexture;
 
 // from iq https://www.shadertoy.com/view/4tXyWN
-float rand( inout uvec2 seed )
-{
+float rand(inout uvec2 seed) {
   seed += uvec2(1);
-  uvec2 q = 1103515245U * ( (seed >> 1U) ^ (seed.yx) );
-  uint  n = 1103515245U * ( (q.x) ^ (q.y >> 3U) );
+  uvec2 q = 1103515245U * ((seed >> 1U) ^ (seed.yx));
+  uint n = 1103515245U * ((q.x) ^ (q.y >> 3U));
   return float(n) * (1.0 / float(0xffffffffU));
 }
 
@@ -119,34 +118,29 @@ vec3 RGBtoXYZ(vec3 rgb) {
   return rgb * RGB_2_XYZ;
 }
 
-vec3 getUniformSphereSample(in vec2 U)
-{
-  float z = 1.f - 2.f * U.x;
-  float r = sqrt(max(0.f, 1.f - z*z));
-  float phi = 2.f * PI * U.y;
+vec3 getUniformSphereSample(in vec2 U) {
+  float z = 1. - 2. * U.x;
+  float r = sqrt(max(0., 1. - z * z));
+  float phi = 2. * PI * U.y;
   float x = r * cos(phi);
   float y = r * sin(phi);
   return vec3(x, y, z);
 }
 
-float SphericalPhi(in vec3 Wl)
-{
+float SphericalPhi(in vec3 Wl) {
   float p = atan(Wl.z, Wl.x);
-  return (p < 0.f) ? p + 2.f * PI : p;
+  return (p < 0.) ? p + 2. * PI : p;
 }
 
-float SphericalTheta(in vec3 Wl)
-{
-  return acos(clamp(Wl.y, -1.f, 1.f));
+float SphericalTheta(in vec3 Wl) {
+  return acos(clamp(Wl.y, -1., 1.));
 }
 
-bool SameHemisphere(in vec3 Ww1, in vec3 Ww2)
-{
-   return (Ww1.z * Ww2.z) > 0.0f;
+bool SameHemisphere(in vec3 Ww1, in vec3 Ww2) {
+  return (Ww1.z * Ww2.z) > 0.0;
 }
 
-vec2 getConcentricDiskSample(in vec2 U)
-{
+vec2 getConcentricDiskSample(in vec2 U) {
   float r, theta;
   // Map 0..1 to -1..1
   float sx = 2.0 * U.x - 1.0;
@@ -155,51 +149,40 @@ vec2 getConcentricDiskSample(in vec2 U)
   // Map square to (r,theta)
 
   // Handle degeneracy at the origin
-  if (sx == 0.0 && sy == 0.0)
-  {
-    return vec2(0.0f, 0.0f);
+  if (sx == 0.0 && sy == 0.0) {
+    return vec2(0.0, 0.0);
   }
 
   // quadrants of disk
-  if (sx >= -sy)
-  {
-    if (sx > sy)
-    {
+  if (sx >= -sy) {
+    if (sx > sy) {
       r = sx;
       if (sy > 0.0)
-        theta = sy/r;
+        theta = sy / r;
       else
-        theta = 8.0f + sy/r;
-    }
-    else
-    {
+        theta = 8.0 + sy / r;
+    } else {
       r = sy;
-      theta = 2.0f - sx/r;
+      theta = 2.0 - sx / r;
     }
-  }
-  else
-  {
-    if (sx <= sy)
-    {
+  } else {
+    if (sx <= sy) {
       r = -sx;
-      theta = 4.0f - sy/r;
-    }
-    else
-    {
+      theta = 4.0 - sy / r;
+    } else {
       r = -sy;
-      theta = 6.0f + sx/r;
+      theta = 6.0 + sx / r;
     }
   }
 
   theta *= PI_OVER_4;
 
-  return vec2(r*cos(theta), r*sin(theta));
+  return vec2(r * cos(theta), r * sin(theta));
 }
 
-vec3 getCosineWeightedHemisphereSample(in vec2 U)
-{
+vec3 getCosineWeightedHemisphereSample(in vec2 U) {
   vec2 ret = getConcentricDiskSample(U);
-  return vec3(ret.x, ret.y, sqrt(max(0.f, 1.f - ret.x * ret.x - ret.y * ret.y)));
+  return vec3(ret.x, ret.y, sqrt(max(0., 1. - ret.x * ret.x - ret.y * ret.y)));
 }
 
 struct Ray {
@@ -209,11 +192,10 @@ struct Ray {
 };
 
 vec3 rayAt(Ray r, float t) {
-  return r.m_O + t*r.m_D;
+  return r.m_O + t * r.m_D;
 }
 
-Ray GenerateCameraRay(in Camera cam, in vec2 Pixel, in vec2 ApertureRnd)
-{
+Ray GenerateCameraRay(in Camera cam, in vec2 Pixel, in vec2 ApertureRnd) {
   // negating ScreenPoint.y flips the up/down direction. depends on whether you want pixel 0 at top or bottom
   // we could also have flipped mScreen and mInvScreen, or cam.mV?
   vec2 ScreenPoint = vec2(
@@ -227,8 +209,7 @@ Ray GenerateCameraRay(in Camera cam, in vec2 Pixel, in vec2 ApertureRnd)
   vec3 RayO = cam.mFrom + cam.mIsOrtho * dxy;
   vec3 RayD = normalize(cam.mN + (1.0 - cam.mIsOrtho) * dxy);
 
-  if (cam.mApertureSize != 0.0f)
-  {
+  if (cam.mApertureSize != 0.0) {
     vec2 LensUV = cam.mApertureSize * getConcentricDiskSample(ApertureRnd);
 
     vec3 LI = cam.mU * LensUV.x + cam.mV * LensUV.y;
@@ -239,18 +220,17 @@ Ray GenerateCameraRay(in Camera cam, in vec2 Pixel, in vec2 ApertureRnd)
   return Ray(RayO, RayD, 0.0, MAX_RAY_LEN);
 }
 
-bool IntersectBox(in Ray R, out float pNearT, out float pFarT)
-{
-  vec3 invR		= vec3(1.0f, 1.0f, 1.0f) / R.m_D;
-  vec3 bottomT		= invR * (vec3(gClippedAaBbMin.x, gClippedAaBbMin.y, gClippedAaBbMin.z) - R.m_O);
-  vec3 topT		= invR * (vec3(gClippedAaBbMax.x, gClippedAaBbMax.y, gClippedAaBbMax.z) - R.m_O);
-  vec3 minT		= min(topT, bottomT);
-  vec3 maxT		= max(topT, bottomT);
+bool IntersectBox(in Ray R, out float pNearT, out float pFarT) {
+  vec3 invR = vec3(1.0, 1.0, 1.0) / R.m_D;
+  vec3 bottomT = invR * (vec3(gClippedAaBbMin.x, gClippedAaBbMin.y, gClippedAaBbMin.z) - R.m_O);
+  vec3 topT = invR * (vec3(gClippedAaBbMax.x, gClippedAaBbMax.y, gClippedAaBbMax.z) - R.m_O);
+  vec3 minT = min(topT, bottomT);
+  vec3 maxT = max(topT, bottomT);
   float largestMinT = max(max(minT.x, minT.y), max(minT.x, minT.z));
   float smallestMaxT = min(min(maxT.x, maxT.y), min(maxT.x, maxT.z));
 
   pNearT = largestMinT;
-  pFarT	= smallestMaxT;
+  pFarT = smallestMaxT;
 
   return smallestMaxT > largestMinT;
 }
@@ -262,7 +242,7 @@ vec3 PtoVolumeTex(vec3 p) {
   vec3 uvw = (p - gVolCenter) * gInvAaBbMax + vec3(0.5, 0.5, 0.5);
   // if flipVolume = 1, uvw is unchanged.
   // if flipVolume = -1, uvw = 1 - uvw
-  uvw = (flipVolume*(uvw - 0.5) + 0.5);
+  uvw = (flipVolume * (uvw - 0.5) + 0.5);
   return uvw;
 }
 
@@ -270,17 +250,16 @@ const float UINT8_MAX = 1.0;//255.0;
 
 // strategy: sample up to 4 channels, and take the post-LUT maximum intensity as the channel that wins
 // we will return the unmapped raw intensity value from the volume so that other luts can be applied again later.
-float GetNormalizedIntensityMax4ch(in vec3 P, out int ch)
-{
+float GetNormalizedIntensityMax4ch(in vec3 P, out int ch) {
   vec4 intensity = UINT8_MAX * texture(volumeTexture, PtoVolumeTex(P));
 
   //intensity = (intensity - gIntensityMin) / (gIntensityMax - gIntensityMin);
   vec4 ilut = vec4(0.0, 0.0, 0.0, 0.0);
   // w in the lut texture is "opacity"
-  ilut.x = texture(gLutTexture, vec2(intensity.x, 0.5/4.0)).w / 255.0;
-  ilut.y = texture(gLutTexture, vec2(intensity.y, 1.5/4.0)).w / 255.0;
-  ilut.z = texture(gLutTexture, vec2(intensity.z, 2.5/4.0)).w / 255.0;
-  ilut.w = texture(gLutTexture, vec2(intensity.w, 3.5/4.0)).w / 255.0;
+  ilut.x = texture(gLutTexture, vec2(intensity.x, 0.5 / 4.0)).w / 255.0;
+  ilut.y = texture(gLutTexture, vec2(intensity.y, 1.5 / 4.0)).w / 255.0;
+  ilut.z = texture(gLutTexture, vec2(intensity.z, 2.5 / 4.0)).w / 255.0;
+  ilut.w = texture(gLutTexture, vec2(intensity.w, 3.5 / 4.0)).w / 255.0;
 
   float maxIn = 0.0;
   float iOut = 0.0;
@@ -297,8 +276,7 @@ float GetNormalizedIntensityMax4ch(in vec3 P, out int ch)
   return iOut;
 }
 
-float GetNormalizedIntensity4ch(vec3 P, int ch)
-{
+float GetNormalizedIntensity4ch(vec3 P, int ch) {
   vec4 intensity = UINT8_MAX * texture(volumeTexture, PtoVolumeTex(P));
   // select channel
   float intensityf = intensity[ch];
@@ -310,8 +288,7 @@ float GetNormalizedIntensity4ch(vec3 P, int ch)
 
 // note that gInvGradientDelta is maxpixeldim of volume
 // gGradientDeltaX,Y,Z is 1/X,Y,Z of volume
-vec3 Gradient4ch(vec3 P, int ch)
-{
+vec3 Gradient4ch(vec3 P, int ch) {
   vec3 Gradient;
 
   Gradient.x = (GetNormalizedIntensity4ch(P + (gGradientDeltaX), ch) - GetNormalizedIntensity4ch(P - (gGradientDeltaX), ch)) * gInvGradientDelta;
@@ -321,41 +298,36 @@ vec3 Gradient4ch(vec3 P, int ch)
   return Gradient;
 }
 
-float GetOpacity(float NormalizedIntensity, int ch)
-{
+float GetOpacity(float NormalizedIntensity, int ch) {
   // apply lut
-  float o = texture(gLutTexture, vec2(NormalizedIntensity, (0.5+float(ch))/4.0)).w / 255.0;
+  float o = texture(gLutTexture, vec2(NormalizedIntensity, (0.5 + float(ch)) / 4.0)).w / 255.0;
   float Intensity = o * gOpacity[ch];
   return Intensity;
 }
 
-vec3 GetEmissionN(float NormalizedIntensity, int ch)
-{
+vec3 GetEmissionN(float NormalizedIntensity, int ch) {
   return gEmissive[ch];
 }
 
-vec3 GetDiffuseN(float NormalizedIntensity, int ch)
-{
-  vec4 col = texture(gLutTexture, vec2(NormalizedIntensity, (0.5+float(ch))/4.0));
+vec3 GetDiffuseN(float NormalizedIntensity, int ch) {
+  vec4 col = texture(gLutTexture, vec2(NormalizedIntensity, (0.5 + float(ch)) / 4.0));
   //vec3 col = vec3(1.0, 1.0, 1.0);
   return col.xyz * gDiffuse[ch];
 }
 
-vec3 GetSpecularN(float NormalizedIntensity, int ch)
-{
+vec3 GetSpecularN(float NormalizedIntensity, int ch) {
   return gSpecular[ch];
 }
 
-float GetGlossinessN(float NormalizedIntensity, int ch)
-{
+float GetGlossinessN(float NormalizedIntensity, int ch) {
   return gGlossiness[ch];
 }
 
 // a bsdf sample, a sample on a light source, and a randomly chosen light index
 struct LightingSample {
   float m_bsdfComponent;
-  vec2  m_bsdfDir;
-  vec2  m_lightPos;
+  vec2 m_bsdfDir;
+  vec2 m_lightPos;
   float m_lightComponent;
   float m_LightNum;
 };
@@ -371,14 +343,12 @@ LightingSample LightingSample_LargeStep(inout uvec2 seed) {
 }
 
 // return a color xyz
-vec3 Light_Le(in Light light, in vec2 UV)
-{
+vec3 Light_Le(in Light light, in vec2 UV) {
   if (light.mT == 0)
     return RGBtoXYZ(light.mColor) / light.mArea;
 
-  if (light.mT == 1)
-  {
-    if (UV.y > 0.0f)
+  if (light.mT == 1) {
+    if (UV.y > 0.0)
       return RGBtoXYZ(mix(light.mColorMiddle, light.mColorTop, abs(UV.y)));
     else
       return RGBtoXYZ(mix(light.mColorMiddle, light.mColorBottom, abs(UV.y)));
@@ -388,41 +358,35 @@ vec3 Light_Le(in Light light, in vec2 UV)
 }
 
 // return a color xyz
-vec3 Light_SampleL(in Light light, in vec3 P, out Ray Rl, out float Pdf, in LightingSample LS)
-{
+vec3 Light_SampleL(in Light light, in vec3 P, out Ray Rl, out float Pdf, in LightingSample LS) {
   vec3 L = BLACK;
   Pdf = 0.0;
-  vec3 Ro = vec3(0,0,0), Rd = vec3(0,0,1);
-  if (light.mT == 0)
-  {
-    Ro = (light.mP + ((-0.5f + LS.m_lightPos.x) * light.mWidth * light.mU) + ((-0.5f + LS.m_lightPos.y) * light.mHeight * light.mV));
+  vec3 Ro = vec3(0, 0, 0), Rd = vec3(0, 0, 1);
+  if (light.mT == 0) {
+    Ro = (light.mP + ((-0.5 + LS.m_lightPos.x) * light.mWidth * light.mU) + ((-0.5 + LS.m_lightPos.y) * light.mHeight * light.mV));
     Rd = normalize(P - Ro);
-    L = dot(Rd, light.mN) > 0.0f ? Light_Le(light, vec2(0.0f)) : BLACK;
-    Pdf = abs(dot(Rd, light.mN)) > 0.0f ? dot(P-Ro, P-Ro) / (abs(dot(Rd, light.mN)) * light.mArea) : 0.0f;
-  }
-  else if (light.mT == 1)
-  {
+    L = dot(Rd, light.mN) > 0.0 ? Light_Le(light, vec2(0.0)) : BLACK;
+    Pdf = abs(dot(Rd, light.mN)) > 0.0 ? dot(P - Ro, P - Ro) / (abs(dot(Rd, light.mN)) * light.mArea) : 0.0;
+  } else if (light.mT == 1) {
     Ro = light.mP + light.mSkyRadius * getUniformSphereSample(LS.m_lightPos);
     Rd = normalize(P - Ro);
-    L = Light_Le(light, vec2(1.0f) - 2.0f * LS.m_lightPos);
-    Pdf = pow(light.mSkyRadius, 2.0f) / light.mArea;
+    L = Light_Le(light, vec2(1.0) - 2.0 * LS.m_lightPos);
+    Pdf = pow(light.mSkyRadius, 2.0) / light.mArea;
   }
 
-  Rl = Ray(Ro, Rd, 0.0f, length(P - Ro));
+  Rl = Ray(Ro, Rd, 0.0, length(P - Ro));
 
   return L;
 }
 
 // Intersect ray with light
-bool Light_Intersect(Light light, inout Ray R, out float T, out vec3 L, out float pPdf)
-{
-  if (light.mT == 0)
-  {
+bool Light_Intersect(Light light, inout Ray R, out float T, out vec3 L, out float pPdf) {
+  if (light.mT == 0) {
     // Compute projection
     float DotN = dot(R.m_D, light.mN);
 
     // Ray is coplanar with light surface
-    if (DotN >= 0.0f)
+    if (DotN >= 0.0)
       return false;
 
     // Compute hit distance
@@ -449,18 +413,15 @@ bool Light_Intersect(Light light, inout Ray R, out float T, out vec3 L, out floa
 
     //pUV = UV;
 
-    if (DotN < 0.0f)
+    if (DotN < 0.0)
       L = RGBtoXYZ(light.mColor) / light.mArea;
     else
       L = BLACK;
 
-    pPdf = dot(R.m_O-Pl, R.m_O-Pl) / (DotN * light.mArea);
+    pPdf = dot(R.m_O - Pl, R.m_O - Pl) / (DotN * light.mArea);
 
     return true;
-  }
-
-  else if (light.mT == 1)
-  {
+  } else if (light.mT == 1) {
     T = light.mSkyRadius;
 
     // Intersection is in ray's negative direction
@@ -471,9 +432,9 @@ bool Light_Intersect(Light light, inout Ray R, out float T, out vec3 L, out floa
 
     vec2 UV = vec2(SphericalPhi(R.m_D) * INV_2_PI, SphericalTheta(R.m_D) * INV_PI);
 
-    L = Light_Le(light, vec2(1.0f,1.0f) - 2.0f * UV);
+    L = Light_Le(light, vec2(1.0, 1.0) - 2.0 * UV);
 
-    pPdf = pow(light.mSkyRadius, 2.0f) / light.mArea;
+    pPdf = pow(light.mSkyRadius, 2.0) / light.mArea;
     //pUV = UV;
 
     return true;
@@ -482,30 +443,25 @@ bool Light_Intersect(Light light, inout Ray R, out float T, out vec3 L, out floa
   return false;
 }
 
-float Light_Pdf(in Light light, in vec3 P, in vec3 Wi)
-{
+float Light_Pdf(in Light light, in vec3 P, in vec3 Wi) {
   vec3 L;
   vec2 UV;
-  float Pdf = 1.0f;
+  float Pdf = 1.0;
 
-  Ray Rl = Ray(P, Wi, 0.0f, 100000.0f);
+  Ray Rl = Ray(P, Wi, 0.0, 100000.0);
 
-  if (light.mT == 0)
-  {
-    float T = 0.0f;
+  if (light.mT == 0) {
+    float T = 0.0;
 
     if (!Light_Intersect(light, Rl, T, L, Pdf))
-      return 0.0f;
+      return 0.0;
 
-    return pow(T, 2.0f) / (abs(dot(light.mN, -Wi)) * light.mArea);
+    return pow(T, 2.0) / (abs(dot(light.mN, -Wi)) * light.mArea);
+  } else if (light.mT == 1) {
+    return pow(light.mSkyRadius, 2.0) / light.mArea;
   }
 
-  else if (light.mT == 1)
-  {
-    return pow(light.mSkyRadius, 2.0f) / light.mArea;
-  }
-
-  return 0.0f;
+  return 0.0;
 }
 
 struct VolumeShader {
@@ -521,60 +477,52 @@ struct VolumeShader {
 };
 
 // return a xyz color
-vec3 ShaderPhase_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+vec3 ShaderPhase_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   return shader.m_Kd * INV_PI;
 }
 
-float ShaderPhase_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+float ShaderPhase_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   return INV_4_PI;
 }
 
-vec3 ShaderPhase_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U)
-{
-  Wi	= getUniformSphereSample(U);
-  Pdf	= ShaderPhase_Pdf(shader, Wo, Wi);
+vec3 ShaderPhase_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U) {
+  Wi = getUniformSphereSample(U);
+  Pdf = ShaderPhase_Pdf(shader, Wo, Wi);
 
   return ShaderPhase_F(shader, Wo, Wi);
 }
 
 // return a xyz color
-vec3 Lambertian_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+vec3 Lambertian_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   return shader.m_Kd * INV_PI;
 }
 
-float Lambertian_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+float Lambertian_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   //return abs(Wi.z)*INV_PI;
-  return SameHemisphere(Wo, Wi) ? abs(Wi.z) * INV_PI : 0.0f;
+  return SameHemisphere(Wo, Wi) ? abs(Wi.z) * INV_PI : 0.0;
 }
 
 // return a xyz color
-vec3 Lambertian_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U)
-{
+vec3 Lambertian_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U) {
   Wi = getCosineWeightedHemisphereSample(U);
 
-  if (Wo.z < 0.0f)
-    Wi.z *= -1.0f;
+  if (Wo.z < 0.0)
+    Wi.z *= -1.0;
 
   Pdf = Lambertian_Pdf(shader, Wo, Wi);
 
   return Lambertian_F(shader, Wo, Wi);
 }
 
-vec3 SphericalDirection(in float SinTheta, in float CosTheta, in float Phi)
-{
+vec3 SphericalDirection(in float SinTheta, in float CosTheta, in float Phi) {
   return vec3(SinTheta * cos(Phi), SinTheta * sin(Phi), CosTheta);
 }
 
-void Blinn_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U)
-{
+void Blinn_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U) {
   // Compute sampled half-angle vector wh for Blinn distribution
-  float costheta = pow(U.x, 1.f / (shader.m_Exponent+1.0));
-  float sintheta = sqrt(max(0.f, 1.f - costheta*costheta));
-  float phi = U.y * 2.f * PI;
+  float costheta = pow(U.x, 1. / (shader.m_Exponent + 1.0));
+  float sintheta = sqrt(max(0., 1. - costheta * costheta));
+  float phi = U.y * 2. * PI;
 
   vec3 wh = SphericalDirection(sintheta, costheta, phi);
 
@@ -582,38 +530,35 @@ void Blinn_SampleF(in VolumeShader shader, in vec3 Wo, out vec3 Wi, out float Pd
     wh = -wh;
 
   // Compute incident direction by reflecting about wh
-  Wi = -Wo + 2.f * dot(Wo, wh) * wh;
+  Wi = -Wo + 2. * dot(Wo, wh) * wh;
 
   // Compute PDF for wi from Blinn distribution
-  float blinn_pdf = ((shader.m_Exponent + 1.f) * pow(costheta, shader.m_Exponent)) / (2.f * PI * 4.f * dot(Wo, wh));
+  float blinn_pdf = ((shader.m_Exponent + 1.) * pow(costheta, shader.m_Exponent)) / (2. * PI * 4. * dot(Wo, wh));
 
-  if (dot(Wo, wh) <= 0.f)
-    blinn_pdf = 0.f;
+  if (dot(Wo, wh) <= 0.)
+    blinn_pdf = 0.;
 
   Pdf = blinn_pdf;
 }
 
-float Blinn_D(in VolumeShader shader, in vec3 wh)
-{
+float Blinn_D(in VolumeShader shader, in vec3 wh) {
   float costhetah = abs(wh.z);//AbsCosTheta(wh);
-  return (shader.m_Exponent+2.0) * INV_2_PI * pow(costhetah, shader.m_Exponent);
+  return (shader.m_Exponent + 2.0) * INV_2_PI * pow(costhetah, shader.m_Exponent);
 }
-float Microfacet_G(in VolumeShader shader, in vec3 wo, in vec3 wi, in vec3 wh)
-{
+float Microfacet_G(in VolumeShader shader, in vec3 wo, in vec3 wi, in vec3 wh) {
   float NdotWh = abs(wh.z);//AbsCosTheta(wh);
   float NdotWo = abs(wo.z);//AbsCosTheta(wo);
   float NdotWi = abs(wi.z);//AbsCosTheta(wi);
   float WOdotWh = abs(dot(wo, wh));
 
-  return min(1.f, min((2.f * NdotWh * NdotWo / WOdotWh), (2.f * NdotWh * NdotWi / WOdotWh)));
+  return min(1., min((2. * NdotWh * NdotWo / WOdotWh), (2. * NdotWh * NdotWi / WOdotWh)));
 }
 
-vec3 Microfacet_F(in VolumeShader shader, in vec3 wo, in vec3 wi)
-{
+vec3 Microfacet_F(in VolumeShader shader, in vec3 wo, in vec3 wi) {
   float cosThetaO = abs(wo.z);//AbsCosTheta(wo);
   float cosThetaI = abs(wi.z);//AbsCosTheta(wi);
 
-  if (cosThetaI == 0.f || cosThetaO == 0.f)
+  if (cosThetaI == 0. || cosThetaO == 0.)
     return BLACK;
 
   vec3 wh = wi + wo;
@@ -626,37 +571,34 @@ vec3 Microfacet_F(in VolumeShader shader, in vec3 wo, in vec3 wi)
 
   vec3 F = WHITE;//m_Fresnel.Evaluate(cosThetaH);
 
-  return shader.m_R * Blinn_D(shader, wh) * Microfacet_G(shader, wo, wi, wh) * F / (4.f * cosThetaI * cosThetaO);
+  return shader.m_R * Blinn_D(shader, wh) * Microfacet_G(shader, wo, wi, wh) * F / (4. * cosThetaI * cosThetaO);
 }
 
-vec3 ShaderBsdf_WorldToLocal(in VolumeShader shader, in vec3 W)
-{
+vec3 ShaderBsdf_WorldToLocal(in VolumeShader shader, in vec3 W) {
   return vec3(dot(W, shader.m_Nu), dot(W, shader.m_Nv), dot(W, shader.m_Nn));
 }
 
-vec3 ShaderBsdf_LocalToWorld(in VolumeShader shader, in vec3 W)
-{
-  return vec3(	shader.m_Nu.x * W.x + shader.m_Nv.x * W.y + shader.m_Nn.x * W.z,
+vec3 ShaderBsdf_LocalToWorld(in VolumeShader shader, in vec3 W) {
+  return vec3(
+    shader.m_Nu.x * W.x + shader.m_Nv.x * W.y + shader.m_Nn.x * W.z,
     shader.m_Nu.y * W.x + shader.m_Nv.y * W.y + shader.m_Nn.y * W.z,
     shader.m_Nu.z * W.x + shader.m_Nv.z * W.y + shader.m_Nn.z * W.z);
 }
 
-float Blinn_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+float Blinn_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   vec3 wh = normalize(Wo + Wi);
 
   float costheta = abs(wh.z);//AbsCosTheta(wh);
   // Compute PDF for wi from Blinn distribution
-  float blinn_pdf = ((shader.m_Exponent + 1.f) * pow(costheta, shader.m_Exponent)) / (2.f * PI * 4.f * dot(Wo, wh));
+  float blinn_pdf = ((shader.m_Exponent + 1.) * pow(costheta, shader.m_Exponent)) / (2. * PI * 4. * dot(Wo, wh));
 
-  if (dot(Wo, wh) <= 0.0f)
-    blinn_pdf = 0.0f;
+  if (dot(Wo, wh) <= 0.0)
+    blinn_pdf = 0.0;
 
   return blinn_pdf;
 }
 
-vec3 Microfacet_SampleF(in VolumeShader shader, in vec3 wo, out vec3 wi, out float Pdf, in vec2 U)
-{
+vec3 Microfacet_SampleF(in VolumeShader shader, in vec3 wo, out vec3 wi, out float Pdf, in vec2 U) {
   Blinn_SampleF(shader, wo, wi, Pdf, U);
 
   if (!SameHemisphere(wo, wi))
@@ -665,21 +607,19 @@ vec3 Microfacet_SampleF(in VolumeShader shader, in vec3 wo, out vec3 wi, out flo
   return Microfacet_F(shader, wo, wi);
 }
 
-float Microfacet_Pdf(in VolumeShader shader, in vec3 wo, in vec3 wi)
-{
+float Microfacet_Pdf(in VolumeShader shader, in vec3 wo, in vec3 wi) {
   if (!SameHemisphere(wo, wi))
-    return 0.0f;
+    return 0.0;
 
   return Blinn_Pdf(shader, wo, wi);
 }
 
 // return a xyz color
-vec3 ShaderBsdf_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+vec3 ShaderBsdf_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   vec3 Wol = ShaderBsdf_WorldToLocal(shader, Wo);
   vec3 Wil = ShaderBsdf_WorldToLocal(shader, Wi);
 
-  vec3 R = vec3(0,0,0);
+  vec3 R = vec3(0, 0, 0);
 
   R += Lambertian_F(shader, Wol, Wil);
   R += Microfacet_F(shader, Wol, Wil);
@@ -687,12 +627,11 @@ vec3 ShaderBsdf_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
   return R;
 }
 
-float ShaderBsdf_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+float ShaderBsdf_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   vec3 Wol = ShaderBsdf_WorldToLocal(shader, Wo);
   vec3 Wil = ShaderBsdf_WorldToLocal(shader, Wi);
 
-  float Pdf = 0.0f;
+  float Pdf = 0.0;
 
   Pdf += Lambertian_Pdf(shader, Wol, Wil);
   Pdf += Microfacet_Pdf(shader, Wol, Wil);
@@ -700,20 +639,15 @@ float ShaderBsdf_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
   return Pdf;
 }
 
-
-vec3 ShaderBsdf_SampleF(in VolumeShader shader, in LightingSample S, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U)
-{
+vec3 ShaderBsdf_SampleF(in VolumeShader shader, in LightingSample S, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U) {
   vec3 Wol = ShaderBsdf_WorldToLocal(shader, Wo);
-  vec3 Wil = vec3(0,0,0);
+  vec3 Wil = vec3(0, 0, 0);
 
-  vec3 R = vec3(0,0,0);
+  vec3 R = vec3(0, 0, 0);
 
-  if (S.m_bsdfComponent <= 0.5f)
-  {
+  if (S.m_bsdfComponent <= 0.5) {
     Lambertian_SampleF(shader, Wol, Wil, Pdf, S.m_bsdfDir);
-  }
-  else
-  {
+  } else {
     Microfacet_SampleF(shader, Wol, Wil, Pdf, S.m_bsdfDir);
   }
 
@@ -730,44 +664,36 @@ vec3 ShaderBsdf_SampleF(in VolumeShader shader, in LightingSample S, in vec3 Wo,
 }
 
 // return a xyz color
-vec3 Shader_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+vec3 Shader_F(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   if (shader.m_Type == 0) {
     return ShaderBsdf_F(shader, Wo, Wi);
-  }
-  else {
+  } else {
     return ShaderPhase_F(shader, Wo, Wi);
   }
 }
 
-float Shader_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi)
-{
+float Shader_Pdf(in VolumeShader shader, in vec3 Wo, in vec3 Wi) {
   if (shader.m_Type == 0) {
     return ShaderBsdf_Pdf(shader, Wo, Wi);
-  }
-  else {
+  } else {
     return ShaderPhase_Pdf(shader, Wo, Wi);
   }
 }
 
-vec3 Shader_SampleF(in VolumeShader shader, in LightingSample S, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U)
-{
+vec3 Shader_SampleF(in VolumeShader shader, in LightingSample S, in vec3 Wo, out vec3 Wi, out float Pdf, in vec2 U) {
   //return vec3(1,0,0);
   if (shader.m_Type == 0) {
     return ShaderBsdf_SampleF(shader, S, Wo, Wi, Pdf, U);
-  }
-  else {
+  } else {
     return ShaderPhase_SampleF(shader, Wo, Wi, Pdf, U);
   }
 }
 
-
 bool IsBlack(in vec3 v) {
-  return (v.x==0.0 && v.y == 0.0 && v.z == 0.0);
+  return (v.x == 0.0 && v.y == 0.0 && v.z == 0.0);
 }
 
-float PowerHeuristic(float nf, float fPdf, float ng, float gPdf)
-{
+float PowerHeuristic(float nf, float fPdf, float ng, float gPdf) {
   float f = nf * fPdf;
   float g = ng * gPdf;
   // The power heuristic is Veach's MIS balance heuristic except each component is being squared
@@ -775,14 +701,12 @@ float PowerHeuristic(float nf, float fPdf, float ng, float gPdf)
   return (f * f) / (f * f + g * g);
 }
 
-float MISContribution(float pdf1, float pdf2)
-{
-  return PowerHeuristic(1.0f, pdf1, 1.0f, pdf2);
+float MISContribution(float pdf1, float pdf2) {
+  return PowerHeuristic(1.0, pdf1, 1.0, pdf2);
 }
 
 // "shadow ray" using gStepSizeShadow, test whether it can exit the volume or not
-bool DoesSecondaryRayScatterInVolume(inout Ray R, inout uvec2 seed)
-{
+bool DoesSecondaryRayScatterInVolume(inout Ray R, inout uvec2 seed) {
   float MinT;
   float MaxT;
   vec3 Ps;
@@ -794,15 +718,14 @@ bool DoesSecondaryRayScatterInVolume(inout Ray R, inout uvec2 seed)
   MaxT = min(MaxT, R.m_MaxT);
 
   // delta (Woodcock) tracking
-  float S	= -log(rand(seed)) / gDensityScale;
-  float Sum = 0.0f;
-  float SigmaT = 0.0f;
+  float S = -log(rand(seed)) / gDensityScale;
+  float Sum = 0.0;
+  float SigmaT = 0.0;
 
   MinT += rand(seed) * gStepSizeShadow;
   int ch = 0;
   float intensity = 0.0;
-  while (Sum < S)
-  {
+  while (Sum < S) {
     Ps = rayAt(R, MinT);  // R.m_O + MinT * R.m_D;
 
     if (MinT > MaxT)
@@ -818,17 +741,14 @@ bool DoesSecondaryRayScatterInVolume(inout Ray R, inout uvec2 seed)
   return true;
 }
 
-int GetNearestLight(Ray R, out vec3 oLightColor, out vec3 Pl, out float oPdf)
-{
+int GetNearestLight(Ray R, out vec3 oLightColor, out vec3 Pl, out float oPdf) {
   int hit = -1;
-  float T = 0.0f;
+  float T = 0.0;
   Ray rayCopy = R;
-  float pdf = 0.0f;
+  float pdf = 0.0;
 
-  for (int i = 0; i < 2; i++)
-  {
-    if (Light_Intersect(gLights[i], rayCopy, T, oLightColor, pdf))
-    {
+  for (int i = 0; i < 2; i++) {
+    if (Light_Intersect(gLights[i], rayCopy, T, oLightColor, pdf)) {
       Pl = rayAt(R, T);
       hit = i;
     }
@@ -849,8 +769,7 @@ int GetNearestLight(Ray R, out vec3 oLightColor, out vec3 Pl, out float oPdf)
 //     \\ | //
 //      \\|// Pe = volume sample where scattering occurs
 //   ---------
-vec3 EstimateDirectLight(int shaderType, float Density, int ch, in Light light, in LightingSample LS, in vec3 Wo, in vec3 Pe, in vec3 N, inout uvec2 seed)
-{
+vec3 EstimateDirectLight(int shaderType, float Density, int ch, in Light light, in LightingSample LS, in vec3 Wo, in vec3 Pe, in vec3 N, inout uvec2 seed) {
   vec3 Ld = BLACK, Li = BLACK, F = BLACK;
 
   vec3 diffuse = GetDiffuseN(Density, ch);
@@ -862,30 +781,29 @@ vec3 EstimateDirectLight(int shaderType, float Density, int ch, in Light light, 
   vec3 nv = normalize(cross(N, nu));
 
   // the IoR here is hard coded... and unused!!!!
-  VolumeShader Shader = VolumeShader(shaderType, RGBtoXYZ(diffuse), RGBtoXYZ(specular), 2.5f, glossiness, N, nu, nv);
+  VolumeShader Shader = VolumeShader(shaderType, RGBtoXYZ(diffuse), RGBtoXYZ(specular), 2.5, glossiness, N, nu, nv);
 
-  float LightPdf = 1.0f, ShaderPdf = 1.0f;
+  float LightPdf = 1.0, ShaderPdf = 1.0;
 
-  Ray Rl = Ray(vec3(0,0,0), vec3(0,0,1.0), 0.0, MAX_RAY_LEN);
+  Ray Rl = Ray(vec3(0, 0, 0), vec3(0, 0, 1.0), 0.0, MAX_RAY_LEN);
   // Rl is ray from light toward Pe in volume, with a max traversal of the distance from Pe to Light sample pos.
   Li = Light_SampleL(light, Pe, Rl, LightPdf, LS);
 
   // Wi: negate ray direction: from volume scatter point toward light...?
-  vec3 Wi = -Rl.m_D, P = vec3(0,0,0);
+  vec3 Wi = -Rl.m_D, P = vec3(0, 0, 0);
 
   // we will calculate two lighting contributions and combine them by MIS.
 
-  F = Shader_F(Shader,Wo, Wi);
+  F = Shader_F(Shader, Wo, Wi);
 
   ShaderPdf = Shader_Pdf(Shader, Wo, Wi);
 
   // get a lighting contribution along Rl;  see if Rl would scatter in the volume or not
-  if (!IsBlack(Li) && (ShaderPdf > 0.0f) && (LightPdf > 0.0f) && !DoesSecondaryRayScatterInVolume(Rl, seed))
-  {
+  if (!IsBlack(Li) && (ShaderPdf > 0.0) && (LightPdf > 0.0) && !DoesSecondaryRayScatterInVolume(Rl, seed)) {
     // ray from light can see through volume to Pe!
 
     float dotProd = 1.0;
-    if (shaderType == ShaderType_Brdf){
+    if (shaderType == ShaderType_Brdf) {
 
       // (use abs or clamp here?)
       dotProd = abs(dot(Wi, N));
@@ -896,21 +814,18 @@ vec3 EstimateDirectLight(int shaderType, float Density, int ch, in Light light, 
 
   // get a lighting contribution by sampling nearest light from the scattering point
   F = Shader_SampleF(Shader, LS, Wo, Wi, ShaderPdf, LS.m_bsdfDir);
-  if (!IsBlack(F) && (ShaderPdf > 0.0f))
-  {
-    vec3 Pl = vec3(0,0,0);
-    int n = GetNearestLight(Ray(Pe, Wi, 0.0f, 1000000.0f), Li, Pl, LightPdf);
-    if (n > -1)
-    {
+  if (!IsBlack(F) && (ShaderPdf > 0.0)) {
+    vec3 Pl = vec3(0, 0, 0);
+    int n = GetNearestLight(Ray(Pe, Wi, 0.0, 1000000.0), Li, Pl, LightPdf);
+    if (n > -1) {
       Light pLight = gLights[n];
       LightPdf = Light_Pdf(pLight, Pe, Wi);
 
-      if ((LightPdf > 0.0f) && !IsBlack(Li)) {
-        Ray rr = Ray(Pl, normalize(Pe - Pl), 0.0f, length(Pe - Pl));
-        if (!DoesSecondaryRayScatterInVolume(rr, seed))
-        {
+      if ((LightPdf > 0.0) && !IsBlack(Li)) {
+        Ray rr = Ray(Pl, normalize(Pe - Pl), 0.0, length(Pe - Pl));
+        if (!DoesSecondaryRayScatterInVolume(rr, seed)) {
           float dotProd = 1.0;
-          if (shaderType == ShaderType_Brdf){
+          if (shaderType == ShaderType_Brdf) {
 
             // (use abs or clamp here?)
             dotProd = abs(dot(Wi, N));
@@ -928,8 +843,7 @@ vec3 EstimateDirectLight(int shaderType, float Density, int ch, in Light light, 
 }
 
 // return a linear xyz color
-vec3 UniformSampleOneLight(int shaderType, float Density, int ch, in vec3 Wo, in vec3 Pe, in vec3 N, inout uvec2 seed)
-{
+vec3 UniformSampleOneLight(int shaderType, float Density, int ch, in vec3 Wo, in vec3 Pe, in vec3 N, inout uvec2 seed) {
   //if (NUM_LIGHTS == 0)
   //  return BLACK;
 
@@ -944,8 +858,7 @@ vec3 UniformSampleOneLight(int shaderType, float Density, int ch, in vec3 Wo, in
 
 }
 
-bool SampleScatteringEvent(inout Ray R, inout uvec2 seed, out vec3 Ps)
-{
+bool SampleScatteringEvent(inout Ray R, inout uvec2 seed, out vec3 Ps) {
   float MinT;
   float MaxT;
 
@@ -978,10 +891,10 @@ bool SampleScatteringEvent(inout Ray R, inout uvec2 seed, out vec3 Ps)
 
   // here gDensityScale represents sigmaMax, a majorant of sigmaT
   // it is a parameter that should be set as close to the max extinction coefficient as possible.
-  float S	= -log(rand(seed)) / gDensityScale;
+  float S = -log(rand(seed)) / gDensityScale;
 
-  float Sum		= 0.0f;
-  float SigmaT	= 0.0f; // accumulated extinction along ray march
+  float Sum = 0.0;
+  float SigmaT = 0.0; // accumulated extinction along ray march
 
   // start: take one step now.
   MinT += rand(seed) * gStepSize;
@@ -990,8 +903,7 @@ bool SampleScatteringEvent(inout Ray R, inout uvec2 seed, out vec3 Ps)
   float intensity = 0.0;
 
   // ray march until we have traveled S (or hit the maxT of the ray)
-  while (Sum < S)
-  {
+  while (Sum < S) {
     Ps = rayAt(R, MinT);  // R.m_O + MinT * R.m_D;
 
     // if we exit the volume with no scattering
@@ -1011,7 +923,6 @@ bool SampleScatteringEvent(inout Ray R, inout uvec2 seed, out vec3 Ps)
   return true;
 }
 
-
 vec4 CalculateRadiance(inout uvec2 seed) {
   float r = rand(seed);
   //return vec4(r,0,0,1);
@@ -1020,7 +931,7 @@ vec4 CalculateRadiance(inout uvec2 seed) {
 
   //Ray Re = Ray(vec3(0,0,0), vec3(0,0,1), 0.0, MAX_RAY_LEN);
 
-  vec2 UV = vUv*uResolution + vec2(rand(seed), rand(seed));
+  vec2 UV = vUv * uResolution + vec2(rand(seed), rand(seed));
 
   Ray Re = GenerateCameraRay(gCamera, UV, vec2(rand(seed), rand(seed)));
 
@@ -1031,19 +942,17 @@ vec4 CalculateRadiance(inout uvec2 seed) {
   //Re.m_MinT = 0.0f;
   //Re.m_MaxT = MAX_RAY_LEN;
 
-  vec3 Pe = vec3(0,0,0), Pl = vec3(0,0,0);
+  vec3 Pe = vec3(0, 0, 0), Pl = vec3(0, 0, 0);
   float lpdf = 0.0;
 
   float alpha = 0.0;
   // find point Pe along ray Re
-  if (SampleScatteringEvent(Re, seed, Pe))
-  {
+  if (SampleScatteringEvent(Re, seed, Pe)) {
     alpha = 1.0;
     // is there a light between Re.m_O and Pe? (ray's maxT is distance to Pe)
     // (test to see if area light was hit before volume.)
-    int i = GetNearestLight(Ray(Re.m_O, Re.m_D, 0.0f, length(Pe - Re.m_O)), Li, Pl, lpdf);
-    if (i > -1)
-    {
+    int i = GetNearestLight(Ray(Re.m_O, Re.m_D, 0.0, length(Pe - Re.m_O)), Li, Pl, lpdf);
+    if (i > -1) {
       // set sample pixel value in frame estimate (prior to accumulation)
       return vec4(Li, 1.0);
     }
@@ -1056,32 +965,27 @@ vec4 CalculateRadiance(inout uvec2 seed) {
 
     vec3 gradient = Gradient4ch(Pe, ch);
     // send ray out from Pe toward light
-    switch (gShadingType)
-    {
-      case ShaderType_Brdf:
-      {
+    switch (gShadingType) {
+      case ShaderType_Brdf: {
         Lv += UniformSampleOneLight(ShaderType_Brdf, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
         break;
       }
 
-      case ShaderType_Phase:
-      {
-        Lv += 0.5f * UniformSampleOneLight(ShaderType_Phase, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
+      case ShaderType_Phase: {
+        Lv += 0.5 * UniformSampleOneLight(ShaderType_Phase, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
         break;
       }
 
-      case ShaderType_Mixed:
-      {
+      case ShaderType_Mixed: {
         //const float GradMag = GradientMagnitude(Pe, volumedata.gradientVolumeTexture[ch]) * (1.0/volumedata.intensityMax[ch]);
         float GradMag = length(gradient);
-        float PdfBrdf = (1.0f - exp(-gGradientFactor * GradMag));
+        float PdfBrdf = (1.0 - exp(-gGradientFactor * GradMag));
 
         vec3 cls; // xyz color
         if (rand(seed) < PdfBrdf) {
           cls = UniformSampleOneLight(ShaderType_Brdf, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
-        }
-        else {
-          cls = 0.5f * UniformSampleOneLight(ShaderType_Phase, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
+        } else {
+          cls = 0.5 * UniformSampleOneLight(ShaderType_Phase, D, ch, normalize(-Re.m_D), Pe, normalize(gradient), seed);
         }
 
         Lv += cls;
@@ -1089,9 +993,7 @@ vec4 CalculateRadiance(inout uvec2 seed) {
         break;
       }
     }
-  }
-  else
-  {
+  } else {
     // background color:
     // set Lv to a selected color based on environment light source?
     // if (uShowLights > 0.0) {
@@ -1107,22 +1009,20 @@ vec4 CalculateRadiance(inout uvec2 seed) {
   return vec4(Lv, alpha);
 }
 
-vec4 CumulativeMovingAverage(vec4 A, vec4 Ax, float N)
-{
-   return A + ((Ax - A) / max((N), 1.0f));
+vec4 CumulativeMovingAverage(vec4 A, vec4 Ax, float N) {
+  return A + ((Ax - A) / max((N), 1.0));
 }
 
-void main()
-{
+void main() {
   // seed for rand(seed) function
   uvec2 seed = uvec2(uFrameCounter, uFrameCounter + 1.0) * uvec2(gl_FragCoord);
 
   // perform path tracing and get resulting pixel color
-  vec4 pixelColor = CalculateRadiance( seed );
+  vec4 pixelColor = CalculateRadiance(seed);
 
   vec4 previousColor = texture(tPreviousTexture, vUv);
   if (uSampleCounter < 1.0) {
-    previousColor = vec4(0,0,0,0);
+    previousColor = vec4(0, 0, 0, 0);
   }
 
   pc_fragColor = CumulativeMovingAverage(previousColor, pixelColor, uSampleCounter);
