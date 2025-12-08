@@ -53,6 +53,10 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
+export function isFloatTypeArray(array: TypedArray<NumberType>): array is Float32Array | Float64Array {
+  return array instanceof Float32Array || array instanceof Float64Array;
+}
+
 export interface ColorizeFeature {
   idsToFeatureValue: DataTexture;
   featureValueToColor: DataTexture;
@@ -103,6 +107,10 @@ export interface IDrawableObject {
   get3dObject(): Group;
   setTranslation(translation: Vector3): void;
   setScale(scale: Vector3): void;
+  /**
+   * Optional. Should be called when parent transforms are updated.
+   */
+  onParentTransformUpdated?(): void;
   setRotation(eulerXYZ: Euler): void;
   setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
   setOrthoThickness(thickness: number): void;
@@ -125,28 +133,26 @@ export interface FuseChannel {
 /** If `FuseChannel.rgbColor` is this value, it is disabled from fusion. */
 export const FUSE_DISABLED_RGB_COLOR = 0;
 
-/**
- * Provide options to control the visual appearance of a Volume
- * @typedef {Object} VolumeChannelDisplayOptions
- * @property {boolean} enabled array of boolean per channel
- * @property {Array.<number>} color array of rgb per channel
- * @property {Array.<number>} specularColor array of rgb per channel
- * @property {Array.<number>} emissiveColor array of rgb per channel
- * @property {number} glossiness array of float per channel
- * @property {boolean} isosurfaceEnabled array of boolean per channel
- * @property {number} isovalue array of number per channel
- * @property {number} isosurfaceOpacity array of number per channel
- * @example let options = {
-   };
- */
 export interface VolumeChannelDisplayOptions {
+  /** Whether the channel's volume data should be rendered for this channel. */
   enabled?: boolean;
+  /** RGB color array, with values in the range of [0, 255]. */
   color?: [number, number, number];
+  /** RGB color array for specular (highlight) color, with values in the range of [0, 255]. */
   specularColor?: [number, number, number];
+  /** RGB color array for emissive (glow) color, with values in the range of [0, 255]. */
   emissiveColor?: [number, number, number];
+  /** Exponent factor controlling the glossiness ("shininess") of the material. 0 is default. */
   glossiness?: number;
+  /** Whether the isosurface mesh should be rendered for this channel. */
   isosurfaceEnabled?: boolean;
+  /**
+   * Isovalue used to calculate the isosurface mesh, in a [0, 255] range.
+   * Isosurface is found at the set of all boundaries between voxels whose
+   * intensities span across this isovalue.
+   */
   isovalue?: number;
+  /** Opacity of the isosurface, in a [0, 1] range. */
   isosurfaceOpacity?: number;
 }
 

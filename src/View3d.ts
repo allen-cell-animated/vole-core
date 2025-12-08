@@ -24,6 +24,7 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
+  IDrawableObject,
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
@@ -977,29 +978,54 @@ export class View3d {
    * be in the normalized coordinate space of the Volume, where the origin
    * (0,0,0) is at the center of the Volume and the extent is from -0.5 to 0.5
    * in each axis.
+   * @deprecated Will be removed in the next major release. Use `addDrawableObject` instead.
    */
   addLineObject(line: Line3d): void {
-    if (this.image) {
-      this.image.addLineObject(line);
-      this.redraw();
-    }
+    return this.addDrawableObject(line);
   }
 
-  /** Returns whether a Line3d object exists as a child of the volume. */
+  /**
+   * Returns whether a Line3d object exists as a child of the volume.
+   * @deprecated Will be removed in the next major release. Use `hasDrawableObject` instead.
+   */
   hasLineObject(line: Line3d): boolean {
-    if (this.image) {
-      return this.image.hasLineObject(line);
-    }
-    return false;
+    return this.hasDrawableObject(line);
   }
 
   /**
    * Removes a Line3d object from the Volume, if it exists. Note that the
    * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+   * @deprecated Will be removed in the next major release. Use `removeDrawableObject` instead.
    */
   removeLineObject(line: Line3d): void {
+    return this.removeDrawableObject(line);
+  }
+
+  /**
+   * Adds a drawable object as a child of the Volume, if it does not already
+   * exist. Objects will be in the normalized coordinate space of the Volume,
+   * where the origin (0,0,0) is at the center of the Volume and the extent is
+   * from -0.5 to 0.5 in each axis.
+   */
+  addDrawableObject(object: IDrawableObject): void {
     if (this.image) {
-      this.image.removeLineObject(line);
+      this.image.addDrawableObject(object);
+      this.redraw();
+    }
+  }
+
+  /** Returns whether a drawable object exists as a child of the volume. */
+  hasDrawableObject(object: IDrawableObject): boolean {
+    return this.image ? this.image.hasDrawableObject(object) : false;
+  }
+
+  /**
+   * Removes a drawable object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `object.cleanup()`).
+   */
+  removeDrawableObject(object: IDrawableObject): void {
+    if (this.image) {
+      this.image.removeDrawableObject(object);
       this.redraw();
     }
   }
@@ -1043,10 +1069,10 @@ export class View3d {
 
     const addFolderForLight = (light: ThreeLight, title: string): void => {
       const folder = lights.addFolder({ title, expanded: false });
-      folder.addInput(light, "color", { color: { type: "float" } });
-      folder.addInput(light, "intensity", { min: 0 });
+      folder.addInput(light, "color", { color: { type: "float" } }).on("change", (_event) => this.redraw());
+      folder.addInput(light, "intensity", { min: 0 }).on("change", (_event) => this.redraw());
       if (!(light as AmbientLight).isAmbientLight) {
-        folder.addInput(light, "position");
+        folder.addInput(light, "position").on("change", (_event) => this.redraw());
       }
     };
 

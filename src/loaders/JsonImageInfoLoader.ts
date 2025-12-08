@@ -11,6 +11,7 @@ import type { VolumeDims } from "../VolumeDims.js";
 import VolumeCache, { isChunk } from "../VolumeCache.js";
 import type { TypedArray, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
+import { remapUri } from "../utils/url_utils.js";
 
 interface PackedChannelsImage {
   name: string;
@@ -89,7 +90,7 @@ const convertImageInfo = (json: JsonImageInfo): ImageInfo => {
     atlasTileDims: [json.cols, json.rows],
     subregionSize: [json.tile_width, json.tile_height, json.tiles],
     subregionOffset: [0, 0, 0],
-    combinedNumChannels: json.channels,
+    numChannelsPerSource: json.images.map((image) => image.channels.length),
     channelNames: json.channel_names,
     channelColors: json.channel_colors,
     multiscaleLevel: 0,
@@ -144,7 +145,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
       return cachedInfo;
     }
 
-    const response = await fetch(this.urls[time]);
+    const response = await fetch(remapUri(this.urls[time]));
     const imageInfo = (await response.json()) as JsonImageInfo;
 
     imageInfo.pixel_size_unit = imageInfo.pixel_size_unit || "μm";
@@ -285,7 +286,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
         return;
       }
 
-      const response = await fetch(image.name, { mode: "cors" });
+      const response = await fetch(remapUri(image.name), { mode: "cors" });
       const blob = await response.blob();
       const bitmap = await createImageBitmap(blob);
 

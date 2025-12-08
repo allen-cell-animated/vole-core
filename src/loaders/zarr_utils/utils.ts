@@ -9,14 +9,48 @@ import type {
   ZarrSource,
 } from "./types.js";
 
-/** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
-export function getSourceChannelNames(src: ZarrSource): string[] {
-  if (src.omeroMetadata?.channels) {
-    return src.omeroMetadata.channels.map(({ label }, idx) => label ?? `Channel ${idx + src.channelOffset}`);
+/**
+ * Attempts to parse `color` as a 24-bit (6-digit) hexadecimal color with a possible leading `#`.
+ *
+ * Six-digit hex is the only allowable color representation in the OMERO metadata spec.
+ */
+export function parseHexColor(color: string | undefined): [number, number, number] | undefined {
+  if (color === undefined) {
+    return undefined;
   }
+
+  const result = /^#?([a-fA-F\d]{2})([a-fA-F\d]{2})([a-fA-F\d]{2})$/i.exec(color);
+  if (result) {
+    return [parseInt(result[1], 16), parseInt(result[2], 16), parseInt(result[3], 16)];
+  } else {
+    return undefined;
+  }
+}
+
+/** Extracts channel names from a `ZarrSource`. Handles missing `omeroMetadata`. Does *not* resolve name collisions. */
+export function getSourceChannelMeta(src: ZarrSource): {
+  names: string[];
+  colors: ([number, number, number] | undefined)[];
+} {
+  if (src.omeroMetadata?.channels) {
+    const { channels } = src.omeroMetadata;
+    const names: string[] = [];
+    const colors: ([number, number, number] | undefined)[] = [];
+
+    for (let i = 0; i < channels.length; i++) {
+      const channel = channels[i];
+      names.push(channel.label ?? `Channel ${i + src.channelOffset}`);
+      colors.push(parseHexColor(channel.color));
+    }
+
+    return { names, colors };
+  }
+
   const cIdx = src.axesTCZYX[1];
   const length = cIdx < 0 ? 1 : src.scaleLevels[0].shape[cIdx];
-  return Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const names = Array.from({ length }, (_, idx) => `Channel ${idx + src.channelOffset}`);
+  const colors = Array.from({ length }, () => undefined);
+  return { names, colors };
 }
 
 /** Turns `axesTCZYX` into the number of dimensions in the array */
@@ -53,6 +87,7 @@ export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<numbe
   const specLen = getDimensionCount(orderTCZYX);
   const result: T[] = Array(specLen);
 
+  let curIdx = 0;
   orderTCZYX.forEach((val, idx) => {
     if (val >= 0) {
       if (val >= specLen) {
@@ -60,7 +95,7 @@ export function orderByDimension<T>(valsTCZYX: TCZYX<T>, orderTCZYX: TCZYX<numbe
           type: VolumeLoadErrorType.INVALID_METADATA,
         });
       }
-      result[val] = valsTCZYX[idx];
+      result[curIdx++] = valsTCZYX[idx];
     }
   });
 

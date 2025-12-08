@@ -1,9 +1,11 @@
-import { Color, Euler, Group, Vector3 } from "three";
-import { IDrawableObject } from "./types";
-import { LineMaterial } from "three/addons/lines/LineMaterial";
-import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel";
-import { LineSegments2 } from "three/addons/lines/LineSegments2";
-import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry";
+import { Color } from "three";
+import { LineMaterial } from "three/addons/lines/LineMaterial.js";
+import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
+
+import { IDrawableObject } from "./types.js";
+import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
+import BaseDrawableMeshObject from "./BaseDrawableMeshObject.js";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
@@ -11,14 +13,12 @@ const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
  * Simple wrapper for a 3D line segments object, with controls for vertex data,
  * color, width, and segments visible.
  */
-export default class Line3d implements IDrawableObject {
-  private meshPivot: Group;
-  private scale: Vector3;
-  private flipAxes: Vector3;
+export default class Line3d extends BaseDrawableMeshObject implements IDrawableObject {
   private lineMesh: LineSegments2;
   private bufferSize: number;
 
   constructor() {
+    super();
     this.bufferSize = DEFAULT_VERTEX_BUFFER_SIZE;
 
     const geometry = new LineSegmentsGeometry();
@@ -32,69 +32,11 @@ export default class Line3d implements IDrawableObject {
     // artifacts can occur where contours are drawn around lines. This layer
     // (MESH_NO_PICK_OCCLUSION_LAYER) does not occlude/interact with the pick
     // buffer but still writes depth information for the volume.
+    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.lineMesh.frustumCulled = false;
 
-    this.meshPivot = new Group();
-    this.meshPivot.add(this.lineMesh);
-
-    this.meshPivot.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-
-    this.scale = new Vector3(1, 1, 1);
-    this.flipAxes = new Vector3(1, 1, 1);
-  }
-
-  // IDrawableObject interface methods
-
-  cleanup(): void {
-    this.lineMesh.geometry.dispose();
-    this.lineMesh.material.dispose();
-  }
-
-  setVisible(visible: boolean): void {
-    this.lineMesh.visible = visible;
-  }
-
-  doRender(): void {
-    // no op
-  }
-
-  get3dObject(): Group {
-    return this.meshPivot;
-  }
-
-  setTranslation(translation: Vector3): void {
-    this.meshPivot.position.copy(translation);
-  }
-
-  setScale(scale: Vector3): void {
-    this.scale.copy(scale);
-    this.meshPivot.scale.copy(scale).multiply(this.flipAxes);
-  }
-
-  setRotation(eulerXYZ: Euler): void {
-    this.meshPivot.rotation.copy(eulerXYZ);
-  }
-
-  setFlipAxes(flipX: number, flipY: number, flipZ: number): void {
-    this.flipAxes.set(flipX, flipY, flipZ);
-    this.meshPivot.scale.copy(this.scale).multiply(this.flipAxes);
-  }
-
-  setOrthoThickness(_thickness: number): void {
-    // no op
-  }
-
-  setResolution(_x: number, _y: number): void {
-    // no op
-  }
-
-  setAxisClip(_axis: "x" | "y" | "z", _minval: number, _maxval: number, _isOrthoAxis: boolean): void {
-    // no op
-  }
-
-  updateClipRegion(_xmin: number, _xmax: number, _ymin: number, _ymax: number, _zmin: number, _zmax: number): void {
-    // no op
+    this.addChildMesh(this.lineMesh);
   }
 
   // Line-specific functions

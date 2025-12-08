@@ -4,6 +4,7 @@ import { serializeError } from "serialize-error";
 import type { TiffLoadResult, TiffWorkerParams } from "../loaders/TiffLoader.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "../loaders/VolumeLoadError.js";
 import { NumberType } from "../types.js";
+import { getDataRange } from "../utils/num_utils.js";
 
 type TypedArray =
   | Uint8Array
@@ -134,17 +135,8 @@ async function loadTiffChannel(e: MessageEvent<TiffWorkerParams>): Promise<TiffL
   // all slices collected, now resample to 8 bits full data range
   const src = castToArray(buffer, bytesPerPixel, sampleFormat);
   const dtype = getDtype(sampleFormat, bytesPerPixel);
-  let chmin = src[0];
-  let chmax = src[0];
-  for (let j = 0; j < src.length; ++j) {
-    const val = src[j];
-    if (val < chmin) {
-      chmin = val;
-    }
-    if (val > chmax) {
-      chmax = val;
-    }
-  }
+
+  const [chmin, chmax] = getDataRange(src);
 
   return { data: src, channel: channelIndex, range: [chmin, chmax], dtype: dtype, isError: false };
 }

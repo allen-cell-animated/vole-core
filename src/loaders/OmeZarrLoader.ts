@@ -6,6 +6,7 @@ const { slice } = zarr;
 import type { ImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import VolumeCache from "../VolumeCache.js";
+import { getDataRange } from "../utils/num_utils.js";
 import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
 import {
   ThreadableVolumeLoader,
@@ -23,7 +24,7 @@ import {
 import ChunkPrefetchIterator from "./zarr_utils/ChunkPrefetchIterator.js";
 import {
   getScale,
-  getSourceChannelNames,
+  getSourceChannelMeta,
   matchSourceScaleLevels,
   orderByDimension,
   orderByTCZYX,
@@ -33,6 +34,7 @@ import type { PrefetchDirection, SubscriberId, TCZYX, ZarrSource, NumericZarrArr
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
 import wrapArray, { RelaxedFetchStore } from "./zarr_utils/wrappers.js";
 import { assertMetadataHasMultiscales, toOMEZarrMetaV4, validateOMEZarrMetadata } from "./zarr_utils/validation.js";
+import { remapUri } from "../utils/url_utils.js";
 
 const CHUNK_REQUEST_CANCEL_REASON = "chunk request cancelled";
 
@@ -42,18 +44,7 @@ function convertChannel(
   dtype: zarr.NumberDataType
 ): { data: zarr.TypedArray<zarr.NumberDataType>; dtype: zarr.NumberDataType; min: number; max: number } {
   // get min and max
-  // TODO FIXME Histogram will also compute min and max!
-  let min = channelData[0];
-  let max = channelData[0];
-  for (let i = 0; i < channelData.length; i++) {
-    const val = channelData[i];
-    if (val < min) {
-      min = val;
-    }
-    if (val > max) {
-      max = val;
-    }
-  }
+  const [min, max] = getDataRange(channelData);
 
   if (dtype === "float64") {
     // convert to float32
@@ -152,7 +143,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     if (!queue) {
       queue = new SubscribableRequestQueue(fetchOptions?.concurrencyLimit, fetchOptions?.prefetchConcurrencyLimit);
     }
-    const urlsArr = Array.isArray(urls) ? urls : [urls];
+    const urlsArr = (Array.isArray(urls) ? urls : [urls]).map(remapUri);
     const scenesArr = Array.isArray(scenes) ? scenes : [scenes];
 
     // Create one `ZarrSource` per URL
@@ -329,11 +320,14 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const [spatialUnit, timeUnit] = this.getUnitSymbols();
 
-    // Now we care about other sources: # of channels is the `channelOffset` of the last source plus its # of channels
-    const sourceLast = this.sources[this.sources.length - 1];
-    const cLast = sourceLast.axesTCZYX[1];
-    const lastHasC = cLast > -1;
-    const numChannels = sourceLast.channelOffset + (lastHasC ? sourceLast.scaleLevels[levelToLoad].shape[cLast] : 1);
+    const numChannelsPerSource: number[] = [];
+    for (let i = 0; i < this.sources.length; i++) {
+      const source = this.sources[i];
+      const cIndex = source.axesTCZYX[1];
+      const sourceChannelCount = cIndex > -1 ? source.scaleLevels[levelToLoad].shape[cIndex] : 1;
+      numChannelsPerSource.push(sourceChannelCount);
+    }
+
     // we need to make sure that the corresponding matched shapes
     // use the min size of T
     let times = 1;
@@ -365,11 +359,13 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     // Channel names is the other place where we have to check every source
     // Track which channel names we've seen so far, so that we can rename them to avoid name collisions
     const channelNamesMap = new Map<string, number>();
-    const channelNames = this.sources.flatMap((src) => {
-      const sourceChannelNames = getSourceChannelNames(src);
+    const channelNames: string[] = [];
+    const channelColors: ([number, number, number] | undefined)[] = [];
+    for (const src of this.sources) {
+      const { names, colors } = getSourceChannelMeta(src);
 
       // Resolve name collisions
-      return sourceChannelNames.map((channelName) => {
+      const resolvedNames = names.map((channelName) => {
         const numMatchingChannels = channelNamesMap.get(channelName);
 
         if (numMatchingChannels !== undefined) {
@@ -381,7 +377,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
           return channelName;
         }
       });
-    });
+
+      channelNames.push(...resolvedNames);
+      channelColors.push(...colors);
+    }
 
     const alldims: VolumeDims[] = source0.scaleLevels.map((level, i) => {
       const dims = {
@@ -395,14 +394,15 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     });
 
     const imgdata: ImageInfo = {
-      name: source0.omeroMetadata?.name || "Volume",
+      name: source0.omeroMetadata?.name,
 
       atlasTileDims: [atlasTileDims.x, atlasTileDims.y],
       subregionSize: [pxSizeLv.x, pxSizeLv.y, pxSizeLv.z],
       subregionOffset: [0, 0, 0],
 
-      combinedNumChannels: numChannels,
+      numChannelsPerSource,
       channelNames,
+      channelColors,
       multiscaleLevel: levelToLoad,
       multiscaleLevelDims: alldims,
 
@@ -529,7 +529,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     const updatedImageInfo = this.updateImageInfoForLoad(imageInfo, loadSpec);
     onUpdateMetadata(updatedImageInfo);
-    const { combinedNumChannels, multiscaleLevel } = updatedImageInfo;
+    const { numChannelsPerSource, multiscaleLevel } = updatedImageInfo;
+    const combinedNumChannels = numChannelsPerSource.reduce((a, b) => a + b, 0);
     const channelIndexes = loadSpec.channels ?? Array.from({ length: combinedNumChannels }, (_, i) => i);
 
     const subscriber = this.requestQueue.addSubscriber();
@@ -558,7 +559,6 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
-      console.log(level);
       const result = await zarr
         .get(level, sliceSpec, { opts: { subscriber, reportChunk } })
         .catch(

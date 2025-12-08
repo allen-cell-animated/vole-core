@@ -33,7 +33,6 @@ import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
-import Line3d from "./Line3d.js";
 import ContourPass from "./ContourPass.js";
 
 type ColorArray = [number, number, number];
@@ -89,7 +88,7 @@ export default class VolumeDrawable {
 
     this.channelColors = this.volume.channelColorsDefault.slice();
 
-    this.channelOptions = new Array<VolumeChannelDisplayOptions>(this.volume.imageInfo.numChannels).fill({});
+    this.channelOptions = Array.from({ length: this.volume.imageInfo.numChannels }, () => ({}));
 
     this.fusion = this.channelColors.map((col, index) => {
       let rgbColor: number | [number, number, number];
@@ -283,6 +282,9 @@ export default class VolumeDrawable {
     const scale = normPhysicalSize.clone().multiply(normRegionSize).multiply(this.settings.scale);
     this.childObjectsGroup.scale.copy(scale);
     this.childObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
+
+    this.childObjects.forEach((obj) => obj.onParentTransformUpdated?.());
+
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -823,7 +825,7 @@ export default class VolumeDrawable {
 
     // remove old 3d object from scene
     if (this.renderMode === RenderMode.SLICE || this.renderMode === RenderMode.RAYMARCH) {
-      this.sceneRoot.remove(this.meshVolume.get3dObject());
+      this.childObjectsGroup.remove(this.meshVolume.get3dObject());
     }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
 
@@ -856,7 +858,7 @@ export default class VolumeDrawable {
       if (this.renderUpdateListener) {
         this.renderUpdateListener(0);
       }
-      this.sceneRoot.add(this.meshVolume.get3dObject());
+      this.childObjectsGroup.add(this.meshVolume.get3dObject());
     }
 
     // add new 3d object to scene
@@ -886,33 +888,31 @@ export default class VolumeDrawable {
   }
 
   /**
-   * Adds a Line3d object as a child of the Volume, if it does not already
-   * exist. Line objects will be in the normalized coordinate space of the
-   * Volume, where the origin (0,0,0) is at the center of the Volume and the
-   * extent is from -0.5 to 0.5 in each axis.
+   * Adds a drawable object as a child of the Volume, if it does not already
+   * exist. Objects will be in the normalized coordinate space of the Volume,
+   * where the origin (0,0,0) is at the center of the Volume and the extent is
+   * from -0.5 to 0.5 in each axis.
    */
-  addLineObject(line: Line3d): void {
-    if (!this.childObjects.has(line)) {
-      this.childObjects.add(line);
-      this.childObjectsGroup.add(line.get3dObject());
-      line.setResolution(this.settings.resolution.x, this.settings.resolution.y);
-      line.setFlipAxes(this.settings.flipAxes.x, this.settings.flipAxes.y, this.settings.flipAxes.z);
+  addDrawableObject(object: IDrawableObject): void {
+    if (!this.childObjects.has(object)) {
+      this.childObjectsGroup.add(object.get3dObject());
+      this.childObjects.add(object);
+      this.updateScale();
     }
   }
 
-  /** Returns whether a line object exists as a child of the volume. */
-  hasLineObject(line: Line3d): boolean {
-    return this.childObjects.has(line);
+  /** Returns whether a drawable object exists as a child of the volume. */
+  hasDrawableObject(object: IDrawableObject): boolean {
+    return this.childObjects.has(object);
   }
 
-  /**
-   * Removes a Line3d object from the Volume, if it exists. Note that the
-   * object's resources are not freed automatically (e.g. via `line.cleanup()`).
+  /** Removes a drawable object from the Volume, if it exists. Note that the
+   * object's resources are not freed automatically (e.g. via `object.cleanup()`).
    */
-  removeLineObject(line: Line3d): void {
-    if (this.childObjects.has(line)) {
-      this.childObjects.delete(line);
-      this.childObjectsGroup.remove(line.get3dObject());
+  removeDrawableObject(object: IDrawableObject): void {
+    if (this.childObjects.has(object)) {
+      this.childObjects.delete(object);
+      this.childObjectsGroup.remove(object.get3dObject());
     }
   }
 

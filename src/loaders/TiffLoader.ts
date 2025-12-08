@@ -12,24 +12,22 @@ import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./Vol
 import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
+import { remapUri } from "../utils/url_utils.js";
 
-function prepareXML(xml: string): string {
+function trimNull(xml: string | undefined): string | undefined {
   // trim trailing unicode zeros?
-  // eslint-disable-next-line no-control-regex
-  const expr = /[\u0000]$/g;
-  return xml.trim().replace(expr, "").trim();
+  return xml && xml.trim().replace(/\0/g, "").trim();
 }
 
 function getOME(xml: string | undefined): Element | undefined {
-  if (xml === undefined) {
+  if (typeof xml !== "string") {
     return undefined;
   }
 
-  const prepared = prepareXML(xml);
   const parser = new DOMParser();
 
   try {
-    const xmlDoc = parser.parseFromString(prepared, "text/xml");
+    const xmlDoc = parser.parseFromString(xml, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
   } catch (e) {
     return undefined;
@@ -37,6 +35,7 @@ function getOME(xml: string | undefined): Element | undefined {
 }
 
 class OMEDims {
+  name: string | undefined = undefined;
   sizex = 0;
   sizey = 0;
   sizez = 1;
@@ -102,14 +101,15 @@ function getOMEDims(imageEl: Element): OMEDims {
   const dims = new OMEDims();
 
   const pixelsEl = imageEl.getElementsByTagName("Pixels")[0];
+  dims.name = imageEl.getAttribute("Name") ?? "";
   dims.sizex = Number(getAttributeOrError(pixelsEl, "SizeX"));
   dims.sizey = Number(getAttributeOrError(pixelsEl, "SizeY"));
   dims.sizez = Number(pixelsEl.getAttribute("SizeZ"));
   dims.sizec = Number(pixelsEl.getAttribute("SizeC"));
   dims.sizet = Number(pixelsEl.getAttribute("SizeT"));
-  dims.unit = pixelsEl.getAttribute("PhysicalSizeXUnit") || "";
-  dims.pixeltype = pixelsEl.getAttribute("Type") || "";
-  dims.dimensionorder = pixelsEl.getAttribute("DimensionOrder") || "XYZCT";
+  dims.unit = pixelsEl.getAttribute("PhysicalSizeXUnit") ?? "";
+  dims.pixeltype = pixelsEl.getAttribute("Type") ?? "";
+  dims.dimensionorder = pixelsEl.getAttribute("DimensionOrder") ?? "XYZCT";
   dims.pixelsizex = Number(pixelsEl.getAttribute("PhysicalSizeX"));
   dims.pixelsizey = Number(pixelsEl.getAttribute("PhysicalSizeY"));
   dims.pixelsizez = Number(pixelsEl.getAttribute("PhysicalSizeZ"));
@@ -129,12 +129,12 @@ const getPixelType = (pxSize: number): string => (pxSize === 1 ? "uint8" : pxSiz
 // Despite the class `TiffLoader` extends, this loader is not threadable, since geotiff internally uses features that
 // aren't available on workers. It uses its own specialized workers anyways.
 class TiffLoader extends ThreadableVolumeLoader {
-  url: string[];
+  private url: string[];
   dims?: OMEDims;
 
   constructor(url: string[]) {
     super();
-    this.url = url;
+    this.url = url.map(remapUri);
   }
 
   private async loadOmeDims(): Promise<OMEDims> {
@@ -149,7 +149,10 @@ class TiffLoader extends ThreadableVolumeLoader {
         .getImage()
         .catch<GeoTIFFImage>(wrapVolumeLoadError("Failed to open TIFF image", VolumeLoadErrorType.NOT_FOUND));
 
-      const omeEl = getOME(image.getFileDirectory().ImageDescription);
+      const image0DescriptionRaw: string = image.getFileDirectory().ImageDescription;
+      // Get rid of null terminator, if it's there (`JSON.parse` doesn't know what to do with it)
+      const image0Description = trimNull(image0DescriptionRaw);
+      const omeEl = getOME(image0Description);
 
       if (omeEl !== undefined) {
         const image0El = omeEl.getElementsByTagName("Image")[0];
@@ -157,13 +160,33 @@ class TiffLoader extends ThreadableVolumeLoader {
       } else {
         console.warn("Could not read OME-TIFF metadata from file. Doing our best with base TIFF metadata.");
         this.dims = new OMEDims();
-        this.dims.sizex = image.getWidth();
-        this.dims.sizey = image.getHeight();
+        let shape: number[] = [];
+        if (typeof image0Description === "string") {
+          try {
+            const description = JSON.parse(image0Description);
+            if (Array.isArray(description.shape)) {
+              shape = description.shape;
+            }
+            // eslint-disable-next-line no-empty
+          } catch (_e) {}
+        }
+
+        // if `ImageDescription` is valid JSON with a `shape` field, we expect it to be an array of [t?, c?, z?, y, x].
+        this.dims.sizex = shape[shape.length - 1] ?? image.getWidth();
+        this.dims.sizey = shape[shape.length - 2] ?? image.getHeight();
+        this.dims.sizez = shape[shape.length - 3] ?? (await tiff.getImageCount());
+
         // TODO this is a big hack/assumption about only loading multi-source tiffs that are not OMETIFF.
         // We really have to check each url in the array for sizec to get the total number of channels
         // See combinedNumChannels in ImageInfo below.
         // Also compare with how OMEZarrLoader does this.
-        this.dims.sizec = this.url.length > 1 ? this.url.length : 1; // if multiple urls, assume one channel per url
+        if (this.url.length > 1) {
+          // if multiple urls, assume one channel per url
+          this.dims.sizec = this.url.length;
+        } else {
+          this.dims.sizec = shape[shape.length - 4] ?? 1;
+        }
+
         this.dims.pixeltype = getPixelType(image.getBytesPerPixel());
         this.dims.channelnames = Array.from({ length: this.dims.sizec }, (_, i) => "Channel" + i);
       }
@@ -211,14 +234,15 @@ class TiffLoader extends ThreadableVolumeLoader {
     const tilesizey = Math.floor(targetSize / atlasDims.y);
 
     // load tiff and check metadata
+    const numChannelsPerSource = this.url.length > 1 ? Array(this.url.length).fill(1) : [dims.sizec];
 
     const imgdata: ImageInfo = {
-      name: "TEST",
+      name: dims.name,
 
       atlasTileDims: [atlasDims.x, atlasDims.y],
       subregionSize: [tilesizex, tilesizey, dims.sizez],
       subregionOffset: [0, 0, 0],
-      combinedNumChannels: dims.sizec,
+      numChannelsPerSource,
       channelNames: dims.channelnames,
       multiscaleLevel: 0,
       multiscaleLevelDims: [
@@ -231,7 +255,7 @@ class TiffLoader extends ThreadableVolumeLoader {
             (dims.pixelsizey * dims.sizey) / tilesizey,
             (dims.pixelsizex * dims.sizex) / tilesizex,
           ],
-          spaceUnit: dims.unit || "",
+          spaceUnit: dims.unit ?? "",
           timeUnit: "",
           dataType: getDtype(dims.pixeltype),
         },
@@ -262,37 +286,40 @@ class TiffLoader extends ThreadableVolumeLoader {
 
     const channelProms: Promise<void>[] = [];
     // do each channel on a worker?
-    for (let channel = 0; channel < imageInfo.combinedNumChannels; ++channel) {
-      const thisChannelProm = new Promise<void>((resolve, reject) => {
-        const params: TiffWorkerParams = {
-          channel: channel,
-          // these are target xy sizes for the in-memory volume data
-          // they may or may not be the same size as original xy sizes
-          tilesizex: volumeSize.x,
-          tilesizey: volumeSize.y,
-          sizec: imageInfo.combinedNumChannels,
-          sizez: volumeSize.z,
-          dimensionOrder: dims.dimensionorder,
-          bytesPerSample: getBytesPerSample(dims.pixeltype),
-          url: this.url.length > 1 ? this.url[channel] : this.url[0], // if multiple urls, use the channel index to select the right one
-        };
+    for (let source = 0; source < imageInfo.numChannelsPerSource.length; ++source) {
+      const numChannels = imageInfo.numChannelsPerSource[source];
+      for (let channel = 0; channel < numChannels; ++channel) {
+        const thisChannelProm = new Promise<void>((resolve, reject) => {
+          const params: TiffWorkerParams = {
+            channel: channel,
+            // these are target xy sizes for the in-memory volume data
+            // they may or may not be the same size as original xy sizes
+            tilesizex: volumeSize.x,
+            tilesizey: volumeSize.y,
+            sizec: numChannels,
+            sizez: volumeSize.z,
+            dimensionOrder: dims.dimensionorder,
+            bytesPerSample: getBytesPerSample(dims.pixeltype),
+            url: this.url[source],
+          };
 
-        const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
-        worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
-          if (e.data.isError) {
-            reject(deserializeError(e.data.error));
-            return;
-          }
-          const { data, dtype, channel, range } = e.data;
-          onData([channel], [dtype], [data], [range]);
-          worker.terminate();
-          resolve();
-        };
+          const worker = new Worker(new URL("../workers/FetchTiffWorker", import.meta.url), { type: "module" });
+          worker.onmessage = (e: MessageEvent<TiffLoadResult | { isError: true; error: ErrorObject }>) => {
+            if (e.data.isError) {
+              reject(deserializeError(e.data.error));
+              return;
+            }
+            const { data, dtype, channel, range } = e.data;
+            onData([channel], [dtype], [data], [range]);
+            worker.terminate();
+            resolve();
+          };
 
-        worker.postMessage(params);
-      });
+          worker.postMessage(params);
+        });
 
-      channelProms.push(thisChannelProm);
+        channelProms.push(thisChannelProm);
+      }
     }
 
     // waiting for all channels to load allows errors to propagate to the caller via this promise

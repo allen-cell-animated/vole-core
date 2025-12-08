@@ -46,6 +46,10 @@ export default class MeshVolume implements IDrawableObject {
     this.meshRoot = new Object3D(); //create an empty container
     this.meshRoot.name = "Mesh Surface Group";
 
+    // compensating for generated isosurface vertex coordinates
+    // arguably this could be set on meshPivot
+    this.meshRoot.scale.setScalar(0.5);
+
     // handle transform ordering for giving the meshroot a rotation about a pivot point
     this.meshPivot = new Group();
     this.meshPivot.name = "MeshContainerNode";
@@ -319,11 +323,13 @@ export default class MeshVolume implements IDrawableObject {
     }
   }
 
-  saveChannelIsosurface(channelIndex: number, type: string, namePrefix: string): void {
+  saveChannelIsosurface(channelIndex: number, type: string, name?: string): void {
     const meshrep = this.meshrep[channelIndex];
     if (!meshrep) {
       return;
     }
+
+    const namePrefix = name !== undefined ? `${name}_` : "";
 
     if (type === "STL") {
       this.exportSTL(meshrep, namePrefix + "_" + this.volume.channelNames[channelIndex]);
