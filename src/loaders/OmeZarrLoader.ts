@@ -200,7 +200,13 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     let channelCount = 0;
     for (const s of sources) {
       s.channelOffset = channelCount;
-      channelCount += s.omeroMetadata?.channels.length ?? s.scaleLevels[0].shape[s.axesTCZYX[1]];
+      if (s.omeroMetadata !== undefined) {
+        channelCount += s.omeroMetadata.channels.length;
+      } else if (s.axesTCZYX[1] > -1) {
+        channelCount += s.scaleLevels[0].shape[s.axesTCZYX[1]];
+      } else {
+        channelCount += 1;
+      }
     }
     // Ensure the sizes of all sources' scale levels are matched up. See this function's docs for more.
     matchSourceScaleLevels(sources);
