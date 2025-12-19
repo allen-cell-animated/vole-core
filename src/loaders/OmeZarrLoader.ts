@@ -458,10 +458,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     });
 
     // Get number of chunks per dimension in every source array
-    const chunkDimsTCZYX = this.sources.map((src, idx) => {
-      const level = src.scaleLevels[scaleLevel];
+    const chunkDimsTCZYX = this.sources.map((source, sourceIndex) => {
+      const level = source.scaleLevels[scaleLevel];
       const chunkDimsUnordered = level.shape.map((dim, idx) => Math.ceil(dim / level.chunks[idx]));
-      return this.orderByTCZYX(chunkDimsUnordered, 1, idx);
+      return this.orderByTCZYX(chunkDimsUnordered, 1, sourceIndex);
     });
 
     // `ChunkPrefetchIterator` yields chunk coordinates in order of roughly how likely they are to be loaded next
