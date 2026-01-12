@@ -1,4 +1,4 @@
-import { Color } from "three";
+import { Color, Texture } from "three";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
@@ -6,6 +6,7 @@ import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js
 import { IDrawableObject } from "./types.js";
 import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "./ThreeJsPanel.js";
 import BaseDrawableMeshObject from "./BaseDrawableMeshObject.js";
+import SubrangeLineMaterial from "./SubrangeLineMaterial.js";
 
 const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 
@@ -16,6 +17,7 @@ const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
 export default class Line3d extends BaseDrawableMeshObject implements IDrawableObject {
   private lineMesh: LineSegments2;
   private bufferSize: number;
+  private lineMaterial: SubrangeLineMaterial;
 
   constructor() {
     super();
@@ -23,8 +25,8 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
 
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(this.bufferSize));
-    const material = new LineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
-    this.lineMesh = new LineSegments2(geometry, material);
+    this.lineMaterial = new SubrangeLineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
+    this.lineMesh = new LineSegments2(geometry, this.lineMaterial);
 
     // Lines need to write depth information so they interact with the volume
     // (so the lines appear to fade into the volume if they intersect), but
@@ -51,6 +53,27 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
     this.lineMesh.material.color.set(color);
     this.lineMesh.material.vertexColors = useVertexColors;
     this.lineMesh.material.needsUpdate = true;
+  }
+
+  /**
+   * Sets the color ramp texture used for coloring the line.
+   * @param colorRamp Texture representing the color ramp.
+   * @param useColorRamp If true, the line will use the color ramp for coloring.
+   * Default is false.
+   */
+  setColorRamp(colorRamp: Texture, useColorRamp = false) {
+    this.lineMaterial.colorRamp = colorRamp;
+    this.lineMaterial.useColorRamp = useColorRamp;
+    this.lineMaterial.needsUpdate = true;
+  }
+
+  /**
+   * Sets the scaling parameters for how the color ramp is applied. The color
+   * ramp will be centered at `vertexOffset` and span `vertexScale` vertices.
+   */
+  setColorRampScale(vertexScale: number, vertexOffset: number) {
+    this.lineMaterial.colorRampVertexScale = vertexScale;
+    this.lineMaterial.colorRampVertexOffset = vertexOffset;
   }
 
   /**
@@ -127,11 +150,29 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
     }
   }
 
-  /** Number of line segments that should be visible. */
+  /**
+   * Number of line segments that should be visible.
+   * @deprecated Use `setVisibleSegmentsRange` instead.
+   */
   setNumSegmentsVisible(segments: number): void {
     if (this.lineMesh.geometry) {
       const count = segments;
       this.lineMesh.geometry.instanceCount = Math.max(0, count);
+    }
+  }
+
+  /**
+   * Sets the range of line segments that are visible; line segments outside of
+   * the range will be hidden.
+   * @param startSegment Index of the segment at the start of the visible range
+   * (inclusive).
+   * @param endSegment Index of the segment at the end of the visible range
+   * (exclusive).
+   */
+  setVisibleSegmentsRange(startSegment: number, endSegment: number): void {
+    this.lineMaterial.minInstance = startSegment;
+    if (this.lineMesh.geometry) {
+      this.lineMesh.geometry.instanceCount = Math.max(0, endSegment);
     }
   }
 }
