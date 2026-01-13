@@ -1,5 +1,4 @@
 import { Color, Texture } from "three";
-import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
@@ -18,12 +17,14 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
   private lineMesh: LineSegments2;
   private bufferSize: number;
   private lineMaterial: SubrangeLineMaterial;
-  private useVertexColors: boolean = false;
-  private useColorRamp: boolean = false;
+  private useVertexColors: boolean;
+  private useColorRamp: boolean;
 
   constructor() {
     super();
     this.bufferSize = DEFAULT_VERTEX_BUFFER_SIZE;
+    this.useVertexColors = false;
+    this.useColorRamp = false;
 
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(this.bufferSize));
