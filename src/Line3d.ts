@@ -1,4 +1,4 @@
-import { Color, Texture } from "three";
+import { Color, DataTexture, LinearFilter, Texture } from "three";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
@@ -19,12 +19,14 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
   private lineMaterial: SubrangeLineMaterial;
   private useVertexColors: boolean;
   private useColorRamp: boolean;
+  private colorRampTexture: Texture | null;
 
   constructor() {
     super();
     this.bufferSize = DEFAULT_VERTEX_BUFFER_SIZE;
     this.useVertexColors = false;
     this.useColorRamp = false;
+    this.colorRampTexture = null;
 
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(this.bufferSize));
@@ -65,14 +67,35 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
   }
 
   /**
-   * Sets the color ramp texture used for coloring the line. Note that the color
-   * ramp will be multiplied by the base color defined in `setColor()`.
-   * @param colorRamp Texture representing the color ramp.
+   * Returns a new DataTexture representing the color stops in LinearSRGB color
+   * space.
+   */
+  private static colorStopsToTexture(colorStops: string[]): DataTexture {
+    const colors = colorStops.map((c) => new Color(c));
+    const linearSRGBDataArr = colors.flatMap((col) => {
+      return [col.r, col.g, col.b, 1];
+    });
+    const texture = new DataTexture(new Float32Array(linearSRGBDataArr), colors.length, 1);
+    texture.minFilter = texture.magFilter = LinearFilter;
+    texture.internalFormat = "RGBA32F";
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  /**
+   * Sets the color ramp used for coloring the line. Note that the color will be
+   * multiplied by the base color defined in `setColor()`.
+   * @param colorStops Array of hex color stop strings.
    * @param useColorRamp If true, the line will use the color ramp for coloring.
    * Default is `false`.
    */
-  public setColorRamp(colorRamp: Texture, useColorRamp = false) {
-    this.lineMaterial.colorRamp = colorRamp;
+  public setColorRamp(colorStops: string[], useColorRamp = false) {
+    if (this.colorRampTexture) {
+      this.colorRampTexture.dispose();
+    }
+    this.colorRampTexture = Line3d.colorStopsToTexture(colorStops);
+
+    this.lineMaterial.colorRamp = this.colorRampTexture;
     this.lineMaterial.useColorRamp = useColorRamp;
     this.useColorRamp = useColorRamp;
     this.updateVertexColorFlag();
