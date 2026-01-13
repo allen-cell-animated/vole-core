@@ -18,6 +18,8 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
   private lineMesh: LineSegments2;
   private bufferSize: number;
   private lineMaterial: SubrangeLineMaterial;
+  private useVertexColors: boolean = false;
+  private useColorRamp: boolean = false;
 
   constructor() {
     super();
@@ -25,7 +27,7 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
 
     const geometry = new LineSegmentsGeometry();
     geometry.setPositions(new Float32Array(this.bufferSize));
-    this.lineMaterial = new SubrangeLineMaterial({ color: "#f00", linewidth: 2, worldUnits: false });
+    this.lineMaterial = new SubrangeLineMaterial({ color: "#fff", linewidth: 2, worldUnits: false });
     this.lineMesh = new LineSegments2(geometry, this.lineMaterial);
 
     // Lines need to write depth information so they interact with the volume
@@ -43,35 +45,43 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
 
   // Line-specific functions
 
-  /**
-   * Sets the color of the line material.
-   * @param color Base line color.
-   * @param useVertexColors If true, _the line will multiply the base color with
-   * the per-vertex colors defined in the geometry (see `setLineVertexData`). Default is false.
-   */
-  setColor(color: Color, useVertexColors = false): void {
-    this.lineMesh.material.color.set(color);
-    this.lineMesh.material.vertexColors = useVertexColors;
+  private updateVertexColorFlag() {
+    this.lineMesh.material.vertexColors = this.useVertexColors || this.useColorRamp;
     this.lineMesh.material.needsUpdate = true;
   }
 
   /**
-   * Sets the color ramp texture used for coloring the line.
+   * Sets the color of the line material.
+   * @param color Base line color.
+   * @param useVertexColors If true, _the line will multiply the base color with
+   * the per-vertex colors defined in the geometry (see `setLineVertexData`).
+   * Default is `false`.
+   */
+  setColor(color: Color, useVertexColors = false): void {
+    this.lineMesh.material.color.set(color);
+    this.useVertexColors = useVertexColors;
+    this.updateVertexColorFlag();
+  }
+
+  /**
+   * Sets the color ramp texture used for coloring the line. Note that the color
+   * ramp will be multiplied by the base color defined in `setColor()`.
    * @param colorRamp Texture representing the color ramp.
    * @param useColorRamp If true, the line will use the color ramp for coloring.
-   * Default is false.
+   * Default is `false`.
    */
-  setColorRamp(colorRamp: Texture, useColorRamp = false) {
+  public setColorRamp(colorRamp: Texture, useColorRamp = false) {
     this.lineMaterial.colorRamp = colorRamp;
     this.lineMaterial.useColorRamp = useColorRamp;
-    this.lineMaterial.needsUpdate = true;
+    this.useColorRamp = useColorRamp;
+    this.updateVertexColorFlag();
   }
 
   /**
    * Sets the scaling parameters for how the color ramp is applied. The color
    * ramp will be centered at `vertexOffset` and span `vertexScale` vertices.
    */
-  setColorRampScale(vertexScale: number, vertexOffset: number) {
+  public setColorRampScale(vertexScale: number, vertexOffset: number) {
     this.lineMaterial.colorRampVertexScale = vertexScale;
     this.lineMaterial.colorRampVertexOffset = vertexOffset;
   }
