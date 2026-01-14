@@ -200,7 +200,13 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     let channelCount = 0;
     for (const s of sources) {
       s.channelOffset = channelCount;
-      channelCount += s.omeroMetadata?.channels.length ?? s.scaleLevels[0].shape[s.axesTCZYX[1]];
+      if (s.omeroMetadata !== undefined) {
+        channelCount += s.omeroMetadata.channels.length;
+      } else if (s.axesTCZYX[1] > -1) {
+        channelCount += s.scaleLevels[0].shape[s.axesTCZYX[1]];
+      } else {
+        channelCount += 1;
+      }
     }
     // Ensure the sizes of all sources' scale levels are matched up. See this function's docs for more.
     matchSourceScaleLevels(sources);
@@ -452,10 +458,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     });
 
     // Get number of chunks per dimension in every source array
-    const chunkDimsTCZYX = this.sources.map((src) => {
-      const level = src.scaleLevels[scaleLevel];
+    const chunkDimsTCZYX = this.sources.map((source, sourceIndex) => {
+      const level = source.scaleLevels[scaleLevel];
       const chunkDimsUnordered = level.shape.map((dim, idx) => Math.ceil(dim / level.chunks[idx]));
-      return this.orderByTCZYX(chunkDimsUnordered, 1);
+      return this.orderByTCZYX(chunkDimsUnordered, 1, sourceIndex);
     });
 
     // `ChunkPrefetchIterator` yields chunk coordinates in order of roughly how likely they are to be loaded next
