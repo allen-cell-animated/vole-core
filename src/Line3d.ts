@@ -56,7 +56,7 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
   /**
    * Sets the color of the line material.
    * @param color Base line color.
-   * @param useVertexColors If true, _the line will multiply the base color with
+   * @param useVertexColors If true, the line will multiply the base color with
    * the per-vertex colors defined in the geometry (see `setLineVertexData`).
    * Default is `false`.
    */

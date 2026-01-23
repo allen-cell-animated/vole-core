@@ -7,11 +7,11 @@ type SubrangeLineMaterialParameters = LineMaterialParameters & {
   minInstance?: number;
 };
 
-const DEFAULT_COLOR_RAMP_TEXTURE = new DataTexture(new Float32Array([0, 0, 0, 1, 1, 1]), 2, 1, RGBAFormat, FloatType);
-DEFAULT_COLOR_RAMP_TEXTURE.minFilter = LinearFilter;
-DEFAULT_COLOR_RAMP_TEXTURE.magFilter = LinearFilter;
-DEFAULT_COLOR_RAMP_TEXTURE.internalFormat = "RGBA32F";
-DEFAULT_COLOR_RAMP_TEXTURE.needsUpdate = true;
+const PLACEHOLDER_COLOR_RAMP = new DataTexture(new Float32Array([0, 0, 0, 1, 1, 1]), 2, 1, RGBAFormat, FloatType);
+PLACEHOLDER_COLOR_RAMP.minFilter = LinearFilter;
+PLACEHOLDER_COLOR_RAMP.magFilter = LinearFilter;
+PLACEHOLDER_COLOR_RAMP.internalFormat = "RGBA32F";
+PLACEHOLDER_COLOR_RAMP.needsUpdate = true;
 
 /**
  * Replacement for LineMaterial with custom vertex shader to support showing
@@ -22,15 +22,13 @@ export default class SubrangeLineMaterial extends LineMaterial {
   constructor(params?: SubrangeLineMaterialParameters) {
     super(params);
 
-    const emptyColorRamp = DEFAULT_COLOR_RAMP_TEXTURE;
-
     this.vertexShader = vertexShader;
     this.uniforms = UniformsUtils.merge([
       this.uniforms,
       {
         minInstance: { value: params?.minInstance ?? 0 },
         useColorRamp: { value: false },
-        colorRamp: { value: emptyColorRamp },
+        colorRamp: { value: PLACEHOLDER_COLOR_RAMP },
         colorRampVertexScale: { value: 1 },
         colorRampVertexOffset: { value: 0 },
       },
