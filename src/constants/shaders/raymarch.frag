@@ -1,29 +1,28 @@
 
 #ifdef GL_ES
 precision highp float;
+precision highp sampler3D;
 #endif
 
 #define M_PI 3.14159265358979323846
 
 uniform vec2 iResolution;
-uniform vec2 textureRes;
 uniform float GAMMA_MIN;
 uniform float GAMMA_MAX;
 uniform float GAMMA_SCALE;
 uniform float BRIGHTNESS;
 uniform float DENSITY;
 uniform float maskAlpha;
-uniform vec2 ATLAS_DIMS;
 uniform vec3 AABB_CLIP_MIN;
 uniform float CLIP_NEAR;
 uniform vec3 AABB_CLIP_MAX;
 uniform float CLIP_FAR;
-uniform sampler2D textureAtlas;
-uniform sampler2D textureAtlasMask;
+uniform sampler3D volumeTexture;
+uniform sampler2D gLutTexture;
+uniform int gNChannels;
 uniform sampler2D textureDepth;
 uniform int usingPositionTexture;
 uniform int BREAK_STEPS;
-uniform float SLICES;
 uniform float isOrtho;
 uniform float orthoThickness;
 uniform float orthoScale;
@@ -51,7 +50,6 @@ float rand(vec2 co) {
 
 vec4 luma2Alpha(vec4 color, float vmin, float vmax, float C) {
   float x = dot(color.rgb, vec3(0.2125, 0.7154, 0.0721));
-  // float x = max(color[2], max(color[0],color[1]));
   float xi = (x - vmin) / (vmax - vmin);
   xi = clamp(xi, 0.0, 1.0);
   float y = pow(xi, C);
@@ -60,91 +58,40 @@ vec4 luma2Alpha(vec4 color, float vmin, float vmax, float C) {
   return color;
 }
 
-vec2 offsetFrontBack(float t) {
-  int a = int(t);
-  int ax = int(ATLAS_DIMS.x);
-  vec2 os = vec2(float(a - (a / ax) * ax), float(a / ax)) / ATLAS_DIMS;
-  return clamp(os, vec2(0.0), vec2(1.0) - vec2(1.0) / ATLAS_DIMS);
+// Transform position to volume texture coordinates, applying flip
+vec3 PtoVolumeTex(vec3 pos) {
+  // pos is in 0..1 range
+  // if flipVolume = 1, uvw is unchanged.
+  // if flipVolume = -1, uvw = 1 - uvw
+  vec3 uvw = (flipVolume * (pos - 0.5) + 0.5);
+  return uvw;
 }
 
-vec4 sampleAtlasLinear(sampler2D tex, vec4 pos) {
-  float bounds = float(pos[0] >= 0.0 && pos[0] <= 1.0 &&
-    pos[1] >= 0.0 && pos[1] <= 1.0 &&
-    pos[2] >= 0.0 && pos[2] <= 1.0);
-  float nSlices = float(SLICES);
-  // get location within atlas tile
-  // TODO: get loc1 which follows ray to next slice along ray direction
-  // when flipvolume = 1:  pos
-  // when flipvolume = -1: 1-pos
-  vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / ATLAS_DIMS;
-
-  // loc ranges from 0 to 1/ATLAS_DIMS
-  // shrink loc0 to within one half edge texel - so as not to sample across edges of tiles.
-  loc0 = vec2(0.5) / textureRes + loc0 * (vec2(1.0) - ATLAS_DIMS / textureRes);
-
-  // interpolate between two slices
-  float z = (pos.z) * (nSlices - 1.0);
-  float z0 = floor(z);
-  float t = z - z0; //mod(z, 1.0);
-  float z1 = min(z0 + 1.0, nSlices - 1.0);
-
-  // flipped:
-  if (flipVolume.z == -1.0) {
-    z0 = nSlices - z0 - 1.0;
-    z1 = nSlices - z1 - 1.0;
-    t = 1.0 - t;
+// Sample the 3D volume texture and compute color from LUT
+// Returns RGBA color after applying per-channel LUTs and combining channels
+// The output has premultiplied alpha to match the old fused texture format
+vec4 sampleVolume(vec3 pos) {
+  float bounds = float(pos.x >= 0.0 && pos.x <= 1.0 &&
+    pos.y >= 0.0 && pos.y <= 1.0 &&
+    pos.z >= 0.0 && pos.z <= 1.0);
+  
+  vec3 uvw = PtoVolumeTex(pos);
+  vec4 intensity = texture(volumeTexture, uvw);
+  
+  // Accumulate color from all active channels using their LUTs
+  // Output is premultiplied alpha (rgb * alpha, alpha) like the old fused texture
+  vec4 color = vec4(0.0);
+  for (int i = 0; i < min(gNChannels, 4); ++i) {
+    float channelIntensity = intensity[i];
+    // Sample the LUT for this channel (LUT texture is 256x4, each row is a channel)
+    vec4 lutColor = texture2D(gLutTexture, vec2(channelIntensity, (0.5 + float(i)) / 4.0));
+    // Premultiply alpha: rgb * alpha
+    vec4 premultiplied = vec4(lutColor.rgb * lutColor.a, lutColor.a);
+    // Use max blending to combine channels (similar to the atlas fuse approach)
+    color = max(color, premultiplied);
   }
-
-  // get slice offsets in texture atlas
-  vec2 o0 = offsetFrontBack(z0) + loc0;
-  vec2 o1 = offsetFrontBack(z1) + loc0;
-
-  vec4 slice0Color = texture2D(tex, o0);
-  vec4 slice1Color = texture2D(tex, o1);
-  // NOTE we could premultiply the mask in the fuse function,
-  // but that is slower to update the maskAlpha value than here in the shader.
-  // it is a memory vs perf tradeoff.  Do users really need to update the maskAlpha at realtime speed?
-  float slice0Mask = texture2D(textureAtlasMask, o0).x;
-  float slice1Mask = texture2D(textureAtlasMask, o1).x;
-  // or use max for conservative 0 or 1 masking?
-  float maskVal = mix(slice0Mask, slice1Mask, t);
-  // take mask from 0..1 to alpha..1
-  maskVal = mix(maskVal, 1.0, maskAlpha);
-  vec4 retval = mix(slice0Color, slice1Color, t);
-  // only mask the rgb, not the alpha(?)
-  retval.rgb *= maskVal;
-  return bounds * retval;
-}
-
-vec4 sampleAtlasNearest(sampler2D tex, vec4 pos) {
-  float bounds = float(pos[0] >= 0.0 && pos[0] <= 1.0 &&
-    pos[1] >= 0.0 && pos[1] <= 1.0 &&
-    pos[2] >= 0.0 && pos[2] <= 1.0);
-  float nSlices = float(SLICES);
-
-  vec2 loc0 = ((pos.xy - 0.5) * flipVolume.xy + 0.5) / ATLAS_DIMS;
-
-  // No interpolation - sample just one slice at a pixel center.
-  // Ideally this would be accomplished in part by switching this texture to linear
-  //   filtering, but three makes this difficult to do through a WebGLRenderTarget.
-  loc0 = floor(loc0 * textureRes) / textureRes;
-  loc0 += vec2(0.5) / textureRes;
-
-  float z = min(floor(pos.z * nSlices), nSlices - 1.0);
-
-  if (flipVolume.z == -1.0) {
-    z = nSlices - z - 1.0;
-  }
-
-  vec2 o = offsetFrontBack(z) + loc0;
-  vec4 voxelColor = texture2D(tex, o);
-
-  // Apply mask
-  float voxelMask = texture2D(textureAtlasMask, o).x;
-  voxelMask = mix(voxelMask, 1.0, maskAlpha);
-  voxelColor.rgb *= voxelMask;
-
-  return bounds * voxelColor;
+  
+  return bounds * color;
 }
 
 bool intersectBox(
@@ -191,8 +138,7 @@ vec4 integrateVolume(
   float tnear,
   float tfar,
   float clipNear,
-  float clipFar,
-  sampler2D textureAtlas
+  float clipFar
 ) {
   vec4 C = vec4(0.0);
   // march along ray from front to back, accumulating color
@@ -203,9 +149,7 @@ vec4 integrateVolume(
   float scaledSteps = float(BREAK_STEPS) * length((eye_d.xyz / volumeScale));
   float csteps = clamp(float(scaledSteps), 1.0, float(maxSteps));
   float invstep = (tfar - tnear) / csteps;
-  // special-casing the single slice to remove the random ray dither.
-  // this removes a Moire pattern visible in single slice images, which we want to view as 2D images as best we can.
-  float r = (SLICES == 1.0) ? 0.0 : rand(eye_d.xy);
+  float r = rand(eye_d.xy);
   // if ortho and clipped, make step size smaller so we still get same number of steps
   float tstep = invstep * orthoThickness;
   float tfarsurf = r * tstep;
@@ -226,7 +170,7 @@ vec4 integrateVolume(
     // AABB clip is independent of this and is only used to determine tnear and tfar.
     pos.xyz = (pos.xyz - (-0.5)) / ((0.5) - (-0.5)); //0.5 * (pos + 1.0); // map position from [boxMin, boxMax] to [0, 1] coordinates
 
-    vec4 col = interpolationEnabled ? sampleAtlasLinear(textureAtlas, pos) : sampleAtlasNearest(textureAtlas, pos);
+    vec4 col = sampleVolume(pos.xyz);
 
     if (maxProject != 0) {
       col.xyz *= BRIGHTNESS;
@@ -322,7 +266,7 @@ void main() {
   }
 
   //tnear and tfar are intersections of box
-  vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar, textureAtlas);
+  vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar);
 
   C = clamp(C, 0.0, 1.0);
   gl_FragColor = C;
