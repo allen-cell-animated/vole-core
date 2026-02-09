@@ -33,6 +33,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allen-cell-animated/vole-core.git"
+  },
   "dependencies": {
     "@babel/runtime": "^7.25.6",
     "geotiff": "^2.0.5",
