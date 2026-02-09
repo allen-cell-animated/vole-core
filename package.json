@@ -31,7 +31,12 @@
   "author": "Daniel Toloudis",
   "license": "MIT",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allen-cell-animated/vole-core.git"
   },
   "dependencies": {
     "@babel/runtime": "^7.25.6",
