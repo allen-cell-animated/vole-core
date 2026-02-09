@@ -74,7 +74,7 @@ jobs:
         with:
           node-version: ${{env.NODE_VERSION}}
           registry-url: https://registry.npmjs.org/
-          package-manager-cache: false # Do not cache when publishing to prevent cache manipulation attacks
+          package-manager-cache: false # Do not cache when publishing to prevent cache pollution attacks
       - run: npm install -g npm@11.9.0 # >= v11.5.1 required for OIDC token support
       - run: npm ci
       - run: npm run build
