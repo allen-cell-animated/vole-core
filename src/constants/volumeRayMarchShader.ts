@@ -47,14 +47,6 @@ export const rayMarchingShaderUniforms = () => {
       type: "i",
       value: 128,
     },
-    ATLAS_DIMS: {
-      type: "v2",
-      value: new Vector2(6, 6),
-    },
-    SLICES: {
-      type: "f",
-      value: 50,
-    },
     isOrtho: {
       type: "f",
       value: 0.0,
@@ -83,13 +75,17 @@ export const rayMarchingShaderUniforms = () => {
       type: "m4",
       value: new Matrix4(),
     },
-    textureAtlas: {
+    volumeTexture: {
       type: "t",
       value: new Texture(),
     },
-    textureAtlasMask: {
+    gLutTexture: {
       type: "t",
       value: new Texture(),
+    },
+    gNChannels: {
+      type: "i",
+      value: 0,
     },
     textureDepth: {
       type: "t",
@@ -114,10 +110,6 @@ export const rayMarchingShaderUniforms = () => {
     volumeScale: {
       type: "v3",
       value: new Vector3(1.0, 1.0, 1.0),
-    },
-    textureRes: {
-      type: "v2",
-      value: new Vector2(1.0, 1.0),
     },
   };
 };

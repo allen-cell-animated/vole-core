@@ -5,24 +5,28 @@ import {
   BufferAttribute,
   BufferGeometry,
   Color,
+  Data3DTexture,
   DataTexture,
   DepthTexture,
   Group,
   LineBasicMaterial,
   LineSegments,
+  LinearFilter,
   Material,
   Matrix4,
   Mesh,
+  NearestFilter,
   OrthographicCamera,
   PerspectiveCamera,
+  RGBAFormat,
   ShaderMaterial,
   Texture,
+  UnsignedByteType,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from "three";
 
-import FusedChannelData from "./FusedChannelData.js";
 import {
   rayMarchingVertexShaderSrc,
   rayMarchingFragmentShaderSrc,
@@ -32,8 +36,9 @@ import { Volume } from "./index.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 
-import type { FuseChannel } from "./types.js";
+import { FUSE_DISABLED_RGB_COLOR, type FuseChannel } from "./types.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
+import { LUT_ARRAY_LENGTH } from "./Lut.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
 
@@ -47,8 +52,11 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   private tickMarksMesh: LineSegments;
   private geometryTransformNode: Group;
   private uniforms: ReturnType<typeof rayMarchingShaderUniforms>;
-  private channelData!: FusedChannelData;
   private emptyPositionTex: DataTexture;
+
+  private volumeTexture: Data3DTexture;
+  private lutTexture: DataTexture;
+  private viewChannels: number[]; // should have 4 or less elements
 
   /**
    * Creates a new RayMarchedAtlasVolume.
@@ -58,6 +66,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
    */
   constructor(volume: Volume, settings: VolumeRenderSettings = new VolumeRenderSettings(volume)) {
     this.volume = volume;
+    this.viewChannels = [-1, -1, -1, -1];
 
     this.uniforms = rayMarchingShaderUniforms();
     [this.geometry, this.geometryMesh] = this.createGeometry(this.uniforms);
@@ -80,6 +89,27 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
 
     this.emptyPositionTex = new DataTexture(new Uint8Array(Array(16).fill(0)), 2, 2);
 
+    // create volume texture (Data3DTexture)
+    const { x: sx, y: sy, z: sz } = volume.imageInfo.subregionSize;
+    const data = new Uint8Array(sx * sy * sz * 4).fill(0);
+    this.volumeTexture = new Data3DTexture(data, sx, sy, sz);
+    this.volumeTexture.format = RGBAFormat;
+    this.volumeTexture.type = UnsignedByteType;
+    this.volumeTexture.minFilter = LinearFilter;
+    this.volumeTexture.magFilter = LinearFilter;
+    this.volumeTexture.generateMipmaps = false;
+    this.volumeTexture.needsUpdate = true;
+
+    // create LUT texture (256x4, each row is a channel's LUT)
+    const lutData = new Uint8Array(LUT_ARRAY_LENGTH * 4).fill(255);
+    this.lutTexture = new DataTexture(lutData, 256, 4, RGBAFormat, UnsignedByteType);
+    this.lutTexture.minFilter = LinearFilter;
+    this.lutTexture.magFilter = LinearFilter;
+    this.lutTexture.needsUpdate = true;
+
+    this.setUniform("volumeTexture", this.volumeTexture);
+    this.setUniform("gLutTexture", this.lutTexture);
+
     this.settings = settings;
     this.updateSettings(settings, SettingsFlags.ALL);
     // TODO this is doing *more* redundant work! Fix?
@@ -97,21 +127,6 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     this.boxHelper.box.set(fullRegionScale.clone().multiplyScalar(-0.5), fullRegionScale.clone().multiplyScalar(0.5));
     this.tickMarksMesh.scale.copy(fullRegionScale);
     this.settings && this.updateSettings(this.settings, SettingsFlags.ROI);
-
-    // Set atlas dimension uniforms
-    const { atlasTileDims, subregionSize } = this.volume.imageInfo;
-    const atlasSize = new Vector2(subregionSize.x, subregionSize.y).multiply(atlasTileDims);
-
-    this.setUniform("ATLAS_DIMS", atlasTileDims);
-
-    this.setUniform("textureRes", atlasSize);
-    this.setUniform("SLICES", this.volume.imageInfo.volumeSize.z);
-
-    // (re)create channel data
-    if (!this.channelData || this.channelData.width !== atlasSize.x || this.channelData.height !== atlasSize.y) {
-      this.channelData?.cleanup();
-      this.channelData = new FusedChannelData(atlasSize.x, atlasSize.y);
-    }
   }
 
   public viewpointMoved(): void {
@@ -193,18 +208,21 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.setUniform("interpolationEnabled", this.settings.useInterpolation);
+      this.volumeTexture.minFilter = this.volumeTexture.magFilter = this.settings.useInterpolation
+        ? LinearFilter
+        : NearestFilter;
+      this.volumeTexture.needsUpdate = true;
       this.setUniform("iResolution", this.settings.resolution);
     }
 
     if (dirtyFlags & SettingsFlags.MASK_ALPHA) {
       this.setUniform("maskAlpha", this.settings.maskChannelIndex < 0 ? 1.0 : this.settings.maskAlpha);
+      // Re-update volume data with new mask settings
+      this.updateVolumeData4();
     }
     if (dirtyFlags & SettingsFlags.MASK_DATA) {
-      this.channelData.setChannelAsMask(
-        this.settings.maskChannelIndex,
-        this.volume.getChannel(this.settings.maskChannelIndex)
-      );
+      // Re-update volume data with new mask settings
+      this.updateVolumeData4();
     }
   }
 
@@ -307,7 +325,8 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
 
-    this.channelData.cleanup();
+    this.volumeTexture.dispose();
+    this.lutTexture.dispose();
   }
 
   public doRender(
@@ -324,9 +343,6 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     this.setUniform("usingPositionTexture", (depthTex as DepthTexture).isDepthTexture ? 0 : 1);
     this.setUniform("CLIP_NEAR", camera.near);
     this.setUniform("CLIP_FAR", camera.far);
-
-    this.channelData.gpuFuse(renderer);
-    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -355,13 +371,89 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     this.uniforms[name].value = value;
   }
 
+  /**
+   * Update the 3D volume texture with data from up to 4 active channels.
+   */
+  private updateVolumeData4(): void {
+    const { x: sx, y: sy, z: sz } = this.volume.imageInfo.subregionSize;
+
+    const data = new Uint8Array(sx * sy * sz * 4);
+    data.fill(0);
+
+    for (let i = 0; i < 4; ++i) {
+      const ch = this.viewChannels[i];
+      if (ch === -1) {
+        continue;
+      }
+
+      const volumeChannel = this.volume.getChannel(ch);
+      for (let iz = 0; iz < sz; ++iz) {
+        for (let iy = 0; iy < sy; ++iy) {
+          for (let ix = 0; ix < sx; ++ix) {
+            data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] =
+              255 * volumeChannel.normalizeRaw(volumeChannel.getIntensity(ix, iy, iz));
+          }
+        }
+      }
+      if (this.settings.maskChannelIndex !== -1 && this.settings.maskAlpha < 1.0) {
+        const maskChannel = this.volume.getChannel(this.settings.maskChannelIndex);
+        let maskVal = 1.0;
+        const maskAlpha = this.settings.maskAlpha;
+        for (let iz = 0; iz < sz; ++iz) {
+          for (let iy = 0; iy < sy; ++iy) {
+            for (let ix = 0; ix < sx; ++ix) {
+              // binary masking
+              maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
+              data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] *= maskVal;
+            }
+          }
+        }
+      }
+    }
+    this.volumeTexture.image.data.set(data);
+    this.volumeTexture.needsUpdate = true;
+  }
+
+  /**
+   * Update LUT textures for the active channels.
+   */
+  private updateLuts(channelColors: FuseChannel[], channelData: Channel[]): void {
+    for (let i = 0; i < this.uniforms.gNChannels.value; ++i) {
+      const channel = this.viewChannels[i];
+      const combinedLut = channelData[channel].combineLuts(channelColors[channel].rgbColor);
+
+      this.lutTexture.image.data.set(combinedLut, i * LUT_ARRAY_LENGTH);
+    }
+    this.lutTexture.needsUpdate = true;
+  }
+
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
   public updateActiveChannels(channelcolors: FuseChannel[], channeldata: Channel[]): void {
-    this.channelData.fuse(channelcolors, channeldata);
+    const ch = [-1, -1, -1, -1];
+    let activeChannel = 0;
+    const NC = this.volume.imageInfo.numChannels;
+    const maxch = 4;
+    for (let i = 0; i < NC && activeChannel < maxch; ++i) {
+      // check that channel is not disabled and is loaded
+      if (channelcolors[i].rgbColor !== FUSE_DISABLED_RGB_COLOR && channeldata[i].loaded) {
+        ch[activeChannel] = i;
+        activeChannel++;
+      }
+    }
 
-    // update to fused texture
-    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
-    this.setUniform("textureAtlasMask", this.channelData.maskTexture);
+    const unchanged = ch.every((elem, index) => elem === this.viewChannels[index], this);
+    if (unchanged) {
+      // Still update LUTs in case colors changed
+      this.updateLuts(channelcolors, channeldata);
+      return;
+    }
+
+    this.setUniform("gNChannels", activeChannel);
+
+    this.viewChannels = ch;
+    // update volume data according to channels selected.
+    this.updateVolumeData4();
+    this.updateLuts(channelcolors, channeldata);
   }
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {
