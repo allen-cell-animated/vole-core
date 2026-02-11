@@ -1,5 +1,5 @@
 import { DataTexture, FloatType, LinearFilter, RGBAFormat, type Texture, UniformsUtils } from "three";
-import { LineMaterial, type LineMaterialParameters } from "three/addons/lines/LineMaterial";
+import { LineMaterial, type LineMaterialParameters } from "three/addons/lines/LineMaterial.js";
 
 import vertexShader from "./constants/shaders/track.vert";
 
