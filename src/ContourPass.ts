@@ -3,7 +3,6 @@ import {
   DataTexture,
   FloatType,
   IUniform,
-  RedFormat,
   RedIntegerFormat,
   RGBAFormat,
   Texture,
@@ -23,12 +22,6 @@ import { getSquarestTextureDimensions } from "./utils/texture_utils.js";
 type ContourUniforms = {
   // Base image (pick buffer)
   pickBuffer: IUniform<Texture>;
-  // ID information
-  selectedId: IUniform<number>;
-  selectedIds: IUniform<Texture>;
-  useGlobalIdLookup: IUniform<boolean>;
-  localIdToGlobalId: IUniform<Texture>;
-  localIdOffset: IUniform<number>;
   // Outline style
   outlineThickness: IUniform<number>;
   innerOutlineThickness: IUniform<number>;
@@ -37,15 +30,21 @@ type ContourUniforms = {
   outlinePalette: IUniform<Texture>;
   useOutlinePalette: IUniform<boolean>;
   outlineAlpha: IUniform<number>;
+  // ID information
+  selectedId: IUniform<number>;
+  selectedIds: IUniform<Texture>;
+  useGlobalIdLookup: IUniform<boolean>;
+  localIdToGlobalId: IUniform<Texture>;
+  localIdOffset: IUniform<number>;
 
   devicePixelRatio: IUniform<number>;
 };
 
 const makeDefaultUniforms = (): ContourUniforms => {
-  const pickBufferTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  const pickBufferTex = new DataTexture(new Float32Array([0, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
   const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
   localIdToGlobalId.needsUpdate = true;
-  const outlinePaletteTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  const outlinePaletteTex = new DataTexture(new Float32Array([1, 1, 1, 0]), 1, 1, RGBAFormat, FloatType);
   outlinePaletteTex.needsUpdate = true;
   const selectedIds = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
   selectedIds.internalFormat = "R8UI";

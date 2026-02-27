@@ -1193,6 +1193,8 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outlineColor: new Color(0xffffff),
       outlineAlpha: 1.0,
       outlierColor: new Color(0x444444),
+      outlinePalette: colormap,
+      useOutlinePalette: false,
       outOfRangeColor: new Color(0x444444),
       outlierDrawMode: 0,
       outOfRangeDrawMode: 0,
