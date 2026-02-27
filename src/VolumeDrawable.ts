@@ -507,9 +507,15 @@ export default class VolumeDrawable {
     return this.meshVolume.hasIsosurface(channel);
   }
 
+  // TODO: Deprecate?
   setSelectedID(_channelIndex: number, id: number): boolean {
     this.contourRendering.setHighlightedId(id);
     return false;
+  }
+
+  setSelectedIdsLut(selectedIds: Uint8Array): boolean {
+    this.contourRendering.setSelectedIdLut(selectedIds);
+    return true;
   }
 
   fuse(): void {
@@ -726,6 +732,8 @@ export default class VolumeDrawable {
     } else {
       this.fusion[channelIndex].feature = featureInfo;
       this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
+      this.contourRendering.setOutlinePaletteTexture(featureInfo.outlinePalette);
+      this.contourRendering.setUseOutlinePalette(featureInfo.useOutlinePalette);
       this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);

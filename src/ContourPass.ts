@@ -3,10 +3,12 @@ import {
   DataTexture,
   FloatType,
   IUniform,
+  RedFormat,
   RedIntegerFormat,
   RGBAFormat,
   Texture,
   Uniform,
+  UnsignedByteType,
   UnsignedIntType,
   WebGLRenderer,
   WebGLRenderTarget,
@@ -16,16 +18,26 @@ import { clamp } from "three/src/math/MathUtils.js";
 import RenderToBuffer, { RenderPassType } from "./RenderToBuffer.js";
 import contourFragShader from "./constants/shaders/contour.frag";
 import { ColorizeFeature } from "./types.js";
+import { getSquarestTextureDimensions } from "./utils/texture_utils.js";
 
 type ContourUniforms = {
+  // Base image (pick buffer)
   pickBuffer: IUniform<Texture>;
-  highlightedId: IUniform<number>;
-  outlineThickness: IUniform<number>;
-  outlineColor: IUniform<Color>;
-  outlineAlpha: IUniform<number>;
+  // ID information
+  selectedId: IUniform<number>;
+  selectedIds: IUniform<Texture>;
   useGlobalIdLookup: IUniform<boolean>;
   localIdToGlobalId: IUniform<Texture>;
   localIdOffset: IUniform<number>;
+  // Outline style
+  outlineThickness: IUniform<number>;
+  innerOutlineThickness: IUniform<number>;
+  backgroundColor: IUniform<Color>;
+  outlineColor: IUniform<Color>;
+  outlinePalette: IUniform<Texture>;
+  useOutlinePalette: IUniform<boolean>;
+  outlineAlpha: IUniform<number>;
+
   devicePixelRatio: IUniform<number>;
 };
 
@@ -33,12 +45,22 @@ const makeDefaultUniforms = (): ContourUniforms => {
   const pickBufferTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
   const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
   localIdToGlobalId.needsUpdate = true;
+  const outlinePaletteTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  outlinePaletteTex.needsUpdate = true;
+  const selectedIds = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
+  selectedIds.internalFormat = "R8UI";
+  selectedIds.needsUpdate = true;
   return {
     pickBuffer: new Uniform(pickBufferTex),
-    highlightedId: new Uniform(94),
+    selectedId: new Uniform(-1),
+    selectedIds: new Uniform(selectedIds),
     outlineThickness: new Uniform(2.0),
+    innerOutlineThickness: new Uniform(2.0),
+    useOutlinePalette: new Uniform(false),
+    backgroundColor: new Uniform(new Color(0, 0, 0)),
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
+    outlinePalette: new Uniform(outlinePaletteTex),
     useGlobalIdLookup: new Uniform(false),
     localIdToGlobalId: new Uniform(localIdToGlobalId),
     localIdOffset: new Uniform(0),
@@ -50,6 +72,8 @@ export default class ContourPass {
   private pass: RenderToBuffer;
   private frameToGlobalIdLookup: ColorizeFeature["frameToGlobalIdLookup"] | null;
   private frame: number;
+
+  private selectedIdsTexture: DataTexture | null = null;
 
   constructor() {
     this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), RenderPassType.TRANSPARENT);
@@ -66,6 +90,10 @@ export default class ContourPass {
     this.pass.material.uniforms.outlineThickness.value = Math.floor(thickness);
   }
 
+  public setInnerOutlineThickness(thickness: number): void {
+    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(thickness);
+  }
+
   private syncGlobalIdLookup(): void {
     const uniforms = this.pass.material.uniforms as ContourUniforms;
     const globalIdLookupInfo = this.frameToGlobalIdLookup?.get(this.frame);
@@ -80,7 +108,7 @@ export default class ContourPass {
 
   /**
    * Sets a frame-dependent lookup for global IDs. Set to a non-null value if
-   * the `highlightedId` represents a global ID instead of a local (pixel) ID.
+   * the `selectedId` represents a global ID instead of a local (pixel) ID.
    * @param frameToGlobalIdLookup A map from a frame number to a lookup object,
    * containing a texture and an offset value; see `ColorizeFeature` for more
    * details. If `null`, the pass will not use a global ID lookup.
@@ -109,7 +137,34 @@ export default class ContourPass {
    * (`setGlobalIdLookup`), this should be a global ID.
    */
   public setHighlightedId(id: number) {
-    this.pass.material.uniforms.highlightedId.value = id;
+    this.pass.material.uniforms.selectedId.value = id;
+  }
+
+  public setSelectedIdLut(selectedIds: Uint8Array) {
+    if (this.selectedIdsTexture) {
+      this.selectedIdsTexture.dispose();
+    }
+    const [width, height] = getSquarestTextureDimensions(selectedIds.length);
+    let paddedSelectedIds = selectedIds;
+    if (selectedIds.length < width * height) {
+      // Pad the array with zeros to fit the texture size
+      paddedSelectedIds = new Uint8Array(width * height);
+      paddedSelectedIds.set(selectedIds);
+    }
+    console.log("New selected IDs texture size:", paddedSelectedIds.length, width, height);
+
+    this.selectedIdsTexture = new DataTexture(paddedSelectedIds, width, height, RedIntegerFormat, UnsignedByteType);
+    this.selectedIdsTexture.internalFormat = "R8UI";
+    this.selectedIdsTexture.needsUpdate = true;
+    this.pass.material.uniforms.selectedIds.value = this.selectedIdsTexture;
+  }
+
+  public setUseOutlinePalette(usePalette: boolean) {
+    this.pass.material.uniforms.useOutlinePalette.value = usePalette;
+  }
+
+  public setOutlinePaletteTexture(texture: DataTexture) {
+    this.pass.material.uniforms.outlinePalette.value = texture;
   }
 
   /**

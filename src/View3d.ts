@@ -972,6 +972,13 @@ export class View3d {
     }
   }
 
+  setSelectedIDs(idLut: Uint8Array): void {
+    const needRedraw = this.image?.setSelectedIdsLut(idLut);
+    if (needRedraw) {
+      this.redraw();
+    }
+  }
+
   /**
    * Adds a Line3d object as a child of the Volume, if a volume has been added
    * to the view and the line is not already a child of it. Line positions will

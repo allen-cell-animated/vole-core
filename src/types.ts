@@ -92,6 +92,8 @@ export interface ColorizeFeature {
   featureMin: number;
   featureMax: number;
   outlineColor: Color;
+  outlinePalette: DataTexture;
+  useOutlinePalette: boolean;
   outlineAlpha: number;
   outlierColor: Color;
   outOfRangeColor: Color;
