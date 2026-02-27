@@ -1,6 +1,7 @@
 export function getSquarestTextureDimensions(size: number): [number, number] {
-  const width = Math.ceil(Math.sqrt(size));
-  const height = Math.ceil(size / width);
+  const safeSize = Math.max(1, size);
+  const width = Math.ceil(Math.sqrt(safeSize));
+  const height = Math.ceil(safeSize / width);
 
   return [width, height];
 }

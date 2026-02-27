@@ -57,7 +57,7 @@ const makeDefaultUniforms = (): ContourUniforms => {
     outlineThickness: new Uniform(2.0),
     innerOutlineThickness: new Uniform(2.0),
     useOutlinePalette: new Uniform(false),
-    backgroundColor: new Uniform(new Color(0, 0, 0)),
+    backgroundColor: new Uniform(new Color(1, 1, 1)),
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
     outlinePalette: new Uniform(outlinePaletteTex),
@@ -151,8 +151,6 @@ export default class ContourPass {
       paddedSelectedIds = new Uint8Array(width * height);
       paddedSelectedIds.set(selectedIds);
     }
-    console.log("New selected IDs texture size:", paddedSelectedIds.length, width, height);
-
     this.selectedIdsTexture = new DataTexture(paddedSelectedIds, width, height, RedIntegerFormat, UnsignedByteType);
     this.selectedIdsTexture.internalFormat = "R8UI";
     this.selectedIdsTexture.needsUpdate = true;
@@ -164,7 +162,9 @@ export default class ContourPass {
   }
 
   public setOutlinePaletteTexture(texture: DataTexture) {
+    console.log("Setting outline palette texture", texture.image.width, texture.image.height, texture);
     this.pass.material.uniforms.outlinePalette.value = texture;
+    this.pass.material.needsUpdate = true;
   }
 
   /**

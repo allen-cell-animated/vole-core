@@ -127,6 +127,7 @@ void main(void) {
       // When coloring with the track palette, apply an additional inner outline
       // using the background color for better contrast against the track
       // outline color.
+      // gl_FragColor = vec4(0, 0, 0, 0.0);
       gl_FragColor = vec4(backgroundColor.rgb, outlineAlpha);
     }
   } else {

@@ -19,6 +19,8 @@ import {
   Texture,
   LinearFilter,
   Vector2,
+  UnsignedIntType,
+  RedIntegerFormat,
 } from "three";
 
 import Channel from "./Channel.js";
@@ -151,7 +153,7 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        segIdToGlobalId: { value: new DataTexture() },
+        segIdToGlobalId: { value: new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType) },
         segIdOffset: { value: 0 },
       },
       fragmentShader: fragShaderSrc,
@@ -260,7 +262,9 @@ export default class FusedChannelData {
             console.warn(
               `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
             );
-            globalIdLookupInfo = { texture: new DataTexture(Uint32Array[0]), minSegId: 1 };
+            const fallbackTexture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+            fallbackTexture.needsUpdate = true;
+            globalIdLookupInfo = { texture: fallbackTexture, minSegId: 1 };
           }
           mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
           mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
