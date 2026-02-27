@@ -238,7 +238,6 @@ export default class FusedChannelData {
         // must clone the material to keep a unique set of uniforms
         const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
-        mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
         const feature = combination[i].feature;
         if (isColorize && feature) {
           mat.uniforms.featureData.value = feature.idsToFeatureValue;
