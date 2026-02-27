@@ -728,7 +728,6 @@ export default class VolumeDrawable {
     // TODO only one channel can ever have this?
     if (!featureInfo) {
       this.fusion[channelIndex].feature = undefined;
-      this.contourRendering.setGlobalIdLookup(null);
     } else {
       this.fusion[channelIndex].feature = featureInfo;
       this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
