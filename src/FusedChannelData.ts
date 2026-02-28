@@ -21,6 +21,7 @@ import {
   Vector2,
   UnsignedIntType,
   RedIntegerFormat,
+  FloatType,
 } from "three";
 
 import Channel from "./Channel.js";
@@ -130,21 +131,35 @@ export default class FusedChannelData {
   }
 
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
+    const initialFeatureData = new DataTexture(new Float32Array([0]), 1, 1, RedFormat, FloatType);
+    initialFeatureData.needsUpdate = true;
+
+    const initialOutlierData = new DataTexture(new Uint8Array([0]), 1, 1, RedFormat, UnsignedByteType);
+    initialOutlierData.needsUpdate = true;
+    const initialInRangeIds = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedByteType);
+    initialInRangeIds.needsUpdate = true;
+
+    const initialSegIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedIntType);
+    initialSegIdToGlobalId.needsUpdate = true;
+    const initialColorRamp = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, FloatType);
+    initialColorRamp.needsUpdate = true;
+    const initialSrcTexture = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, FloatType);
+    initialSrcTexture.needsUpdate = true;
     return new ShaderMaterial({
       uniforms: {
         highlightedId: { value: -1 },
         featureData: {
-          value: null,
+          value: initialFeatureData,
         },
-        outlierData: { value: null },
-        inRangeIds: { value: null },
+        outlierData: { value: initialOutlierData },
+        inRangeIds: { value: initialInRangeIds },
         srcTexture: {
-          value: null,
+          value: initialSrcTexture,
         },
         featureColorRampMin: { value: 0 },
         featureColorRampMax: { value: 1 },
         colorRamp: {
-          value: null,
+          value: initialColorRamp,
         },
         useRepeatingCategoricalColors: { value: false },
         outlineColor: { value: new Color(0xffffff) },
@@ -153,7 +168,7 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        segIdToGlobalId: { value: new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType) },
+        segIdToGlobalId: { value: initialSegIdToGlobalId },
         segIdOffset: { value: 0 },
       },
       fragmentShader: fragShaderSrc,
@@ -262,9 +277,9 @@ export default class FusedChannelData {
             console.warn(
               `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
             );
-            const fallbackTexture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
-            fallbackTexture.needsUpdate = true;
-            globalIdLookupInfo = { texture: fallbackTexture, minSegId: 1 };
+            const texture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+            texture.needsUpdate = true;
+            globalIdLookupInfo = { texture, minSegId: 1 };
           }
           mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
           mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;

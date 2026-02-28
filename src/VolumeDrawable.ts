@@ -508,14 +508,12 @@ export default class VolumeDrawable {
   }
 
   // TODO: Deprecate?
-  setSelectedID(_channelIndex: number, id: number): boolean {
-    this.contourRendering.setHighlightedId(id);
-    return false;
+  setSelectedID(_channelIndex: number, id: number): void {
+    this.contourRendering.setSelectedId(id);
   }
 
-  setSelectedIdsLut(selectedIds: Uint8Array): boolean {
+  setSelectedIdsLut(selectedIds: Uint8Array): void {
     this.contourRendering.setSelectedIdLut(selectedIds);
-    return true;
   }
 
   fuse(): void {

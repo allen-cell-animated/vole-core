@@ -60,7 +60,7 @@ vec4 getOutlineColor(int colorIdx) {
 }
 
 /**
- * Gets the label ID of the pixel at the given scaled UV
+ * Gets the label ID (aka raw pixel value) of the pixel at the given scaled UV
  * coordinates.
  */
 uint getLabelId(ivec2 uv) {
@@ -71,12 +71,14 @@ uint getLabelId(ivec2 uv) {
  * Looks up the global ID value from its label ID. The global ID can be used to
  * get data about this object from data buffers like `featureData` and
  * `outlierData`.
- * @returns The global ID at the given coordinates, or -1 (=MISSING_DATA_ID) if
- *     the pixel is background or missing data.
+ * @returns One of the following:
+ * - `-1` (=MISSING_DATA_ID) if the pixel is missing data or is part of the
+     background.
+ * - The global ID at the given coordinates.
  */
 int getGlobalId(uint labelId) {
-  if (labelId == 0u) {
-    return int(BACKGROUND_ID);
+  if (labelId == BACKGROUND_ID) {
+    return MISSING_DATA_ID;
   }
   int localId = int(labelId) - int(localIdOffset);
   if (!useGlobalIdLookup) {

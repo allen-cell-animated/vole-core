@@ -89,8 +89,11 @@ export default class ContourPass {
     this.pass.material.uniforms.outlineThickness.value = Math.floor(thickness);
   }
 
-  public setInnerOutlineThickness(thickness: number): void {
-    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(thickness);
+  /**
+   * Optional inner outline shown when using outline palettes for better contrast.
+   */
+  public setInnerOutlineThickness(thicknessPx: number): void {
+    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(thicknessPx);
   }
 
   private syncGlobalIdLookup(): void {
@@ -135,10 +138,21 @@ export default class ContourPass {
    * @param id The ID to highlight. If a global ID lookup has been set
    * (`setGlobalIdLookup`), this should be a global ID.
    */
-  public setHighlightedId(id: number) {
+  public setSelectedId(id: number) {
     this.pass.material.uniforms.selectedId.value = id;
   }
 
+  /**
+   * Sets the lookup table that maps from an ID to whether the ID is
+   * selected or not.
+   *
+   * For some ID `i`, if `selectedIds[i] > 0`, the ID is selected. When
+   * `useOutlinePalette` is true, the value of `selectedIds[i]` is used
+   * as the index of the outline color in the outline palette.
+   *
+   * By default, the ID is a local (pixel) ID. If a global ID
+   * lookup has been set (`setGlobalIdLookup`), the ID is parsed as a global ID.
+   */
   public setSelectedIdLut(selectedIds: Uint8Array) {
     if (this.selectedIdsTexture) {
       this.selectedIdsTexture.dispose();
@@ -156,12 +170,18 @@ export default class ContourPass {
     this.pass.material.uniforms.selectedIds.value = this.selectedIdsTexture;
   }
 
+  /**
+   * Whether to use the outline palette texture for coloring outlines.
+   * Otherwise, a solid outline color is used.
+   */
   public setUseOutlinePalette(usePalette: boolean) {
     this.pass.material.uniforms.useOutlinePalette.value = usePalette;
   }
 
+  /**
+   * Sets a texture containing the outline palette colors.
+   */
   public setOutlinePaletteTexture(texture: DataTexture) {
-    console.log("Setting outline palette texture", texture.image.width, texture.image.height, texture);
     this.pass.material.uniforms.outlinePalette.value = texture;
     this.pass.material.needsUpdate = true;
   }
