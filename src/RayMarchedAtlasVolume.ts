@@ -38,6 +38,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { FUSE_DISABLED_RGB_COLOR, type FuseChannel } from "./types.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
+import { VolumeDataUpdater } from "./utils/VolumeDataUpdater.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
 
@@ -56,7 +57,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   private volumeTexture: Data3DTexture;
   private lutTexture: DataTexture;
   private viewChannels: number[]; // should have 4 or less elements
-  private volumeDataScratch: Uint8Array;
+  private volumeDataUpdater: VolumeDataUpdater;
 
   /**
    * Creates a new RayMarchedAtlasVolume.
@@ -92,7 +93,6 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     // create volume texture (Data3DTexture)
     const { x: sx, y: sy, z: sz } = volume.imageInfo.subregionSize;
     const data = new Uint8Array(sx * sy * sz * 4).fill(0);
-    this.volumeDataScratch = data;
     this.volumeTexture = new Data3DTexture(data, sx, sy, sz);
     this.volumeTexture.format = RGBAFormat;
     this.volumeTexture.type = UnsignedByteType;
@@ -100,6 +100,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     this.volumeTexture.magFilter = LinearFilter;
     this.volumeTexture.generateMipmaps = false;
     this.volumeTexture.needsUpdate = true;
+    this.volumeDataUpdater = new VolumeDataUpdater();
 
     // create LUT texture (256x4, each row is a channel's LUT)
     const lutData = new Uint8Array(LUT_ARRAY_LENGTH * 4).fill(255);
@@ -376,47 +377,13 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
    * Update the 3D volume texture with data from up to 4 active channels.
    */
   private updateVolumeData4(): void {
-    const { x: sx, y: sy, z: sz } = this.volume.imageInfo.subregionSize;
-    const dataSize = sx * sy * sz * 4;
-    if (!this.volumeDataScratch || this.volumeDataScratch.length !== dataSize) {
-      this.volumeDataScratch = new Uint8Array(dataSize);
-    }
-
-    const data = this.volumeDataScratch;
-    data.fill(0);
-
-    for (let i = 0; i < 4; ++i) {
-      const ch = this.viewChannels[i];
-      if (ch === -1) {
-        continue;
-      }
-
-      const volumeChannel = this.volume.getChannel(ch);
-      for (let iz = 0; iz < sz; ++iz) {
-        for (let iy = 0; iy < sy; ++iy) {
-          for (let ix = 0; ix < sx; ++ix) {
-            data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] =
-              255 * volumeChannel.normalizeRaw(volumeChannel.getIntensity(ix, iy, iz));
-          }
-        }
-      }
-      if (this.settings.maskChannelIndex !== -1 && this.settings.maskAlpha < 1.0) {
-        const maskChannel = this.volume.getChannel(this.settings.maskChannelIndex);
-        let maskVal = 1.0;
-        const maskAlpha = this.settings.maskAlpha;
-        for (let iz = 0; iz < sz; ++iz) {
-          for (let iy = 0; iy < sy; ++iy) {
-            for (let ix = 0; ix < sx; ++ix) {
-              // binary masking
-              maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
-              data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] *= maskVal;
-            }
-          }
-        }
-      }
-    }
-    this.volumeTexture.image.data.set(data);
-    this.volumeTexture.needsUpdate = true;
+    this.volumeDataUpdater.update(
+      this.volume,
+      this.viewChannels,
+      this.settings.maskChannelIndex,
+      this.settings.maskAlpha,
+      this.volumeTexture
+    );
   }
 
   /**
