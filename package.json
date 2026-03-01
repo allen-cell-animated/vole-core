@@ -1,6 +1,6 @@
 {
   "name": "@aics/vole-core",
-  "version": "4.6.0",
+  "version": "4.6.4",
   "description": "volume renderer for 3d, 4d, or 5d imaging data with OME-Zarr support",
   "main": "es/index.js",
   "type": "module",
@@ -32,6 +32,10 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/allen-cell-animated/vole-core.git"
   },
   "dependencies": {
     "@babel/runtime": "^7.25.6",

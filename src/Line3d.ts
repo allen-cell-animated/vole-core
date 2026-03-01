@@ -1,4 +1,4 @@
-import { Color, DataTexture, LinearFilter, Texture } from "three";
+import { Color, DataTexture, FloatType, LinearFilter, RGBAFormat, Texture } from "three";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
@@ -75,7 +75,7 @@ export default class Line3d extends BaseDrawableMeshObject implements IDrawableO
     const linearSRGBDataArr = colors.flatMap((col) => {
       return [col.r, col.g, col.b, 1];
     });
-    const texture = new DataTexture(new Float32Array(linearSRGBDataArr), colors.length, 1);
+    const texture = new DataTexture(new Float32Array(linearSRGBDataArr), colors.length, 1, RGBAFormat, FloatType);
     texture.minFilter = texture.magFilter = LinearFilter;
     texture.internalFormat = "RGBA32F";
     texture.needsUpdate = true;
