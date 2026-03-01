@@ -22,7 +22,6 @@ import {
   ShaderMaterial,
   Texture,
   UnsignedByteType,
-  Vector2,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -57,6 +56,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   private volumeTexture: Data3DTexture;
   private lutTexture: DataTexture;
   private viewChannels: number[]; // should have 4 or less elements
+  private volumeDataScratch: Uint8Array;
 
   /**
    * Creates a new RayMarchedAtlasVolume.
@@ -92,6 +92,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     // create volume texture (Data3DTexture)
     const { x: sx, y: sy, z: sz } = volume.imageInfo.subregionSize;
     const data = new Uint8Array(sx * sy * sz * 4).fill(0);
+    this.volumeDataScratch = data;
     this.volumeTexture = new Data3DTexture(data, sx, sy, sz);
     this.volumeTexture.format = RGBAFormat;
     this.volumeTexture.type = UnsignedByteType;
@@ -376,8 +377,12 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
    */
   private updateVolumeData4(): void {
     const { x: sx, y: sy, z: sz } = this.volume.imageInfo.subregionSize;
+    const dataSize = sx * sy * sz * 4;
+    if (!this.volumeDataScratch || this.volumeDataScratch.length !== dataSize) {
+      this.volumeDataScratch = new Uint8Array(dataSize);
+    }
 
-    const data = new Uint8Array(sx * sy * sz * 4);
+    const data = this.volumeDataScratch;
     data.fill(0);
 
     for (let i = 0; i < 4; ++i) {
