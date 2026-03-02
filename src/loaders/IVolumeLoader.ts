@@ -156,7 +156,6 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
     const { imageInfo, loadSpec: adjustedLoadSpec } = await this.createImageInfo(loadSpec);
     const vol = new Volume(imageInfo, adjustedLoadSpec, this);
     vol.channelLoadCallback = onChannelLoaded;
-    vol.imageMetadata = buildDefaultMetadata(imageInfo);
     return vol;
   }
 
@@ -168,7 +167,9 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
     const onUpdateMetadata = (imageInfo?: ImageInfo, loadSpec?: LoadSpec): void => {
       if (imageInfo) {
         volume.imageInfo = new CImageInfo(imageInfo);
+        volume.imageMetadata = buildDefaultMetadata(imageInfo);
         volume.updateDimensions();
+        volume.updateChannels();
       }
       volume.loadSpec = { ...loadSpec, ...spec };
     };
