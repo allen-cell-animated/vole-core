@@ -148,7 +148,7 @@ export default class Volume {
     this.normRegionOffset = subregionOffset.clone().divide(volumeSize);
   }
 
-  updateChannels() {
+  updateChannelCount() {
     while (this.channels.length > this.imageInfo.numChannels) {
       const removedIndex = this.channels.length - 1;
       const removedChannel = this.channels.pop();

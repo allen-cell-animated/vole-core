@@ -169,7 +169,7 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
         volume.imageInfo = new CImageInfo(imageInfo);
         volume.imageMetadata = buildDefaultMetadata(imageInfo);
         volume.updateDimensions();
-        volume.updateChannels();
+        volume.updateChannelCount();
       }
       volume.loadSpec = { ...loadSpec, ...spec };
     };
