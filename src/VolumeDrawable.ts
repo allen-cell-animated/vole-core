@@ -622,6 +622,16 @@ export default class VolumeDrawable {
     this.settings.glossiness[newChannelIndex] = 0;
   }
 
+  onChannelRemoved(removedIndex: number): void {
+    this.channelColors.splice(removedIndex, 1);
+    this.channelOptions.splice(removedIndex, 1);
+    this.fusion.splice(removedIndex, 1);
+    this.settings.diffuse.splice(removedIndex, 1);
+    this.settings.specular.splice(removedIndex, 1);
+    this.settings.emissive.splice(removedIndex, 1);
+    this.settings.glossiness.splice(removedIndex, 1);
+  }
+
   // Save a channel's isosurface as a triangle mesh to either STL or GLTF2 format.  File will be named automatically, using image name and channel name.
   // @param {string} type Either 'GLTF' or 'STL'
   saveChannelIsosurface(channelIndex: number, type: string): void {
