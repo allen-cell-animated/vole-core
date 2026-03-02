@@ -600,9 +600,10 @@ export default class VolumeDrawable {
 
   onChannelAdded(newChannelIndex: number): void {
     this.channelColors[newChannelIndex] = this.volume.channelColorsDefault[newChannelIndex];
+    this.channelOptions[newChannelIndex] = {};
     this.fusion[newChannelIndex] = {
       chIndex: newChannelIndex,
-      lut: new Uint8Array[LUT_ARRAY_LENGTH](),
+      lut: new Uint8Array(LUT_ARRAY_LENGTH),
       rgbColor: [
         this.channelColors[newChannelIndex][0],
         this.channelColors[newChannelIndex][1],
