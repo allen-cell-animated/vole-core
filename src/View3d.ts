@@ -323,6 +323,8 @@ export class View3d {
    * @param featureInfo A collection of all parameters necessary to colorize the channel. Pass null to turn off colorization.
    */
   setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    // TODO: Allow `featureInfo` to be `Partial<ColorizeFeature>` and only
+    // update the provided fields.
     this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
     this.image?.fuse();
     this.redraw();
@@ -959,15 +961,32 @@ export class View3d {
   }
 
   /**
-   * @description Set the selected ID for a given channel.  This is used to change the appearance of the volume where that id is.
+   * @description Set the selected ID for a given channel. This is used to show
+   * an outline around pixels with the selected ID.
    * @param volume the image to set the selected ID on
    * @param channel the channel index where the selected ID is
    * @param id the selected id
    */
   setSelectedID(volume: Volume, channel: number, id: number): void {
+    // Note: Channel and volume params do not do anything currently...
+    // deprecate/refactor in the future?
     const needRedraw = this.image?.setSelectedID(channel, id);
     if (needRedraw) {
       this.image?.fuse();
+      this.redraw();
+    }
+  }
+
+  /**
+   * @description Sets a lookup table mapping from an ID to whether it is
+   * selected. Used for outlining multiple selected IDs.
+   * @param idLut A Uint8Array where, for an ID `i`, `idLut[i] > 0` if the ID is
+   * selected. When the outline palette is enabled (see `setChannelColorizeFeature()`),
+   * the color is given by `outlinePalette[idLut[i] - 1]`.
+   */
+  setSelectedIDs(idLut: Uint8Array): void {
+    this.image?.setSelectedIdsLut(idLut);
+    if (this.image) {
       this.redraw();
     }
   }
