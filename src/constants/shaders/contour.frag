@@ -17,23 +17,27 @@ uniform bool useGlobalIdLookup;
 uniform sampler2D pickBuffer;
 
 /** 
- * A mapping of IDs that are selected in the current track(s). If an object's
- * index is `i`, `selectedIds[i] >= 1` if the object is selected.
+ * A mapping of IDs that are selected in the current track(s). For some object
+ * with ID given by `i`, `selectedIds[i] >= 1` if the object is selected.
  *
  * For selected objects, `selectedIds[i] - 1` is the index into the
  * `outlinePalette` for the outline color that should be used when
  * `useOutlinePalette` is true.
  */
 uniform usampler2D selectedIds;
+/** 
+ * Legacy method of highlighting a single ID. Uses the `outlineColor` for the outline 
+ * or `outlinePalette[0]` when `useOutlinePalette` is true.
+*/
 uniform int selectedId;
-uniform int outlineThickness;
-uniform float outlineAlpha;
 /**
- * If true, uses the `outlinePalette` to outline selected tracks, and
- * shows an additional inner outline. When false, uses `outlineColor` for
- * outlines.
+ * If true, uses the `outlinePalette` to outline selected tracks based on the
+ * selected ID, and shows an additional inner outline. When false, uses
+ * `outlineColor` for outlines.
  */
 uniform bool useOutlinePalette;
+uniform int outlineThickness;
+uniform float outlineAlpha;
 uniform vec3 outlineColor;
 uniform sampler2D outlinePalette;
 uniform vec3 innerOutlineColor;
@@ -82,7 +86,7 @@ int getGlobalId(uint labelId) {
   }
   int localId = int(labelId) - int(localIdOffset);
   if (!useGlobalIdLookup) {
-    return (localId - ID_OFFSET);
+    return localId - ID_OFFSET;
   }
   uvec4 c = getUintFromTex(localIdToGlobalId, localId);
   // Note: IDs are offset by `ID_OFFSET` (`=1`) to reserve `0` for local IDs
@@ -112,23 +116,22 @@ void main(void) {
   ivec2 vUv = ivec2(int(gl_FragCoord.x / devicePixelRatio), int(gl_FragCoord.y / devicePixelRatio));
 
   uint labelId = getLabelId(vUv);
-  int id = getGlobalId(labelId);
+  int globalId = getGlobalId(labelId);
 
-  if (id == MISSING_DATA_ID || labelId == BACKGROUND_ID) {
+  if (globalId == MISSING_DATA_ID || labelId == BACKGROUND_ID) {
     gl_FragColor = vec4(0.0, 0.0, 0.0, 0.0);
     return;
   }
 
-  uint selectionIdx = getUintFromTex(selectedIds, id).r;
-  if (selectionIdx > 0u || id == selectedId) {
+  uint selectionIdx = getUintFromTex(selectedIds, globalId).r;
+  if (selectionIdx > 0u || globalId == selectedId) {
     if (isEdge(vUv, labelId, outlineThickness)) {
+      // If matched on `selectedId` only, selectionIdx will be 0. Use color index 0.
       int colorIdx = max(0, int(selectionIdx) - 1);
       vec4 color = getOutlineColor(colorIdx);
       gl_FragColor = vec4(color.rgb, outlineAlpha);
     } else if (innerOutlineThickness > 0 && isEdge(vUv, labelId, outlineThickness + innerOutlineThickness)) {
-      // When coloring with the track palette, apply an additional inner outline
-      // using the background color for better contrast against the track
-      // outline color.
+      // Optionally apply an additional inner outline for increased contrast.
       gl_FragColor = vec4(innerOutlineColor.rgb, outlineAlpha);
     }
   } else {

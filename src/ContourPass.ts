@@ -98,10 +98,11 @@ export default class ContourPass {
   }
 
   /**
-   * Optional inner outline shown when using outline palettes for better contrast.
+   * Optional inner outline shown for better contrast, specified in integer
+   * pixels. Disabled if `thicknessPx` is 0.
    */
   public setInnerOutlineThickness(thicknessPx: number): void {
-    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(thicknessPx);
+    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(Math.max(0, thicknessPx));
   }
 
   private syncGlobalIdLookup(): void {
@@ -151,20 +152,21 @@ export default class ContourPass {
   }
 
   /**
-   * Sets the lookup table that maps from an ID to whether the ID is
-   * selected or not.
+   * Sets the lookup table that maps from an ID to whether the ID is selected or
+   * not.
    *
    * For some ID `i`, if `selectedIds[i] > 0`, the ID is selected. When
-   * `useOutlinePalette` is true, the value of `selectedIds[i]` is used
-   * as the index of the outline color in the outline palette.
+   * `useOutlinePalette` is true, `selectedIds[i] - 1` is the index of the
+   * outline color in the outline palette.
    *
-   * By default, the ID is a local (pixel) ID. If a global ID
-   * lookup has been set (`setGlobalIdLookup`), the ID is parsed as a global ID.
+   * By default, the ID is a local (pixel) ID. If a global ID lookup has been
+   * set (`setGlobalIdLookup`), the ID is parsed as a global ID.
    */
   public setSelectedIdLut(selectedIds: Uint8Array) {
     if (this.selectedIdsTexture) {
       this.selectedIdsTexture.dispose();
     }
+    // Pack into square texture
     const [width, height] = getSquarestTextureDimensions(selectedIds.length);
     let paddedSelectedIds = selectedIds;
     if (selectedIds.length < width * height) {
