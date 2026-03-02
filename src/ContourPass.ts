@@ -166,6 +166,7 @@ export default class ContourPass {
     }
     this.selectedIdsTexture = new DataTexture(paddedSelectedIds, width, height, RedIntegerFormat, UnsignedByteType);
     this.selectedIdsTexture.internalFormat = "R8UI";
+    this.selectedIdsTexture.unpackAlignment = 1;
     this.selectedIdsTexture.needsUpdate = true;
     this.pass.material.uniforms.selectedIds.value = this.selectedIdsTexture;
   }
