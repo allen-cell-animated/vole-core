@@ -21,8 +21,8 @@ uniform sampler2D pickBuffer;
  * index is `i`, `selectedIds[i] >= 1` if the object is selected.
  *
  * For selected objects, `selectedIds[i] - 1` is the index into the
- * `selectedTracksPalette` for the outline color that should be used when
- * `useTracksPalette` is true.
+ * `outlinePalette` for the outline color that should be used when
+ * `useOutlinePalette` is true.
  */
 uniform usampler2D selectedIds;
 uniform int selectedId;
