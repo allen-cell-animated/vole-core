@@ -147,6 +147,20 @@ export default class Volume {
     this.normRegionOffset = subregionOffset.clone().divide(volumeSize);
   }
 
+  updateChannels() {
+    while (this.channels.length > this.imageInfo.numChannels) {
+      const removedChannel = this.channels.pop();
+      removedChannel?.dispose();
+    }
+
+    while (this.channels.length < this.imageInfo.numChannels) {
+      const name = this.imageInfo.channelNames[this.channels.length];
+      this.appendEmptyChannel(name);
+    }
+
+    this.channelNames = this.imageInfo.channelNames.slice();
+  }
+
   /** Returns `true` iff differences between `loadSpec` and `loadSpecRequired` indicate new data *must* be loaded. */
   private mustLoadNewData(): boolean {
     return (
@@ -343,7 +357,7 @@ export default class Volume {
    * @param {Array.<number>} color [r,g,b]
    */
   appendEmptyChannel(name: string, color?: [number, number, number]): number {
-    const idx = this.imageInfo.numChannels;
+    const idx = this.channels.length;
     const chname = name || "channel_" + idx;
     const chcolor = color || getColorByChannelIndex(idx);
     this.numChannels += 1;

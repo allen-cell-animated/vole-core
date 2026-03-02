@@ -365,4 +365,9 @@ export default class Channel {
   public setColorPaletteAlpha(alpha: number): void {
     this.colorPaletteAlpha = alpha;
   }
+
+  dispose() {
+    this.dataTexture.dispose();
+    this.lutTexture.dispose();
+  }
 }
