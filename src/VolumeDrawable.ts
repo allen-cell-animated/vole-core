@@ -729,6 +729,8 @@ export default class VolumeDrawable {
     } else {
       this.fusion[channelIndex].feature = featureInfo;
       this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
+      this.contourRendering.setInnerOutlineColor(featureInfo.innerOutlineColor);
+      this.contourRendering.setInnerOutlineThickness(featureInfo.innerOutlineThickness);
       this.contourRendering.setOutlinePaletteTexture(featureInfo.outlinePalette);
       this.contourRendering.setUseOutlinePalette(featureInfo.useOutlinePalette);
       this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);

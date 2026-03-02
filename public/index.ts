@@ -1194,6 +1194,8 @@ function getStateColorizeFeature(): ColorizeFeature | null {
       outlineAlpha: 1.0,
       outlierColor: new Color(0x444444),
       outlinePalette: colormap,
+      innerOutlineColor: new Color(0x000000),
+      innerOutlineThickness: 0.0,
       useOutlinePalette: false,
       outOfRangeColor: new Color(0x444444),
       outlierDrawMode: 0,

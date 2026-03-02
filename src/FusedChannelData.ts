@@ -131,20 +131,24 @@ export default class FusedChannelData {
   }
 
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
+    // Float red texture R32F
     const initialFeatureData = new DataTexture(new Float32Array([0]), 1, 1, RedFormat, FloatType);
     initialFeatureData.needsUpdate = true;
-
-    const initialOutlierData = new DataTexture(new Uint8Array([0]), 1, 1, RedFormat, UnsignedByteType);
+    // Integer red texture (R8UI)
+    const initialOutlierData = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
     initialOutlierData.needsUpdate = true;
-    const initialInRangeIds = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedByteType);
+    const initialInRangeIds = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
     initialInRangeIds.needsUpdate = true;
-
-    const initialSegIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedFormat, UnsignedIntType);
+    // Integer red texture (R32UI)
+    const initialSegIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
     initialSegIdToGlobalId.needsUpdate = true;
-    const initialColorRamp = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, FloatType);
+    // Float RGBA color ramp texture
+    const initialColorRamp = new DataTexture(new Uint8Array([0, 0, 0, 1]), 1, 1, RGBAFormat, FloatType);
     initialColorRamp.needsUpdate = true;
-    const initialSrcTexture = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, FloatType);
+    // 8-bit RGBA source texture
+    const initialSrcTexture = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, UnsignedByteType);
     initialSrcTexture.needsUpdate = true;
+
     return new ShaderMaterial({
       uniforms: {
         highlightedId: { value: -1 },

@@ -25,7 +25,7 @@ type ContourUniforms = {
   // Outline style
   outlineThickness: IUniform<number>;
   innerOutlineThickness: IUniform<number>;
-  backgroundColor: IUniform<Color>;
+  innerOutlineColor: IUniform<Color>;
   outlineColor: IUniform<Color>;
   outlinePalette: IUniform<Texture>;
   useOutlinePalette: IUniform<boolean>;
@@ -41,11 +41,15 @@ type ContourUniforms = {
 };
 
 const makeDefaultUniforms = (): ContourUniforms => {
+  // RGBA float texture for pick buffer
   const pickBufferTex = new DataTexture(new Float32Array([0, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  // R32UI texture for local ID to global ID lookup
   const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
   localIdToGlobalId.needsUpdate = true;
+  // RGBA float texture for outline palette
   const outlinePaletteTex = new DataTexture(new Float32Array([1, 1, 1, 0]), 1, 1, RGBAFormat, FloatType);
   outlinePaletteTex.needsUpdate = true;
+  // R8UI texture for selected IDs
   const selectedIds = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
   selectedIds.internalFormat = "R8UI";
   selectedIds.needsUpdate = true;
@@ -56,7 +60,7 @@ const makeDefaultUniforms = (): ContourUniforms => {
     outlineThickness: new Uniform(2.0),
     innerOutlineThickness: new Uniform(2.0),
     useOutlinePalette: new Uniform(false),
-    backgroundColor: new Uniform(new Color(1, 1, 1)),
+    innerOutlineColor: new Uniform(new Color(1, 1, 1)),
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
     outlinePalette: new Uniform(outlinePaletteTex),
@@ -87,6 +91,10 @@ export default class ContourPass {
 
   public setOutlineThickness(thickness: number): void {
     this.pass.material.uniforms.outlineThickness.value = Math.floor(thickness);
+  }
+
+  public setInnerOutlineColor(color: Color): void {
+    this.pass.material.uniforms.innerOutlineColor.value = color;
   }
 
   /**

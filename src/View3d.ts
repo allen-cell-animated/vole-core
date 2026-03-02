@@ -323,6 +323,8 @@ export class View3d {
    * @param featureInfo A collection of all parameters necessary to colorize the channel. Pass null to turn off colorization.
    */
   setChannelColorizeFeature(volume: Volume, channelIndex: number, featureInfo: ColorizeFeature | null): void {
+    // TODO: Allow `featureInfo` to be `Partial<ColorizeFeature>` and only
+    // update the provided fields.
     this.image?.setChannelColorizeFeature(channelIndex, featureInfo);
     this.image?.fuse();
     this.redraw();
@@ -982,8 +984,8 @@ export class View3d {
    * (`outlinePalette`) when set via `setChannelColorizeFeature()`.
    */
   setSelectedIDs(idLut: Uint8Array): void {
-    const needRedraw = this.image?.setSelectedIdsLut(idLut);
-    if (needRedraw) {
+    this.image?.setSelectedIdsLut(idLut);
+    if (this.image) {
       this.redraw();
     }
   }
