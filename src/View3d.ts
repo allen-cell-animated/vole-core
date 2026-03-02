@@ -279,8 +279,12 @@ export class View3d {
   }
 
   // do fixups for when the volume has had a new empty channel added.
-  onVolumeChannelAdded(volume: Volume, newChannelIndex: number): void {
+  onVolumeChannelAdded(_volume: Volume, newChannelIndex: number): void {
     this.image?.onChannelAdded(newChannelIndex);
+  }
+
+  onVolumeChannelRemoved(_volume: Volume, removedIndex: number): void {
+    this.image?.onChannelRemoved(removedIndex);
   }
 
   onVolumeLoadError(volume: Volume, error: unknown): void {

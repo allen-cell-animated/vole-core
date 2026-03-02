@@ -13,6 +13,7 @@ import type { VolumeDims } from "./VolumeDims.js";
 interface VolumeDataObserver {
   onVolumeData: (vol: Volume, batch: number[]) => void;
   onVolumeChannelAdded: (vol: Volume, idx: number) => void;
+  onVolumeChannelRemoved: (vol: Volume, idx: number) => void;
   onVolumeLoadError: (vol: Volume, error: unknown) => void;
 }
 
@@ -149,8 +150,10 @@ export default class Volume {
 
   updateChannels() {
     while (this.channels.length > this.imageInfo.numChannels) {
+      const removedIndex = this.channels.length - 1;
       const removedChannel = this.channels.pop();
       removedChannel?.dispose();
+      this.volumeDataObservers.forEach((observer) => observer.onVolumeChannelRemoved(this, removedIndex));
     }
 
     while (this.channels.length < this.imageInfo.numChannels) {
