@@ -26,6 +26,7 @@ import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Line3d from "./Line3d.js";
 import VectorArrows3d from "./VectorArrows3d.js";
+import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -60,6 +61,7 @@ export {
   VolumeLoadErrorType,
   VolumeFileFormat,
   createVolumeLoader,
+  createDefaultMetadata,
   Channel,
   Light,
   ViewportCorner,

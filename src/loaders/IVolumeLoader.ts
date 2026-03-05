@@ -4,7 +4,7 @@ import Volume from "../Volume.js";
 import type { VolumeDims } from "../VolumeDims.js";
 import { CImageInfo, type ImageInfo } from "../ImageInfo.js";
 import { TypedArray, NumberType } from "../types.js";
-import { buildDefaultMetadata } from "./VolumeLoaderUtils.js";
+import { createDefaultMetadata } from "./VolumeLoaderUtils.js";
 import { PrefetchDirection } from "./zarr_utils/types.js";
 import { ZarrLoaderFetchOptions } from "./OmeZarrLoader.js";
 
@@ -156,7 +156,7 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
     const { imageInfo, loadSpec: adjustedLoadSpec } = await this.createImageInfo(loadSpec);
     const vol = new Volume(imageInfo, adjustedLoadSpec, this);
     vol.channelLoadCallback = onChannelLoaded;
-    vol.imageMetadata = buildDefaultMetadata(imageInfo);
+    vol.imageMetadata = createDefaultMetadata(imageInfo);
     return vol;
   }
 
@@ -168,7 +168,9 @@ export abstract class ThreadableVolumeLoader implements IVolumeLoader {
     const onUpdateMetadata = (imageInfo?: ImageInfo, loadSpec?: LoadSpec): void => {
       if (imageInfo) {
         volume.imageInfo = new CImageInfo(imageInfo);
+        volume.imageMetadata = createDefaultMetadata(imageInfo);
         volume.updateDimensions();
+        volume.updateChannelCount();
       }
       volume.loadSpec = { ...loadSpec, ...spec };
     };

@@ -600,9 +600,10 @@ export default class VolumeDrawable {
 
   onChannelAdded(newChannelIndex: number): void {
     this.channelColors[newChannelIndex] = this.volume.channelColorsDefault[newChannelIndex];
+    this.channelOptions[newChannelIndex] = {};
     this.fusion[newChannelIndex] = {
       chIndex: newChannelIndex,
-      lut: new Uint8Array[LUT_ARRAY_LENGTH](),
+      lut: new Uint8Array(LUT_ARRAY_LENGTH),
       rgbColor: [
         this.channelColors[newChannelIndex][0],
         this.channelColors[newChannelIndex][1],
@@ -619,6 +620,16 @@ export default class VolumeDrawable {
     this.settings.specular[newChannelIndex] = [0, 0, 0];
     this.settings.emissive[newChannelIndex] = [0, 0, 0];
     this.settings.glossiness[newChannelIndex] = 0;
+  }
+
+  onChannelRemoved(removedIndex: number): void {
+    this.channelColors.splice(removedIndex, 1);
+    this.channelOptions.splice(removedIndex, 1);
+    this.fusion.splice(removedIndex, 1);
+    this.settings.diffuse.splice(removedIndex, 1);
+    this.settings.specular.splice(removedIndex, 1);
+    this.settings.emissive.splice(removedIndex, 1);
+    this.settings.glossiness.splice(removedIndex, 1);
   }
 
   // Save a channel's isosurface as a triangle mesh to either STL or GLTF2 format.  File will be named automatically, using image name and channel name.

@@ -13,6 +13,7 @@ import type { VolumeDims } from "./VolumeDims.js";
 interface VolumeDataObserver {
   onVolumeData: (vol: Volume, batch: number[]) => void;
   onVolumeChannelAdded: (vol: Volume, idx: number) => void;
+  onVolumeChannelRemoved: (vol: Volume, idx: number) => void;
   onVolumeLoadError: (vol: Volume, error: unknown) => void;
 }
 
@@ -145,6 +146,22 @@ export default class Volume {
 
     this.normRegionSize = subregionSize.clone().divide(volumeSize);
     this.normRegionOffset = subregionOffset.clone().divide(volumeSize);
+  }
+
+  updateChannelCount() {
+    while (this.channels.length > this.imageInfo.numChannels) {
+      const removedIndex = this.channels.length - 1;
+      const removedChannel = this.channels.pop();
+      removedChannel?.dispose();
+      this.volumeDataObservers.forEach((observer) => observer.onVolumeChannelRemoved(this, removedIndex));
+    }
+
+    while (this.channels.length < this.imageInfo.numChannels) {
+      const name = this.imageInfo.channelNames[this.channels.length];
+      this.appendEmptyChannel(name);
+    }
+
+    this.channelNames = this.imageInfo.channelNames.slice();
   }
 
   /** Returns `true` iff differences between `loadSpec` and `loadSpecRequired` indicate new data *must* be loaded. */
@@ -343,7 +360,7 @@ export default class Volume {
    * @param {Array.<number>} color [r,g,b]
    */
   appendEmptyChannel(name: string, color?: [number, number, number]): number {
-    const idx = this.imageInfo.numChannels;
+    const idx = this.channels.length;
     const chname = name || "channel_" + idx;
     const chcolor = color || getColorByChannelIndex(idx);
     this.numChannels += 1;
@@ -352,9 +369,7 @@ export default class Volume {
 
     this.channels.push(new Channel(chname));
 
-    for (let i = 0; i < this.volumeDataObservers.length; ++i) {
-      this.volumeDataObservers[i].onVolumeChannelAdded(this, idx);
-    }
+    this.volumeDataObservers.forEach((observer) => observer.onVolumeChannelAdded(this, idx));
 
     return idx;
   }
