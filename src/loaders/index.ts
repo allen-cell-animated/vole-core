@@ -1,5 +1,5 @@
 import { ThreadableVolumeLoader } from "./IVolumeLoader.js";
-import { OMEZarrLoader, type ZarrLoaderFetchOptions } from "./OmeZarrLoader.js";
+import type { ZarrLoaderFetchOptions } from "./OmeZarrLoader.js";
 import { JsonImageInfoLoader } from "./JsonImageInfoLoader.js";
 import { RawArrayLoader, RawArrayLoaderOptions } from "./RawArrayLoader.js";
 import { TiffLoader } from "./TiffLoader.js";
@@ -34,6 +34,10 @@ export function pathToFileType(path: string): VolumeFileFormat {
   return VolumeFileFormat.ZARR;
 }
 
+/**
+ * Create a volume loader for non-zarr formats. For OME-Zarr data, use `VolumeLoaderContext.createLoader()` instead,
+ * which manages the worker needed for chunk fetching.
+ */
 export async function createVolumeLoader(
   path: string | string[],
   options?: CreateLoaderOptions
@@ -44,12 +48,8 @@ export async function createVolumeLoader(
 
   switch (fileType) {
     case VolumeFileFormat.ZARR:
-      return await OMEZarrLoader.createLoader(
-        path,
-        options?.scene,
-        options?.cache,
-        options?.queue,
-        options?.fetchOptions
+      throw new Error(
+        "OME-Zarr loading requires a VolumeLoaderContext. Use VolumeLoaderContext.createLoader() instead."
       );
     case VolumeFileFormat.JSON:
       return new JsonImageInfoLoader(path, options?.cache);

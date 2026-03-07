@@ -28,7 +28,7 @@ import {
 } from "./types.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
-import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
+import { OMEZarrLoader } from "./loaders/OmeZarrLoader.js";
 import Line3d from "./Line3d.js";
 
 // Constants are kept for compatibility reasons.
@@ -1092,7 +1092,7 @@ export class View3d {
     //   still have to be careful to null-check it!
     // TODO depending on how the relationship between loaders and images pans out, it's not impossible that the loader
     //   for an image will be changeable and this variable will capture a stale reference to old loaders. Careful!
-    const loader = this.image?.volume.loader as WorkerLoader | undefined;
+    const loader = this.image?.volume.loader as OMEZarrLoader | undefined;
     // one number will be used for all axis directions
     prefetch.addInput(allGlobalLoadingOptions, "numChunksToPrefetchAhead").on("change", (event) => {
       loader?.updateFetchOptions?.({
@@ -1103,10 +1103,6 @@ export class View3d {
     // should we try to prefetch along Z even if we are only playing along T?
     prefetch.addInput(allGlobalLoadingOptions, "prefetchAlongNonPlayingAxis").on("change", (event) => {
       loader?.updateFetchOptions?.({ onlyPriorityDirections: !event.value });
-    });
-    // when multiple prefetch frames arrive at once, should we slow down how quickly we load them?
-    prefetch.addInput(allGlobalLoadingOptions, "throttleArrivingChannelData").on("change", (event) => {
-      loader?.getContext?.().setThrottleChannelData(event.value);
     });
 
     return pane;

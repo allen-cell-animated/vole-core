@@ -33,7 +33,7 @@ export type { ControlPoint } from "./Lut.js";
 export type { CreateLoaderOptions } from "./loaders/index.js";
 export type { IVolumeLoader, PerChannelCallback, ThreadableVolumeLoader } from "./loaders/IVolumeLoader.js";
 export type { ZarrLoaderFetchOptions } from "./loaders/OmeZarrLoader.js";
-export type { WorkerLoader } from "./workers/VolumeLoaderContext.js";
+
 export {
   Histogram,
   Lut,

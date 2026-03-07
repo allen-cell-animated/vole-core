@@ -1,29 +1,21 @@
 import { deserializeError } from "serialize-error";
-import throttledQueue from "throttled-queue";
 
-import { ImageInfo } from "../ImageInfo.js";
-import { VolumeDims } from "../VolumeDims.js";
-import { CreateLoaderOptions, PrefetchDirection, VolumeFileFormat, pathToFileType } from "../loaders/index.js";
-import {
-  ThreadableVolumeLoader,
-  LoadSpec,
-  RawChannelDataCallback,
-  LoadedVolumeInfo,
-} from "../loaders/IVolumeLoader.js";
+import { CreateLoaderOptions, VolumeFileFormat, pathToFileType } from "../loaders/index.js";
+import { ThreadableVolumeLoader } from "../loaders/IVolumeLoader.js";
 import { RawArrayLoader } from "../loaders/RawArrayLoader.js";
 import { TiffLoader } from "../loaders/TiffLoader.js";
+import { JsonImageInfoLoader } from "../loaders/JsonImageInfoLoader.js";
+import { OMEZarrLoader, type ChunkFetcher, type ChunkFetchCanceller } from "../loaders/OmeZarrLoader.js";
 import type {
-  ChannelLoadEvent,
-  MetadataUpdateEvent,
   WorkerMsgTypeGlobal,
   WorkerMsgTypeWithLoader,
   WorkerRequestPayload,
   WorkerResponse,
   WorkerResponsePayload,
 } from "./types.js";
-import type { ZarrLoaderFetchOptions } from "../loaders/OmeZarrLoader.js";
-import { WorkerMsgType, WorkerResponseResult, WorkerEventType } from "./types.js";
-import { rebuildLoadSpec } from "./util.js";
+import { WorkerMsgType, WorkerResponseResult } from "./types.js";
+import VolumeCache from "../VolumeCache.js";
+import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
 
 type StoredPromise<T extends WorkerMsgType> = {
   type: T;
@@ -31,31 +23,20 @@ type StoredPromise<T extends WorkerMsgType> = {
   reject: (reason?: unknown) => void;
 };
 
-const throttle = throttledQueue(1, 16);
 /**
- * A handle that holds the worker and manages requests and messages to/from it.
- *
- * `VolumeLoaderContext` and every `LoaderWorker` it creates all hold references to one `SharedLoadWorkerHandle`.
- * They use it to interact with the worker via `sendMessage`, which speaks the protocol defined in ./types.ts and
- * converts messages received from the worker into resolved `Promise`s and called callbacks.
- *
- * This class exists to represent that access to the worker is shared between `VolumeLoaderContext` and any
- * `LoaderWorker`s. This is as opposed to implementing `sendMessage` directly on `VolumeLoaderContext`, where making
- * the method public to `LoaderWorker`s would require also allowing access to users of the class.
+ * Holds the worker and manages the request/response protocol defined in ./types.ts.
+ * Converts `postMessage` calls into Promises.
  */
 class SharedLoadWorkerHandle {
   private worker: Worker;
   private pendingRequests: (StoredPromise<WorkerMsgType> | undefined)[] = [];
   private workerOpen = true;
 
-  public onEvent: ((e: ChannelLoadEvent | MetadataUpdateEvent) => void) | undefined = undefined;
-
   constructor() {
     this.worker = new Worker(new URL("./VolumeLoadWorker", import.meta.url), { type: "module" });
     this.worker.onmessage = this.receiveMessage.bind(this);
   }
 
-  /** Given a handle for settling a promise when a response is received from the worker, store it and return its ID */
   private registerMessagePromise(prom: StoredPromise<WorkerMsgType>): number {
     for (const [i, pendingPromise] of this.pendingRequests.entries()) {
       if (pendingPromise === undefined) {
@@ -63,7 +44,6 @@ class SharedLoadWorkerHandle {
         return i;
       }
     }
-
     return this.pendingRequests.push(prom) - 1;
   }
 
@@ -71,22 +51,17 @@ class SharedLoadWorkerHandle {
     return this.workerOpen;
   }
 
-  /** Close the worker. */
   close(): void {
     this.worker.terminate();
     this.workerOpen = false;
   }
 
-  /**
-   * Send a message of type `T` to the worker.
-   * Returns a `Promise` that resolves with the worker's response, or rejects with an error message.
-   */
-  // overload 1: message is a global action and does not require a loader ID
+  // overload 1: global actions (no loader ID)
   sendMessage<T extends WorkerMsgTypeGlobal>(
     type: T,
     payload: WorkerRequestPayload<T>
   ): Promise<WorkerResponsePayload<T>>;
-  // overload 2: message is a loader-specific action and requires a loader ID
+  // overload 2: loader-specific actions
   sendMessage<T extends WorkerMsgTypeWithLoader>(
     type: T,
     payload: WorkerRequestPayload<T>,
@@ -102,62 +77,48 @@ class SharedLoadWorkerHandle {
       msgId = this.registerMessagePromise({ type, resolve, reject } as StoredPromise<WorkerMsgType>);
     });
 
-    const msg = { msgId, type, payload, loaderId };
-    this.worker.postMessage(msg);
-
+    this.worker.postMessage({ msgId, type, payload, loaderId });
     return promise;
   }
 
-  /** Receive a message from the worker. If it's an event, call a callback; otherwise, resolve/reject a promise. */
   private receiveMessage<T extends WorkerMsgType>({ data }: MessageEvent<WorkerResponse<T>>): void {
-    if (data.responseResult === WorkerResponseResult.EVENT) {
-      this.onEvent?.(data);
-    } else {
-      const prom = this.pendingRequests[data.msgId];
-
-      if (prom === undefined) {
-        throw new Error(`Received response for unknown message ID ${data.msgId}`);
-      }
-      if (prom.type !== data.type) {
-        throw new Error(`Received response of type ${data.type} for message of type ${prom.type}`);
-      }
-
-      if (data.responseResult === WorkerResponseResult.ERROR) {
-        prom.reject(deserializeError(data.payload));
-      } else {
-        prom.resolve(data.payload);
-      }
-      this.pendingRequests[data.msgId] = undefined;
+    const prom = this.pendingRequests[data.msgId];
+    if (prom === undefined) {
+      throw new Error(`Received response for unknown message ID ${data.msgId}`);
     }
+    if (prom.type !== data.type) {
+      throw new Error(`Received response of type ${data.type} for message of type ${prom.type}`);
+    }
+
+    if (data.responseResult === WorkerResponseResult.ERROR) {
+      prom.reject(deserializeError(data.payload));
+    } else {
+      prom.resolve(data.payload);
+    }
+    this.pendingRequests[data.msgId] = undefined;
   }
 }
 
 /**
- * A context in which volume loaders can be run, which allows loading to run on a WebWorker (where it won't block
- * rendering or UI updates) and loaders to share a single `VolumeCache` and `RequestQueue`.
+ * A context in which volume loaders can be run. Uses a WebWorker for zarr chunk fetching/decompression,
+ * while cache management and channel assembly happen on the main thread.
  *
  * # To use:
  * 1. Create a `VolumeLoaderContext` with the desired cache and queue configuration.
  * 2. Before creating a loader, await `onOpen` to ensure the worker is ready.
- * 3. Create a loader with `createLoader`. This accepts nearly the same arguments as `createVolumeLoader`, but without
- *    options to directly link to a cache or queue (the loader will always be linked to the context's shared instances
- *    of these if possible).
- *
- * The returned `WorkerLoader` can be used like any other `IVolumeLoader` and acts as a handle to the actual loader
- * running on the worker.
+ * 3. Create a loader with `createLoader`.
  */
 class VolumeLoaderContext {
   private workerHandle: SharedLoadWorkerHandle;
-  private loaders: Map<number, WorkerLoader>;
+  private cache: VolumeCache;
+  private requestQueue: SubscribableRequestQueue;
   private openPromise: Promise<void>;
-  private throttleChannelData = false;
 
   constructor(maxCacheSize?: number, maxActiveRequests?: number, maxLowPriorityRequests?: number) {
     this.workerHandle = new SharedLoadWorkerHandle();
-    this.workerHandle.onEvent = this.handleEvent.bind(this);
-    this.loaders = new Map();
+    this.cache = new VolumeCache(maxCacheSize);
+    this.requestQueue = new SubscribableRequestQueue(maxActiveRequests, maxLowPriorityRequests);
     this.openPromise = this.workerHandle.sendMessage(WorkerMsgType.INIT, {
-      maxCacheSize,
       maxActiveRequests,
       maxLowPriorityRequests,
     });
@@ -171,40 +132,25 @@ class VolumeLoaderContext {
     return this.openPromise;
   }
 
-  /** Close this context, its worker, and any active loaders. */
+  /** Close this context and its worker. */
   close(): void {
     this.workerHandle.close();
   }
 
-  private handleEvent(e: ChannelLoadEvent | MetadataUpdateEvent): void {
-    const loader = this.loaders.get(e.loaderId);
-    if (loader) {
-      if (e.eventType === WorkerEventType.CHANNEL_LOAD) {
-        if (this.throttleChannelData) {
-          throttle(() => loader.onChannelData(e));
-        } else {
-          loader.onChannelData(e);
-        }
-      } else if (e.eventType === WorkerEventType.METADATA_UPDATE) {
-        loader.onUpdateMetadata(e);
-      }
-    }
-  }
-
   /**
-   * Create a new loader within this context. This loader will share the context's `VolumeCache` and `RequestQueue`.
+   * Create a new loader within this context.
    *
-   * This works just like `createVolumeLoader`. A file format may be provided, or it may be inferred from the URL.
+   * For OME-Zarr data, the worker opens the zarr metadata and the returned `OMEZarrLoader` drives loading on the
+   * main thread, fetching individual chunks from the worker as needed.
    */
   async createLoader(
     path: string | string[],
     options?: Omit<CreateLoaderOptions, "cache" | "queue">
-  ): Promise<WorkerLoader | TiffLoader | RawArrayLoader> {
-    // Special case: TIFF loader doesn't work on a worker, has its own workers anyways, and doesn't use cache or queue.
+  ): Promise<ThreadableVolumeLoader> {
     const pathString = Array.isArray(path) ? path[0] : path;
     const fileType = options?.fileType || pathToFileType(pathString);
+
     if (fileType === VolumeFileFormat.TIFF) {
-      // tiff loader accepts array of paths for separate channel sources
       const pathArray = Array.isArray(path) ? path : [path];
       return new TiffLoader(pathArray);
     } else if (fileType === VolumeFileFormat.DATA) {
@@ -212,132 +158,42 @@ class VolumeLoaderContext {
         throw new Error("Failed to create loader: Must provide RawArrayOptions for RawArrayLoader");
       }
       return new RawArrayLoader(options.rawArrayOptions.data, options.rawArrayOptions.metadata);
+    } else if (fileType === VolumeFileFormat.JSON) {
+      return new JsonImageInfoLoader(path, this.cache);
     }
 
-    const loaderId = await this.workerHandle.sendMessage(WorkerMsgType.CREATE_LOADER, { path, options });
-    if (loaderId === undefined) {
-      throw new Error("Failed to create loader");
-    }
+    // OME-Zarr: open on worker, create loader on main thread
+    const urls = Array.isArray(path) ? path : [path];
+    const scene = options?.scene ?? 0;
+    const scenes = Array.isArray(scene) ? scene : [scene];
 
-    const loader = new WorkerLoader(loaderId, this.workerHandle, this);
-    this.loaders.set(loaderId, loader);
-    return loader;
-  }
+    const result = await this.workerHandle.sendMessage(WorkerMsgType.OPEN_ZARR, { urls, scenes });
 
-  setThrottleChannelData(throttle: boolean): void {
-    this.throttleChannelData = throttle;
-  }
-}
-
-/**
- * A handle to an instance of `IVolumeLoader` (technically, a `ThreadableVolumeLoader`) running on a WebWorker.
- *
- * Created with `VolumeLoaderContext.createLoader`. See its documentation for more.
- */
-class WorkerLoader extends ThreadableVolumeLoader {
-  private loaderId: number | undefined;
-  private workerHandle: SharedLoadWorkerHandle;
-  private context: VolumeLoaderContext;
-  private currentLoadId = -1;
-  private currentLoadCallback: RawChannelDataCallback | undefined = undefined;
-  private currentMetadataUpdateCallback: ((imageInfo?: ImageInfo, loadSpec?: LoadSpec) => void) | undefined = undefined;
-
-  constructor(loaderId: number, workerHandle: SharedLoadWorkerHandle, context: VolumeLoaderContext) {
-    super();
-    this.loaderId = loaderId;
-    this.workerHandle = workerHandle;
-    this.context = context;
-  }
-
-  private getLoaderId(): number {
-    if (this.loaderId === undefined || !this.workerHandle.isOpen) {
-      throw new Error("Tried to use a closed loader");
-    }
-    return this.loaderId;
-  }
-
-  getContext(): VolumeLoaderContext {
-    return this.context;
-  }
-
-  /** Close and permanently invalidate this loader. */
-  close(): void {
-    if (this.loaderId === undefined) {
-      return;
-    }
-    this.workerHandle.sendMessage(WorkerMsgType.CLOSE_LOADER, undefined, this.loaderId);
-    this.loaderId = undefined;
-  }
-
-  /**
-   * Change which directions to prioritize when prefetching. All chunks will be prefetched in these directions before
-   * any chunks are prefetched in any other directions. Has no effect if this loader doesn't support prefetching.
-   */
-  setPrefetchPriority(directions: PrefetchDirection[]): Promise<void> {
-    return this.workerHandle.sendMessage(
-      WorkerMsgType.SET_PREFETCH_PRIORITY_DIRECTIONS,
-      directions,
-      this.getLoaderId()
-    );
-  }
-
-  updateFetchOptions(fetchOptions: Partial<ZarrLoaderFetchOptions>): Promise<void> {
-    return this.workerHandle.sendMessage(WorkerMsgType.UPDATE_FETCH_OPTIONS, fetchOptions, this.getLoaderId());
-  }
-
-  syncMultichannelLoading(sync: boolean): Promise<void> {
-    return this.workerHandle.sendMessage(WorkerMsgType.SYNCHRONIZE_MULTICHANNEL_LOADING, sync, this.getLoaderId());
-  }
-
-  loadDims(loadSpec: LoadSpec): Promise<VolumeDims[]> {
-    return this.workerHandle.sendMessage(WorkerMsgType.LOAD_DIMS, loadSpec, this.getLoaderId());
-  }
-
-  async createImageInfo(loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {
-    const { imageInfo, loadSpec: adjustedLoadSpec } = await this.workerHandle.sendMessage(
-      WorkerMsgType.CREATE_VOLUME,
-      loadSpec,
-      this.getLoaderId()
-    );
-    return { imageInfo, loadSpec: rebuildLoadSpec(adjustedLoadSpec) };
-  }
-
-  loadRawChannelData(
-    imageInfo: ImageInfo,
-    loadSpec: LoadSpec,
-    onUpdateMetadata: (imageInfo?: ImageInfo, loadSpec?: LoadSpec) => void,
-    onData: RawChannelDataCallback
-  ): Promise<void> {
-    this.currentLoadCallback = onData;
-    this.currentMetadataUpdateCallback = onUpdateMetadata;
-    this.currentLoadId += 1;
-
-    const message: WorkerRequestPayload<WorkerMsgType.LOAD_VOLUME_DATA> = {
-      imageInfo,
-      loadSpec,
-      loadId: this.currentLoadId,
+    const fetchChunk: ChunkFetcher = (loaderId, sourceIndex, scaleLevel, coords, key, lowPriority) => {
+      return this.workerHandle.sendMessage(
+        WorkerMsgType.FETCH_CHUNK,
+        { sourceIndex, scaleLevel, coords, key, lowPriority },
+        loaderId
+      );
     };
-    return this.workerHandle.sendMessage(WorkerMsgType.LOAD_VOLUME_DATA, message, this.getLoaderId());
-  }
 
-  onChannelData(e: ChannelLoadEvent): void {
-    if (e.loaderId !== this.loaderId || e.loadId !== this.currentLoadId) {
-      return;
-    }
+    const cancelFetches: ChunkFetchCanceller = (keys) => {
+      this.workerHandle.sendMessage(WorkerMsgType.CANCEL_REQUESTS, { keys }, result.loaderId);
+    };
 
-    this.currentLoadCallback?.(e.channelIndex, e.dtype, e.data, e.ranges, e.atlasDims);
-  }
+    const loader = new OMEZarrLoader(
+      result.loaderId,
+      result.sources,
+      this.cache,
+      this.requestQueue,
+      fetchChunk,
+      cancelFetches,
+      options?.fetchOptions,
+      options?.fetchOptions?.priorityDirections?.slice()
+    );
 
-  onUpdateMetadata(e: MetadataUpdateEvent): void {
-    if (e.loaderId !== this.loaderId || e.loadId !== this.currentLoadId) {
-      return;
-    }
-
-    const imageInfo = e.imageInfo;
-    const loadSpec = e.loadSpec && rebuildLoadSpec(e.loadSpec);
-    this.currentMetadataUpdateCallback?.(imageInfo, loadSpec);
+    return loader;
   }
 }
 
 export default VolumeLoaderContext;
-export type { WorkerLoader };
