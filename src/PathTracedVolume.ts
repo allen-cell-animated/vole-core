@@ -32,6 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 import Channel from "./Channel.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import { VolumeDataUpdater } from "./utils/VolumeDataUpdater.js";
 
 export default class PathTracedVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -40,6 +41,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
   private viewChannels: number[]; // should have 4 or less elements
 
   private volumeTexture: Data3DTexture;
+  private volumeDataUpdater: VolumeDataUpdater;
 
   private cameraIsMoving: boolean;
   private sampleCounter: number;
@@ -81,6 +83,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
     this.volumeTexture.generateMipmaps = false;
 
     this.volumeTexture.needsUpdate = true;
+    this.volumeDataUpdater = new VolumeDataUpdater();
 
     // create Lut textures
     // empty array
@@ -256,6 +259,9 @@ export default class PathTracedVolume implements VolumeRenderImpl {
 
     if (dirtyFlags & SettingsFlags.MASK_ALPHA) {
       // Update channel and alpha mask if they have changed
+      this.updateVolumeData4();
+    }
+    if (dirtyFlags & SettingsFlags.MASK_DATA) {
       this.updateVolumeData4();
     }
     if (dirtyFlags & SettingsFlags.VIEW) {
@@ -436,50 +442,13 @@ export default class PathTracedVolume implements VolumeRenderImpl {
   }
 
   updateVolumeData4(): void {
-    const { x: sx, y: sy, z: sz } = this.volume.imageInfo.subregionSize;
-
-    const data = new Uint8Array(sx * sy * sz * 4);
-    data.fill(0);
-
-    for (let i = 0; i < 4; ++i) {
-      const ch = this.viewChannels[i];
-      if (ch === -1) {
-        continue;
-      }
-
-      const volumeChannel = this.volume.getChannel(ch);
-      for (let iz = 0; iz < sz; ++iz) {
-        for (let iy = 0; iy < sy; ++iy) {
-          for (let ix = 0; ix < sx; ++ix) {
-            // TODO expand to 16-bpp raw intensities?
-            data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] =
-              255 * volumeChannel.normalizeRaw(volumeChannel.getIntensity(ix, iy, iz));
-          }
-        }
-      }
-      if (this.settings.maskChannelIndex !== -1 && this.settings.maskAlpha < 1.0) {
-        const maskChannel = this.volume.getChannel(this.settings.maskChannelIndex);
-        // const maskMax = maskChannel.getHistogram().dataMax;
-        let maskVal = 1.0;
-        const maskAlpha = this.settings.maskAlpha;
-        for (let iz = 0; iz < sz; ++iz) {
-          for (let iy = 0; iy < sy; ++iy) {
-            for (let ix = 0; ix < sx; ++ix) {
-              // nonbinary masking
-              // maskVal = maskChannel.getIntensity(ix,iy,iz) * maskAlpha / maskMax;
-
-              // binary masking
-              maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
-
-              data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] *= maskVal;
-            }
-          }
-        }
-      }
-    }
-    // defaults to rgba and unsignedbytetype so dont need to supply format this time.
-    this.volumeTexture.image.data.set(data);
-    this.volumeTexture.needsUpdate = true;
+    this.volumeDataUpdater.update(
+      this.volume,
+      this.viewChannels,
+      this.settings.maskChannelIndex,
+      this.settings.maskAlpha,
+      this.volumeTexture
+    );
   }
 
   updateLuts(channelColors: FuseChannel[], channelData: Channel[]): void {
