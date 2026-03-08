@@ -19,6 +19,9 @@ import {
   Texture,
   LinearFilter,
   Vector2,
+  UnsignedIntType,
+  RedIntegerFormat,
+  FloatType,
 } from "three";
 
 import Channel from "./Channel.js";
@@ -128,21 +131,39 @@ export default class FusedChannelData {
   }
 
   private setupFuseColorizeMaterial(fragShaderSrc: string) {
+    // Float red texture R32F
+    const initialFeatureData = new DataTexture(new Float32Array([0]), 1, 1, RedFormat, FloatType);
+    initialFeatureData.needsUpdate = true;
+    // Integer red texture (R8UI)
+    const initialOutlierData = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
+    initialOutlierData.needsUpdate = true;
+    const initialInRangeIds = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
+    initialInRangeIds.needsUpdate = true;
+    // Integer red texture (R32UI)
+    const initialSegIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+    initialSegIdToGlobalId.needsUpdate = true;
+    // Float RGBA color ramp texture
+    const initialColorRamp = new DataTexture(new Uint8Array([0, 0, 0, 1]), 1, 1, RGBAFormat, FloatType);
+    initialColorRamp.needsUpdate = true;
+    // 8-bit RGBA source texture
+    const initialSrcTexture = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, RGBAFormat, UnsignedByteType);
+    initialSrcTexture.needsUpdate = true;
+
     return new ShaderMaterial({
       uniforms: {
         highlightedId: { value: -1 },
         featureData: {
-          value: null,
+          value: initialFeatureData,
         },
-        outlierData: { value: null },
-        inRangeIds: { value: null },
+        outlierData: { value: initialOutlierData },
+        inRangeIds: { value: initialInRangeIds },
         srcTexture: {
-          value: null,
+          value: initialSrcTexture,
         },
         featureColorRampMin: { value: 0 },
         featureColorRampMax: { value: 1 },
         colorRamp: {
-          value: null,
+          value: initialColorRamp,
         },
         useRepeatingCategoricalColors: { value: false },
         outlineColor: { value: new Color(0xffffff) },
@@ -151,7 +172,7 @@ export default class FusedChannelData {
         outlierDrawMode: { value: 0 },
         outOfRangeDrawMode: { value: 0 },
         hideOutOfRange: { value: false },
-        segIdToGlobalId: { value: new DataTexture() },
+        segIdToGlobalId: { value: initialSegIdToGlobalId },
         segIdOffset: { value: 0 },
       },
       fragmentShader: fragShaderSrc,
@@ -238,7 +259,6 @@ export default class FusedChannelData {
         // must clone the material to keep a unique set of uniforms
         const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
         mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
-        mat.uniforms.highlightedId.value = combination[i].selectedID == undefined ? -1 : combination[i].selectedID;
         const feature = combination[i].feature;
         if (isColorize && feature) {
           mat.uniforms.featureData.value = feature.idsToFeatureValue;
@@ -261,7 +281,9 @@ export default class FusedChannelData {
             console.warn(
               `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
             );
-            globalIdLookupInfo = { texture: new DataTexture(Uint32Array[0]), minSegId: 1 };
+            const texture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+            texture.needsUpdate = true;
+            globalIdLookupInfo = { texture, minSegId: 1 };
           }
           mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
           mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
