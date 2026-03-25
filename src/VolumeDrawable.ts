@@ -507,7 +507,8 @@ export default class VolumeDrawable {
     return this.meshVolume.hasIsosurface(channel);
   }
 
-  // TODO: Deprecate?
+  // TODO: Deprecate in favor of `setSelectedIdsLut`? Currently the shader
+  // supports both selecting a single ID and selecting multiple IDs via a LUT.
   setSelectedID(_channelIndex: number, id: number): void {
     this.contourRendering.setSelectedId(id);
   }
