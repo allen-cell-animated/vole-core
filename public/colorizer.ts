@@ -1,11 +1,5 @@
 import { Color, DataTexture, FloatType, RGBAFormat, RedFormat, RedIntegerFormat, LinearFilter, UnsignedByteType } from "three";
-
-function getSquarestTextureDimensions(size: number): [number, number] {
-  const width = Math.ceil(Math.sqrt(size));
-  const height = Math.ceil(size / width);
-
-  return [width, height];
-}
+import { getSquarestTextureDimensions } from "../src/utils/texture_utils";
 
 function loadColormap(colorStops: string[]): DataTexture {
   const colorColorStops = colorStops.map((color) => new Color(color));
