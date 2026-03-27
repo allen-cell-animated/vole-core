@@ -43,11 +43,15 @@ type ContourUniforms = {
 const makeDefaultUniforms = (): ContourUniforms => {
   // RGBA float texture for pick buffer
   const pickBufferTex = new DataTexture(new Float32Array([0, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  pickBufferTex.internalFormat = "RGBA32F";
+  pickBufferTex.needsUpdate = true;
   // R32UI texture for local ID to global ID lookup
   const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+  localIdToGlobalId.internalFormat = "R32UI";
   localIdToGlobalId.needsUpdate = true;
   // RGBA float texture for outline palette
   const outlinePaletteTex = new DataTexture(new Float32Array([1, 1, 1, 0]), 1, 1, RGBAFormat, FloatType);
+  outlinePaletteTex.internalFormat = "RGBA32F";
   outlinePaletteTex.needsUpdate = true;
   // R8UI texture for selected IDs
   const selectedIds = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
