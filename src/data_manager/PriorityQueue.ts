@@ -4,8 +4,6 @@ type Entry<P, V> = {
   heapIndex: number;
 };
 
-type ComparisonFn<P> = (i: P, j: P) => boolean;
-
 const entryToTuple = <P, V>(entry?: Entry<P, V>): [P, V] | undefined => entry && [entry.priority, entry.value];
 
 const parentIndexOf = (i: number) => Math.ceil(i / 2) - 1;
@@ -15,20 +13,15 @@ export default class PriorityQueue<P, V> {
   private keys: Map<V, Entry<P, V>> = new Map();
   private heap: Entry<P, V>[] = [];
 
-  private gt: ComparisonFn<P>;
-  private lt: ComparisonFn<P>;
-
-  constructor(greaterThan: ComparisonFn<P>) {
-    this.gt = greaterThan;
-    this.lt = (i, j) => greaterThan(j, i);
-  }
+  constructor(private compare: (a: P, b: P) => number) {}
 
   get length() {
     return this.heap.length;
   }
 
-  private trySwap(entry: Entry<P, V>, swapEntry?: Entry<P, V>, shouldSwap = this.gt): boolean {
-    if (swapEntry !== undefined && shouldSwap(entry.priority, swapEntry.priority)) {
+  /** Useful common primitive for `siftUp` and `siftDown`: compares two entries and swaps them if out of order. */
+  private trySwap(entry: Entry<P, V>, swapEntry?: Entry<P, V>, mul = 1): boolean {
+    if (swapEntry !== undefined && this.compare(entry.priority, swapEntry.priority) * mul < 0) {
       this.heap[entry.heapIndex] = swapEntry;
       const newHeapIndex = swapEntry.heapIndex;
       swapEntry.heapIndex = entry.heapIndex;
@@ -39,6 +32,7 @@ export default class PriorityQueue<P, V> {
     return false;
   }
 
+  /** Moves `entry` *up* to the correct position within the heap. */
   private siftUp(entry: Entry<P, V>) {
     let parentEntry: Entry<P, V> | undefined;
 
@@ -49,16 +43,17 @@ export default class PriorityQueue<P, V> {
     this.heap[entry.heapIndex] = entry;
   }
 
+  /** Moves `entry` *down* to the correct position within the heap. */
   private siftDown(entry: Entry<P, V>) {
     let childEntry: Entry<P, V> | undefined;
 
     do {
       const childHeapIndex = childIndexOf(entry.heapIndex);
-      const cEntry1 = this.heap[childHeapIndex];
-      const cEntry2 = this.heap[childHeapIndex + 1];
-      const use2 = cEntry1 !== undefined && cEntry2 !== undefined && this.gt(cEntry2.priority, cEntry1.priority);
-      childEntry = use2 ? cEntry2 : cEntry1;
-    } while (this.trySwap(entry, childEntry, this.lt));
+      const cEnt1 = this.heap[childHeapIndex];
+      const cEnt2 = this.heap[childHeapIndex + 1];
+      const use2 = cEnt1 !== undefined && cEnt2 !== undefined && this.compare(cEnt2.priority, cEnt1.priority) < 0;
+      childEntry = use2 ? cEnt2 : cEnt1;
+    } while (this.trySwap(entry, childEntry, -1));
 
     this.heap[entry.heapIndex] = entry;
   }
@@ -74,17 +69,22 @@ export default class PriorityQueue<P, V> {
     if (siftEntry !== undefined && siftEntry !== entry) {
       this.heap[entry.heapIndex] = siftEntry;
       siftEntry.heapIndex = entry.heapIndex;
-      this.siftDown(siftEntry);
+      if (this.compare(entry.priority, siftEntry.priority) < 0) {
+        this.siftDown(siftEntry);
+      } else {
+        this.siftUp(siftEntry);
+      }
     }
   }
 
+  /** Updates the priority of value `value` to `newPriority`, or returns `false` if no such value is in the queue. */
   update(value: V, newPriority: P): boolean {
     const entry = this.keys.get(value);
     if (entry === undefined) {
       return false;
     }
 
-    const priorityIncreased = this.gt(newPriority, entry.priority);
+    const priorityIncreased = this.compare(newPriority, entry.priority) < 0;
     entry.priority = newPriority;
     if (priorityIncreased) {
       this.siftUp(entry);
@@ -95,6 +95,7 @@ export default class PriorityQueue<P, V> {
     return true;
   }
 
+  /** Adds a new `value` to the queue with the given `priority`. */
   insert(value: V, priority: P) {
     if (this.update(value, priority)) {
       return;
@@ -106,16 +107,19 @@ export default class PriorityQueue<P, V> {
     this.siftUp(entry);
   }
 
+  /** Returns the highest-priority item in the queue, without removing it. */
   peek(): [P, V] | undefined {
     return entryToTuple(this.heap[0]);
   }
 
+  /** Removes and returns the highest-priority item in the queue. */
   pop(): [P, V] | undefined {
     const entry = this.heap[0];
     this.removeEntry(entry);
     return entryToTuple(entry);
   }
 
+  /** Removes the item with value `value` from the queue. */
   remove(value: V): P | undefined {
     const entry = this.keys.get(value);
     this.removeEntry(entry);
