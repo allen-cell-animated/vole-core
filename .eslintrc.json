@@ -74,10 +74,10 @@
       }
     ]
   },
-  // Disable checks for import file extensions in test and worker files.
+  // Disable checks for import file extensions in test files.
   "overrides": [
     {
-      "files": ["src/test/**/*", "src/workers/**/*"],
+      "files": ["src/test/**/*"],
       "rules": {
         "no-restricted-syntax": "off"
       }
