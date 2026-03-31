@@ -70,16 +70,31 @@
         "tsx": "never"
       }
     ],
-    "no-restricted-syntax": [
-      "error",
-      {
-        "selector": "ImportDeclaration[source.value=/^\\.\\.?\\x2f(?!.*\\.[^\\x2f]+$).+/], ExportNamedDeclaration[source.value=/^\\.\\.?\\x2f(?!.*\\.[^\\x2f]+$).+/], ExportAllDeclaration[source.value=/^\\.\\.?\\x2f(?!.*\\.[^\\x2f]+$).+/]",
-        "message": "Relative imports/exports must include a file extension (use .js for TS/JS modules)."
-      }
-    ],
     "no-var": ["warn"],
     // note you must disable the base rule as it can report incorrect errors
     "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
-  }
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    // Check for relative imports that are missing a file extension.
+    "no-restricted-syntax": [
+      "error",
+      {
+        // Breakdown of the regex:
+        // 1. ^..?/ => checks for ./ or ../ at start of path
+        // 2. ([\w]+/)* => any additional paths (word characters + slashes) between the start and final file name
+        // 3. [\w]+$ => a final file name that has no file extension (`.` character missing)
+        // The below regex is escaped (\\x2f for /, \\. for ., etc.) for parsing.
+        "selector": "ImportDeclaration[source.value=/^\\.\\.?\\x2f([\\w]+\\x2f)*[\\w]+$/]",
+        "message": "Relative imports/exports must include a file extension (use .js for TS/JS modules)."
+      }
+    ]
+  },
+  // Disable checks for import file extensions in test and worker files.
+  "overrides": [
+    {
+      "files": ["src/test/**/*", "src/workers/**/*"],
+      "rules": {
+        "no-restricted-syntax": "off"
+      }
+    }
+  ]
 }
