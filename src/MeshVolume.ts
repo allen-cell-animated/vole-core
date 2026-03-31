@@ -18,7 +18,7 @@ import { defaultMaterialSettings } from "./constants/materials.js";
 
 import FileSaver from "./FileSaver.js";
 import NaiveSurfaceNets from "./NaiveSurfaceNets.js";
-import MarchingCubes from "./MarchingCubes.js";
+import { MarchingCubes } from "./MarchingCubes.js";
 import Volume from "./Volume.js";
 import type { Bounds, IDrawableObject } from "./types.js";
 import { MESH_LAYER } from "./ThreeJsPanel.js";
