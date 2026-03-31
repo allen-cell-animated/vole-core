@@ -1,24 +1,21 @@
 {
-  "extends": ["eslint:recommended", "plugin:import/recommended", "plugin:import/typescript", "plugin:@typescript-eslint/recommended", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:import/recommended",
+    "plugin:import/typescript",
+    "plugin:@typescript-eslint/recommended",
+    "prettier"
+  ],
   "env": {
     "browser": true,
     "es6": true
   },
   "settings": {
     "import/parsers": {
-      "@typescript-eslint/parser": [".ts", ".tsx", ".js", ".jsx"]
+      "@typescript-eslint/parser": [".ts", ".tsx"]
     },
     "import/resolver": {
-      "typescript": {
-        "alwaysTryTypes": true,
-        "extensionAlias": {
-          ".js": [ ".ts", ".tsx", ".js", ".jsx"],
-          ".jsx": [ ".ts", ".tsx", ".js", ".jsx"],
-          ".ts": [".ts", ".tsx", ".js", ".jsx"],
-          ".tsx": [".ts", ".tsx", ".js", ".jsx"]
-        },
-        "extensions": [".ts", ".tsx", ".js", ".jsx"]
-      },
+      "typescript": true,
       "node": true
     }
   },
