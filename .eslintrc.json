@@ -56,17 +56,6 @@
     "@typescript-eslint/no-this-alias": ["warn"],
     "prefer-const": ["warn"],
     "prefer-spread": ["warn"],
-    "import/extensions": [
-      "error",
-      "ignorePackages",
-      {
-        "js": "always",
-        "mjs": "always",
-        "jsx": "always",
-        "ts": "never",
-        "tsx": "never"
-      }
-    ],
     "no-var": ["warn"],
     // note you must disable the base rule as it can report incorrect errors
     "no-unused-vars": "off",
@@ -75,13 +64,13 @@
     "no-restricted-syntax": [
       "error",
       {
-        // Breakdown of the regex:
+        // Breakdown of the regex: ^..?/([\w]+/)*[\w]+$
         // 1. ^..?/ => checks for ./ or ../ at start of path
-        // 2. ([\w]+/)* => any additional paths (word characters + slashes) between the start and final file name
+        // 2. ([\w]+/)* => any additional paths between the start and final file name
         // 3. [\w]+$ => a final file name that has no file extension (`.` character missing)
-        // The below regex is escaped (\\x2f for /, \\. for ., etc.) for parsing.
+        // The below regex is escaped (/ => \\x2f, . => \\., etc.) for parsing.
         "selector": "ImportDeclaration[source.value=/^\\.\\.?\\x2f([\\w]+\\x2f)*[\\w]+$/]",
-        "message": "Relative imports/exports must include a file extension (use .js for TS/JS modules)."
+        "message": "Relative imports must include a file extension (use .js for TS/JS modules)."
       }
     ]
   },
