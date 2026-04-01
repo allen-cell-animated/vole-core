@@ -5,6 +5,7 @@ import { RawArrayLoader, RawArrayLoaderOptions } from "./RawArrayLoader.js";
 import { TiffLoader } from "./TiffLoader.js";
 import VolumeCache from "../VolumeCache.js";
 import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
+import { getFileTypeHintCandidates } from "../utils/url_utils.js";
 
 export { PrefetchDirection } from "./zarr_utils/types.js";
 
@@ -26,10 +27,18 @@ export type CreateLoaderOptions = {
 };
 
 export function pathToFileType(path: string): VolumeFileFormat {
-  if (path.endsWith(".json")) {
+  const candidates = getFileTypeHintCandidates(path);
+  if (candidates.some((candidate) => candidate.endsWith(".json"))) {
     return VolumeFileFormat.JSON;
-  } else if (path.endsWith(".tif") || path.endsWith(".tiff")) {
+  } else if (candidates.some((candidate) => candidate.endsWith(".tif") || candidate.endsWith(".tiff"))) {
     return VolumeFileFormat.TIFF;
+  } else if (
+    candidates.some(
+      (candidate) =>
+        candidate.includes(".ome.zarr") || candidate.endsWith(".zarr") || candidate.includes(".zarr/")
+    )
+  ) {
+    return VolumeFileFormat.ZARR;
   }
   return VolumeFileFormat.ZARR;
 }

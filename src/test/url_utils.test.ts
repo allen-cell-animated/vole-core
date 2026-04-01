@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { remapUri } from "../utils/url_utils";
+import { getFileTypeHintCandidates, remapUri } from "../utils/url_utils";
 
 describe("remapUrl", () => {
   it("does not map HTTP URLs", () => {
@@ -39,5 +39,27 @@ describe("remapUrl", () => {
     ).toBe(
       "https://storage.googleapis.com/ucl-hip-ct-35a68e99feaae8932b1d44da0358940b/A186/lung-right/24.132um_complete-organ_bm18.ome.zarr/"
     );
+  });
+});
+
+describe("getFileTypeHintCandidates", () => {
+  it("includes the pathname for a normal TIFF URL", () => {
+    expect(getFileTypeHintCandidates("http://example.com/image.tif")).toContain("/image.tif");
+  });
+
+  it("includes query-param path hints for Filestash proxy URLs", () => {
+    expect(
+      getFileTypeHintCandidates(
+        "http://localhost:8334/api/plg_application_volumeexplorer/cat?path=%2Fzhome%2F15%2Fb%2F200707%2FMarineGastropod1_DOWNSAMPLED.tif&authorization=token"
+      )
+    ).toContain("/zhome/15/b/200707/marinegastropod1_downsampled.tif");
+  });
+
+  it("includes nested src hints when the source itself is passed through a query param", () => {
+    expect(
+      getFileTypeHintCandidates(
+        "http://localhost:8334/assets/plugin/app/index.html?src=http%3A%2F%2Flocalhost%3A8334%2Fapi%2Fplg_application_volumeexplorer%2Fcat%3Fpath%3D%252Fdata%252Fsample.ome.tiff"
+      )
+    ).toContain("http://localhost:8334/api/plg_application_volumeexplorer/cat?path=%2fdata%2fsample.ome.tiff");
   });
 });

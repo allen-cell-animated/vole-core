@@ -28,6 +28,7 @@ import { State, TestDataSpec } from "./types";
 import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
 import { DATARANGE_UINT8, ColorizeFeature, type NumberType } from "../src/types";
 import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
+import { getFileTypeHintCandidates } from "../src/utils/url_utils";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
 const CONCURRENCY_LIMIT = 8;
@@ -1848,15 +1849,22 @@ async function loadTestData(name: string, testdata: TestDataSpec) {
 }
 
 function inferVolumeFileFormat(sourceUrl: string): VolumeFileFormat | null {
-  const normalized = sourceUrl.toLowerCase();
-  if (normalized.includes(".ome.zarr") || normalized.endsWith(".zarr") || normalized.includes(".zarr/")) {
+  const candidates = getFileTypeHintCandidates(sourceUrl);
+  if (
+    candidates.some(
+      (candidate) => candidate.includes(".ome.zarr") || candidate.endsWith(".zarr") || candidate.includes(".zarr/")
+    )
+  ) {
     return VolumeFileFormat.ZARR;
   }
   if (
-    normalized.endsWith(".ome.tiff") ||
-    normalized.endsWith(".tiff") ||
-    normalized.endsWith(".ome.tif") ||
-    normalized.endsWith(".tif")
+    candidates.some(
+      (candidate) =>
+        candidate.endsWith(".ome.tiff") ||
+        candidate.endsWith(".tiff") ||
+        candidate.endsWith(".ome.tif") ||
+        candidate.endsWith(".tif")
+    )
   ) {
     return VolumeFileFormat.TIFF;
   }

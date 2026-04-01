@@ -2,6 +2,7 @@ const S3_URL_PREFIX = "s3://";
 const GCS_URL_PREFIX = "gs://";
 const VAST_FILES_PREFIX = "/allen/aics/";
 const VAST_FILES_URL = "https://vast-files.int.allencell.org/";
+const TYPE_HINT_QUERY_PARAMS = ["path", "url", "src", "source"];
 
 /**
  * Remaps non-standard URIs (e.g. S3 (`s3://`), Google Cloud Storage (`gs://`), or
@@ -24,4 +25,26 @@ export function remapUri(url: string): string {
   }
 
   return newUrl;
+}
+
+export function getFileTypeHintCandidates(url: string): string[] {
+  const candidates = new Set<string>();
+  const addCandidate = (value: string | null | undefined) => {
+    if (!value) return;
+    const trimmed = value.trim().toLowerCase();
+    if (trimmed) candidates.add(trimmed);
+  };
+
+  const normalizedUrl = remapUri(url);
+  addCandidate(normalizedUrl);
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+    addCandidate(parsedUrl.pathname);
+    TYPE_HINT_QUERY_PARAMS.forEach((param) => addCandidate(parsedUrl.searchParams.get(param)));
+  } catch {
+    // Not every supported source is a fully-qualified URL, so keep the raw normalized input too.
+  }
+
+  return Array.from(candidates);
 }
