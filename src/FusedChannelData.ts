@@ -32,8 +32,10 @@ import fuseShaderSrcI from "./constants/shaders/fuseI.frag";
 import colorizeSrcUI from "./constants/shaders/colorizeUI.frag";
 import type { FuseChannel, NumberType } from "./types.js";
 
-// Immutable snapshot of the Channel fields needed by gpuFuse, captured at fuse() time.
-// Snapshot is required to avoid race conditions because Channels are mutable.
+/**
+ * Immutable snapshot of the Channel fields needed by gpuFuse, captured at fuse() time.
+ * Snapshot is required to avoid race conditions because Channels are mutable.
+ */
 type Fusable = FuseChannel & {
   snapshot: {
     dtype: NumberType;
@@ -218,8 +220,11 @@ export default class FusedChannelData {
   }
 
   fuse(combination: FuseChannel[], channels: Channel[]): void {
-    // Snapshot channel state now so gpuFuse() is immune to concurrent loads
-    // mutating the live Channel objects between fuse() and the next rAF.
+    /**
+     * Snapshot channel state now so gpuFuse() is immune to concurrent loads
+     * mutating the live Channel objects between fuse() and the next
+     * requestAnimationFrame
+     */
     const readyToFuse: Fusable[] = [];
     for (let i = 0; i < combination.length; ++i) {
       const c = combination[i];
