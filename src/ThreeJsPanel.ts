@@ -712,10 +712,16 @@ export class ThreeJsPanel {
     const xzW = Math.floor(px * scale);
     const xzH = Math.floor(pz * scale);
 
+    // Center the fitted layout within the canvas
+    const totalW = xyW + gap + yzW;
+    const totalH = xyH + gap + xzH;
+    const offsetX = Math.floor((canvasW - totalW) / 2);
+    const offsetY = Math.floor((canvasH - totalH) / 2);
+
     // Position panes (origin is bottom-left in WebGL viewport coords)
-    const xy: TripleViewPaneRect = { x: 0, y: 0, w: xyW, h: xyH };
-    const yz: TripleViewPaneRect = { x: xyW + gap, y: 0, w: yzW, h: yzH };
-    const xz: TripleViewPaneRect = { x: 0, y: xyH + gap, w: xzW, h: xzH };
+    const xy: TripleViewPaneRect = { x: offsetX, y: offsetY, w: xyW, h: xyH };
+    const yz: TripleViewPaneRect = { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH };
+    const xz: TripleViewPaneRect = { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH };
 
     this.tripleViewPanes = { xy, yz, xz };
     return this.tripleViewPanes;
