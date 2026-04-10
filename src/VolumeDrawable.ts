@@ -32,6 +32,7 @@ import { Light } from "./Light.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
+import TripleSliceVolume from "./TripleSliceVolume.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
 import ContourPass from "./ContourPass.js";
 
@@ -77,10 +78,10 @@ export default class VolumeDrawable {
 
   private renderUpdateListener?: (iteration: number) => void;
 
-  /** Triple slice renderers for XY, YZ, XZ views (only populated in TRIPLE_SLICE mode) */
-  private tripleSliceRenderers: [Atlas2DSlice, Atlas2DSlice, Atlas2DSlice] | null = null;
-  /** Per-axis slice indices for triple slice mode */
-  public tripleSliceIndices: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 };
+  /** Returns the current triple slice indices. */
+  get tripleSliceIndices(): { x: number; y: number; z: number } {
+    return this.settings.tripleSliceIndices;
+  }
 
   constructor(volume: Volume, options: VolumeDisplayOptions) {
     // THE VOLUME DATA
@@ -90,14 +91,6 @@ export default class VolumeDrawable {
     this.onChannelDataReadyCallback = undefined;
 
     this.viewMode = Axis.NONE; // 3D mode
-
-    // Initialize triple slice indices to volume midpoints
-    const volSize = this.volume.imageInfo.volumeSize;
-    this.tripleSliceIndices = {
-      x: Math.floor(volSize.x / 2),
-      y: Math.floor(volSize.y / 2),
-      z: Math.floor(volSize.z / 2),
-    };
 
     this.channelColors = this.volume.channelColorsDefault.slice();
 
@@ -299,13 +292,7 @@ export default class VolumeDrawable {
 
     // TODO only `RayMarchedAtlasVolume` handles scale properly. Get the others on board too!
     this.volumeRendering.updateVolumeDimensions();
-    // Update secondary triple-slice renderers and re-share fused data if the primary's changed
-    if (this.tripleSliceRenderers) {
-      this.tripleSliceRenderers[1].updateVolumeDimensions();
-      this.tripleSliceRenderers[2].updateVolumeDimensions();
-      this.tripleSliceRenderers[1].setSharedChannelData(this.tripleSliceRenderers[0].getChannelData());
-      this.tripleSliceRenderers[2].setSharedChannelData(this.tripleSliceRenderers[0].getChannelData());
-    }
+
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.TRANSFORM);
     this.pickRendering?.updateVolumeDimensions();
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.TRANSFORM);
@@ -552,8 +539,6 @@ export default class VolumeDrawable {
       return;
     }
     this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
-    // Triple slice renderers [1] and [2] share the primary's fused texture,
-    // so no separate updateActiveChannels call is needed for them.
     // pickRendering only really works with one channel so we don't need to call
     // its updateActiveChannels method
     if (this.pickRendering) {
@@ -869,15 +854,6 @@ export default class VolumeDrawable {
     if (this.renderMode === RenderMode.SLICE || this.renderMode === RenderMode.RAYMARCH) {
       this.childObjectsGroup.remove(this.meshVolume.get3dObject());
     }
-    // Clean up triple slice renderers if leaving triple mode
-    if (this.renderMode === RenderMode.TRIPLE_SLICE && this.tripleSliceRenderers) {
-      this.sceneRoot.remove(this.tripleSliceRenderers[1].get3dObject());
-      this.sceneRoot.remove(this.tripleSliceRenderers[2].get3dObject());
-      // Only clean up the non-primary renderers; the primary (index 0) is cleaned up as volumeRendering below
-      this.tripleSliceRenderers[1].cleanup();
-      this.tripleSliceRenderers[2].cleanup();
-      this.tripleSliceRenderers = null;
-    }
     this.sceneRoot.remove(this.volumeRendering.get3dObject());
 
     // destroy old resources.
@@ -891,30 +867,9 @@ export default class VolumeDrawable {
         this.volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
         this.volumeRendering.setRenderUpdateListener(this.renderUpdateListener);
         break;
-      case RenderMode.TRIPLE_SLICE: {
-        // Create three Atlas2DSlice renderers for XY, YZ, XZ
-        const xySlice = new Atlas2DSlice(this.volume, this.settings.clone());
-        xySlice.setViewAxis(0);
-        xySlice.setRequireFullVolume(true);
-        const yzSlice = new Atlas2DSlice(this.volume, this.settings.clone());
-        yzSlice.setViewAxis(1);
-        const xzSlice = new Atlas2DSlice(this.volume, this.settings.clone());
-        xzSlice.setViewAxis(2);
-        this.tripleSliceRenderers = [xySlice, yzSlice, xzSlice];
-        // Use the XY slice as the primary volumeRendering (for compatibility)
-        this.volumeRendering = xySlice;
-        // Share the XY renderer's fused texture atlas with YZ and XZ renderers
-        // so all three panes render from a single pre-combined RGB texture.
-        yzSlice.setSharedChannelData(xySlice.getChannelData());
-        xzSlice.setSharedChannelData(xySlice.getChannelData());
-        // Request full volume data for YZ/XZ slicing
-        this.volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
-        // Set initial slice indices
-        this.setTripleSliceIndex("z", this.tripleSliceIndices.z);
-        this.setTripleSliceIndex("x", this.tripleSliceIndices.x);
-        this.setTripleSliceIndex("y", this.tripleSliceIndices.y);
+      case RenderMode.TRIPLE_SLICE:
+        this.volumeRendering = new TripleSliceVolume(this.volume, this.settings);
         break;
-      }
       case RenderMode.SLICE:
         this.volumeRendering = new Atlas2DSlice(this.volume, this.settings);
         // `updateRequiredData` called on construction, via `updateSettings`
@@ -938,11 +893,6 @@ export default class VolumeDrawable {
 
     // add new 3d object to scene
     this.sceneRoot.add(this.volumeRendering.get3dObject());
-    // For triple slice, also add the YZ and XZ renderers to the scene
-    if (newRenderMode === RenderMode.TRIPLE_SLICE && this.tripleSliceRenderers) {
-      this.sceneRoot.add(this.tripleSliceRenderers[1].get3dObject());
-      this.sceneRoot.add(this.tripleSliceRenderers[2].get3dObject());
-    }
 
     this.renderMode = newRenderMode;
     this.fuse();
@@ -1046,33 +996,9 @@ export default class VolumeDrawable {
   setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
     const volSize = this.volume.imageInfo.volumeSize;
     const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
-    index = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
-    this.tripleSliceIndices[axis] = index;
-
-    if (!this.tripleSliceRenderers) {
-      return;
-    }
-    // Update the appropriate renderer's zSlice (which the shader interprets per viewAxis)
-    // XY renderer (index 0): slicing along Z
-    // YZ renderer (index 1): slicing along X
-    // XZ renderer (index 2): slicing along Y
-    if (axis === "z") {
-      const settings0 = this.settings.clone();
-      settings0.zSlice = index;
-      this.tripleSliceRenderers[0].updateSettings(settings0, SettingsFlags.ROI);
-    } else if (axis === "x") {
-      const settings1 = this.settings.clone();
-      settings1.zSlice = index;
-      this.tripleSliceRenderers[1].updateSettings(settings1, SettingsFlags.ROI);
-    } else if (axis === "y") {
-      const settings2 = this.settings.clone();
-      settings2.zSlice = index;
-      this.tripleSliceRenderers[2].updateSettings(settings2, SettingsFlags.ROI);
-    }
-  }
-
-  getTripleSliceRenderers(): [Atlas2DSlice, Atlas2DSlice, Atlas2DSlice] | null {
-    return this.tripleSliceRenderers;
+    this.settings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
+    this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
+    this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
   }
 
   /**
@@ -1083,16 +1009,9 @@ export default class VolumeDrawable {
     camera: PerspectiveCamera | OrthographicCamera,
     sliceIndex: number
   ): void {
-    if (!this.tripleSliceRenderers) {
-      return;
+    if (this.renderMode === RenderMode.TRIPLE_SLICE) {
+      (this.volumeRendering as TripleSliceVolume).onAnimate(renderer, camera, sliceIndex);
     }
-    // Show only the active pane's geometry so they don't overlap
-    for (let i = 0; i < 3; i++) {
-      this.tripleSliceRenderers[i].get3dObject().visible = i === sliceIndex;
-    }
-    camera.updateMatrixWorld(true);
-    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    this.tripleSliceRenderers[sliceIndex].doRender(renderer, camera);
   }
 
   get showBoundingBox(): boolean {
