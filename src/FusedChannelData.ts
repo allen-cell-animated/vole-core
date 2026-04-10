@@ -36,7 +36,7 @@ import type { FuseChannel, NumberType } from "./types.js";
  * Immutable snapshot of the Channel fields needed by gpuFuse, captured at fuse() time.
  * Snapshot is required to avoid race conditions because Channels are mutable.
  */
-type Fusable = FuseChannel & {
+type FusableChannelState = FuseChannel & {
   snapshot: {
     dtype: NumberType;
     dataTexture: DataTexture;
@@ -55,7 +55,7 @@ export default class FusedChannelData {
 
   public maskTexture: DataTexture;
 
-  private fuseRequested: Fusable[] | null;
+  private fuseRequested: FusableChannelState[] | null;
 
   private fuseGeometry: PlaneGeometry;
   private fuseMaterialF: ShaderMaterial;
@@ -225,7 +225,7 @@ export default class FusedChannelData {
      * mutating the live Channel objects between fuse() and the next
      * requestAnimationFrame
      */
-    const readyToFuse: Fusable[] = [];
+    const readyToFuse: FusableChannelState[] = [];
     for (let i = 0; i < combination.length; ++i) {
       const c = combination[i];
       const idx = c.chIndex;
