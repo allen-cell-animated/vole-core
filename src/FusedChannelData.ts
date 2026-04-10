@@ -32,6 +32,21 @@ import fuseShaderSrcI from "./constants/shaders/fuseI.frag";
 import colorizeSrcUI from "./constants/shaders/colorizeUI.frag";
 import type { FuseChannel, NumberType } from "./types.js";
 
+/**
+ * Immutable snapshot of the Channel fields needed by gpuFuse, captured at fuse() time.
+ * Snapshot is required to avoid race conditions because Channels are mutable.
+ */
+type FusableChannelState = FuseChannel & {
+  snapshot: {
+    dtype: NumberType;
+    dataTexture: DataTexture;
+    lutTexture: DataTexture;
+    rawMin: number;
+    rawMax: number;
+    frame: number;
+  };
+};
+
 // This is the owner of the fused RGBA volume texture atlas, and the mask texture atlas.
 // This module is responsible for updating the fused texture, given the read-only volume channel data.
 export default class FusedChannelData {
@@ -40,8 +55,7 @@ export default class FusedChannelData {
 
   public maskTexture: DataTexture;
 
-  private fuseRequested: FuseChannel[] | null;
-  private channelsDataToFuse: Channel[];
+  private fuseRequested: FusableChannelState[] | null;
 
   private fuseGeometry: PlaneGeometry;
   private fuseMaterialF: ShaderMaterial;
@@ -75,7 +89,6 @@ export default class FusedChannelData {
     this.maskTexture.unpackAlignment = 1;
 
     this.fuseRequested = null;
-    this.channelsDataToFuse = [];
 
     this.fuseScene = new Scene();
     this.quadCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -207,9 +220,12 @@ export default class FusedChannelData {
   }
 
   fuse(combination: FuseChannel[], channels: Channel[]): void {
-    // we can fuse if we have any loaded channels that are showing.
-    // actually, we can fuse if no channels are showing (but they are loaded), too.
-    let canFuse = false;
+    /**
+     * Snapshot channel state now so gpuFuse() is immune to concurrent loads
+     * mutating the live Channel objects between fuse() and the next
+     * requestAnimationFrame
+     */
+    const readyToFuse: FusableChannelState[] = [];
     for (let i = 0; i < combination.length; ++i) {
       const c = combination[i];
       const idx = c.chIndex;
@@ -217,23 +233,31 @@ export default class FusedChannelData {
         // set the lut in this fuse combination.
         // can optimize by calling combineLuts more lazily
         c.lut = channels[idx].combineLuts(c.rgbColor, c.lut);
-        canFuse = true;
-        //break;
+        if (c.rgbColor) {
+          readyToFuse.push({
+            ...c,
+            snapshot: {
+              dtype: channels[idx].dtype,
+              dataTexture: channels[idx].dataTexture,
+              lutTexture: channels[idx].lutTexture,
+              rawMin: channels[idx].rawMin,
+              rawMax: channels[idx].rawMax,
+              frame: channels[idx].frame,
+            }
+          });
+        }
       }
     }
-    if (!canFuse) {
-      this.channelsDataToFuse = [];
-      this.fuseRequested = [];
+    if (readyToFuse.length === 0) {
+      this.fuseRequested = null;
       return;
     }
 
-    this.fuseRequested = combination;
-    this.channelsDataToFuse = channels;
+    this.fuseRequested = readyToFuse;
   }
 
   public gpuFuse(renderer: WebGLRenderer): void {
     const combination = this.fuseRequested;
-    const channels = this.channelsDataToFuse;
     if (!combination) {
       return;
     }
@@ -249,51 +273,46 @@ export default class FusedChannelData {
     });
     this.fuseScene.clear();
     for (let i = 0; i < combination.length; ++i) {
-      if (combination[i].rgbColor) {
-        const chIndex = combination[i].chIndex;
-        if (!channels[chIndex].loaded) {
-          continue;
-        }
-        const isColorize = combination[i].feature !== undefined;
-        // add a draw call per channel here.
-        // must clone the material to keep a unique set of uniforms
-        const mat = this.getShader(channels[chIndex].dtype, isColorize).clone();
-        mat.uniforms.srcTexture.value = channels[chIndex].dataTexture;
-        const feature = combination[i].feature;
-        if (isColorize && feature) {
-          mat.uniforms.featureData.value = feature.idsToFeatureValue;
-          mat.uniforms.outlierData.value = feature.outlierData;
-          mat.uniforms.inRangeIds.value = feature.inRangeIds;
-          mat.uniforms.featureColorRampMin.value = feature.featureMin;
-          mat.uniforms.featureColorRampMax.value = feature.featureMax;
-          mat.uniforms.colorRamp.value = feature.featureValueToColor;
-          mat.uniforms.useRepeatingCategoricalColors.value = feature.useRepeatingColor;
-          mat.uniforms.outlineColor.value = feature.outlineColor;
-          mat.uniforms.outlierColor.value = feature.outlierColor;
-          mat.uniforms.outOfRangeColor.value = feature.outOfRangeColor;
-          mat.uniforms.outlierDrawMode.value = feature.outlierDrawMode;
-          mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
-          mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
+      const chIndex = combination[i].chIndex;
+      const snap = combination[i].snapshot;
+      const isColorize = combination[i].feature !== undefined;
+      // add a draw call per channel here.
+      // must clone the material to keep a unique set of uniforms
+      const mat = this.getShader(snap.dtype, isColorize).clone();
+      mat.uniforms.srcTexture.value = snap.dataTexture;
+      const feature = combination[i].feature;
+      if (isColorize && feature) {
+        mat.uniforms.featureData.value = feature.idsToFeatureValue;
+        mat.uniforms.outlierData.value = feature.outlierData;
+        mat.uniforms.inRangeIds.value = feature.inRangeIds;
+        mat.uniforms.featureColorRampMin.value = feature.featureMin;
+        mat.uniforms.featureColorRampMax.value = feature.featureMax;
+        mat.uniforms.colorRamp.value = feature.featureValueToColor;
+        mat.uniforms.useRepeatingCategoricalColors.value = feature.useRepeatingColor;
+        mat.uniforms.outlineColor.value = feature.outlineColor;
+        mat.uniforms.outlierColor.value = feature.outlierColor;
+        mat.uniforms.outOfRangeColor.value = feature.outOfRangeColor;
+        mat.uniforms.outlierDrawMode.value = feature.outlierDrawMode;
+        mat.uniforms.outOfRangeDrawMode.value = feature.outOfRangeDrawMode;
+        mat.uniforms.hideOutOfRange.value = feature.hideOutOfRange;
 
-          const frame = channels[chIndex].frame;
-          let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(frame);
-          if (!globalIdLookupInfo) {
-            console.warn(
-              `FusedChannelData.gpuFuse: No global ID lookup info for frame ${frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
-            );
-            const texture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
-            texture.needsUpdate = true;
-            globalIdLookupInfo = { texture, minSegId: 1 };
-          }
-          mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
-          mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
-        } else {
-          // the lut texture is spanning only the data range of the channel, not the datatype range
-          mat.uniforms.lutMinMax.value = new Vector2(channels[chIndex].rawMin, channels[chIndex].rawMax);
-          mat.uniforms.lutSampler.value = channels[chIndex].lutTexture;
+        let globalIdLookupInfo = feature.frameToGlobalIdLookup.get(snap.frame);
+        if (!globalIdLookupInfo) {
+          console.warn(
+            `FusedChannelData.gpuFuse: No global ID lookup info for frame ${snap.frame} in channel ${chIndex}. A default lookup will be used, which may cause visual artifacts.`
+          );
+          const texture = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+          texture.needsUpdate = true;
+          globalIdLookupInfo = { texture, minSegId: 1 };
         }
-        this.fuseScene.add(new Mesh(this.fuseGeometry, mat));
+        mat.uniforms.segIdToGlobalId.value = globalIdLookupInfo.texture;
+        mat.uniforms.segIdOffset.value = globalIdLookupInfo.minSegId;
+      } else {
+        // the lut texture is spanning only the data range of the channel, not the datatype range
+        mat.uniforms.lutMinMax.value = new Vector2(snap.rawMin, snap.rawMax);
+        mat.uniforms.lutSampler.value = snap.lutTexture;
       }
+      this.fuseScene.add(new Mesh(this.fuseGeometry, mat));
     }
     if (this.fuseScene.children.length > 0) {
       renderer.setRenderTarget(this.fuseRenderTarget);
