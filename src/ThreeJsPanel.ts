@@ -424,6 +424,14 @@ export class ThreeJsPanel {
   }
 
   orthoScreenPixelsToPhysicalUnits(pixels: number, physicalUnitsPerWorldUnit: number): number {
+    if (this.viewMode === Axis.TRIPLE) {
+      // In triple mode, use the XY pane dimensions to compute the conversion.
+      // The XY pane is xyW CSS pixels wide and covers phys.x world units.
+      const panes = this.computeTripleViewPanes();
+      const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
+      const worldUnitsPerPixel = phys.x / panes.xy.w;
+      return pixels * worldUnitsPerPixel * physicalUnitsPerWorldUnit;
+    }
     const worldUnitsPerPixel = 1 / (this.camera.zoom * this.getHeight());
     // Multiply by devicePixelRatio to convert from scaled CSS pixels to physical pixels
     // (to account for high dpi monitors, e.g.). We didn't do this to height above because
@@ -522,7 +530,7 @@ export class ThreeJsPanel {
   }
 
   updateScaleBarVisibility(): void {
-    const isOrtho = isOrthographicCamera(this.camera);
+    const isOrtho = isOrthographicCamera(this.camera) || this.viewMode === Axis.TRIPLE;
     const orthoVisible = isOrtho && this.showOrthoScaleBar;
     const perspectiveVisible = !isOrtho && this.showPerspectiveScaleBar;
     this.orthoScaleBarElement.style.display = orthoVisible ? "" : "none";
@@ -851,11 +859,6 @@ export class ThreeJsPanel {
   }
 
   render(): void {
-    if (this.viewMode === Axis.TRIPLE) {
-      this.renderTriple();
-      return;
-    }
-
     // update the axis helper in case the view was rotated
     if (!isOrthographicCamera(this.camera)) {
       this.axisHelperObject.rotation.setFromRotationMatrix(this.camera.matrixWorldInverse);
@@ -866,6 +869,11 @@ export class ThreeJsPanel {
       if (this.animateFuncs[i]) {
         this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
       }
+    }
+
+    if (this.viewMode === Axis.TRIPLE) {
+      this.renderTriple();
+      return;
     }
 
     // RENDERING

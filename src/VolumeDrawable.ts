@@ -391,8 +391,12 @@ export default class VolumeDrawable {
         this.setVolumeRendering(RenderMode.TRIPLE_SLICE);
       }
     } else if (axis === Axis.Z) {
-      // If currently in 3D raymarch mode, hotswap the 2D slice
-      if (this.renderMode === RenderMode.RAYMARCH || this.renderMode === RenderMode.PATHTRACE) {
+      // If currently in 3D raymarch/pathtrace/triple mode, hotswap the 2D slice
+      if (
+        this.renderMode === RenderMode.RAYMARCH ||
+        this.renderMode === RenderMode.PATHTRACE ||
+        this.renderMode === RenderMode.TRIPLE_SLICE
+      ) {
         this.setVolumeRendering(RenderMode.SLICE);
       }
     } else {
