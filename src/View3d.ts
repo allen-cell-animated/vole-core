@@ -12,7 +12,7 @@ import {
 } from "three";
 import { Pane } from "tweakpane";
 
-import { CameraState, MESH_LAYER, ThreeJsPanel } from "./ThreeJsPanel.js";
+import { CameraState, MESH_LAYER, ThreeJsPanel, type TripleViewPanes } from "./ThreeJsPanel.js";
 import lightSettings from "./constants/lights.js";
 import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
@@ -30,6 +30,7 @@ import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./Line3d.js";
+import TripleSliceCrosshairs from "./TripleSliceCrosshairs.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;
@@ -68,6 +69,15 @@ export class View3d {
   private fillLight: DirectionalLight;
 
   private tweakpane: Pane | null;
+
+  // Triple slice state
+  private tripleSliceCrosshairs?: TripleSliceCrosshairs;
+  private tripleSliceCallback?: (indices: { x: number; y: number; z: number }) => void;
+  private tripleSliceDragging = false;
+  private tripleSliceDragPane?: "xy" | "yz" | "xz";
+  private boundPointerMove?: (e: PointerEvent) => void;
+  private boundPointerUp?: (e: PointerEvent) => void;
+  private boundPointerDown?: (e: PointerEvent) => void;
 
   /**
    * @param {Object} options Optional options.
@@ -520,12 +530,221 @@ export class View3d {
   // TODO: Change mode to an enum
   /**
    * Change the camera projection to look along an axis, or to view in a 3d perspective camera.
-   * @param {string} mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y".  3D is a perspective view, and all the others are orthographic projections
+   * @param {string} mode Mode can be "3D", "XY" or "Z", "YZ" or "X", "XZ" or "Y", or "TRIPLE".
+   *   3D is a perspective view, all single-axis modes are orthographic projections,
+   *   and TRIPLE shows three linked orthographic slices (XY, YZ, XZ).
    */
   setCameraMode(mode: string): void {
+    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
+    const isTriple = mode.toUpperCase() === "TRIPLE";
+
     this.canvas3d.switchViewMode(mode);
     this.image?.setViewMode(mode, this.volumeRenderMode);
-    this.image?.setIsOrtho(mode !== "3D");
+    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
+
+    if (isTriple && this.image) {
+      this.enterTripleSliceMode();
+    } else if (wasTriple && !isTriple) {
+      this.exitTripleSliceMode();
+    }
+
+    this.canvas3d.redraw();
+  }
+
+  private enterTripleSliceMode(): void {
+    if (!this.image) {
+      return;
+    }
+
+    // Set physical size for pane layout
+    this.canvas3d.setTripleViewPhysicalSize(this.image.volume.normPhysicalSize);
+
+    // Create crosshairs and add to scene
+    this.tripleSliceCrosshairs = new TripleSliceCrosshairs();
+    this.scene.add(this.tripleSliceCrosshairs.get3dObject());
+    this.updateTripleSliceCrosshairs();
+
+    // Set up the triple-slice render callback
+    this.canvas3d.tripleSliceRenderFunc = (renderer, camera, sliceIndex) => {
+      this.image?.onAnimateTripleSlice(renderer, camera, sliceIndex);
+      // Show only this pane's crosshair lines
+      this.tripleSliceCrosshairs?.showPaneLines(sliceIndex);
+    };
+
+    // Set up pointer handlers for crosshair dragging
+    const canvas = this.canvas3d.containerdiv;
+    this.boundPointerDown = this.onTriplePointerDown.bind(this);
+    this.boundPointerMove = this.onTriplePointerMove.bind(this);
+    this.boundPointerUp = this.onTriplePointerUp.bind(this);
+    canvas.addEventListener("pointerdown", this.boundPointerDown);
+    canvas.addEventListener("pointermove", this.boundPointerMove);
+    canvas.addEventListener("pointerup", this.boundPointerUp);
+  }
+
+  private exitTripleSliceMode(): void {
+    // Clean up crosshairs
+    if (this.tripleSliceCrosshairs) {
+      this.scene.remove(this.tripleSliceCrosshairs.get3dObject());
+      this.tripleSliceCrosshairs.cleanup();
+      this.tripleSliceCrosshairs = undefined;
+    }
+
+    // Remove render callback
+    this.canvas3d.tripleSliceRenderFunc = undefined;
+
+    // Remove pointer handlers
+    const canvas = this.canvas3d.containerdiv;
+    if (this.boundPointerDown) {
+      canvas.removeEventListener("pointerdown", this.boundPointerDown);
+    }
+    if (this.boundPointerMove) {
+      canvas.removeEventListener("pointermove", this.boundPointerMove);
+    }
+    if (this.boundPointerUp) {
+      canvas.removeEventListener("pointerup", this.boundPointerUp);
+    }
+    this.boundPointerDown = undefined;
+    this.boundPointerMove = undefined;
+    this.boundPointerUp = undefined;
+    this.tripleSliceDragging = false;
+  }
+
+  private updateTripleSliceCrosshairs(): void {
+    if (!this.tripleSliceCrosshairs || !this.image) {
+      return;
+    }
+    const volSize = this.image.volume.imageInfo.volumeSize;
+    this.tripleSliceCrosshairs.update(
+      this.image.tripleSliceIndices,
+      volSize,
+      this.image.volume.normPhysicalSize
+    );
+  }
+
+  /**
+   * Determines which pane a CSS-coordinate pointer event falls in.
+   */
+  private hitTestTriplePane(clientX: number, clientY: number): "xy" | "yz" | "xz" | null {
+    const panes = this.canvas3d.getTripleViewPanesCSS();
+    if (!panes) {
+      return null;
+    }
+    const rect = this.canvas3d.containerdiv.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    for (const [key, pane] of Object.entries(panes) as ["xy" | "yz" | "xz", { x: number; y: number; w: number; h: number }][]) {
+      if (x >= pane.x && x <= pane.x + pane.w && y >= pane.y && y <= pane.y + pane.h) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Converts a pointer position within a pane to normalized [0,1] UV coordinates.
+   */
+  private pointerToPaneUV(
+    clientX: number,
+    clientY: number,
+    paneKey: "xy" | "yz" | "xz"
+  ): { u: number; v: number } | null {
+    const panes = this.canvas3d.getTripleViewPanesCSS();
+    if (!panes) {
+      return null;
+    }
+    const rect = this.canvas3d.containerdiv.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const pane = panes[paneKey];
+
+    const u = Math.max(0, Math.min(1, (x - pane.x) / pane.w));
+    // v is inverted: top of CSS = 0, but top of UV should be 1
+    const v = Math.max(0, Math.min(1, 1 - (y - pane.y) / pane.h));
+    return { u, v };
+  }
+
+  private onTriplePointerDown(e: PointerEvent): void {
+    const pane = this.hitTestTriplePane(e.clientX, e.clientY);
+    if (pane) {
+      this.tripleSliceDragging = true;
+      this.tripleSliceDragPane = pane;
+      this.handleTripleSliceDrag(e.clientX, e.clientY, pane);
+    }
+  }
+
+  private onTriplePointerMove(e: PointerEvent): void {
+    if (this.tripleSliceDragging && this.tripleSliceDragPane) {
+      this.handleTripleSliceDrag(e.clientX, e.clientY, this.tripleSliceDragPane);
+    }
+  }
+
+  private onTriplePointerUp(_e: PointerEvent): void {
+    this.tripleSliceDragging = false;
+    this.tripleSliceDragPane = undefined;
+  }
+
+  private handleTripleSliceDrag(clientX: number, clientY: number, paneKey: "xy" | "yz" | "xz"): void {
+    if (!this.image) {
+      return;
+    }
+    const uv = this.pointerToPaneUV(clientX, clientY, paneKey);
+    if (!uv) {
+      return;
+    }
+
+    const volSize = this.image.volume.imageInfo.volumeSize;
+
+    // Each pane controls two axes via the UV coordinates.
+    // u = horizontal axis, v = vertical axis of the pane
+    switch (paneKey) {
+      case "xy":
+        // XY pane: u -> X, v -> Y
+        this.image.setTripleSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        this.image.setTripleSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        break;
+      case "yz":
+        // YZ pane: u -> Z (horizontal), v -> Y (vertical, aligned with XY pane)
+        this.image.setTripleSliceIndex("z", Math.round(uv.u * (volSize.z - 1)));
+        this.image.setTripleSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        break;
+      case "xz":
+        // XZ pane: Camera looks along Y; u -> X, v -> Z
+        this.image.setTripleSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        this.image.setTripleSliceIndex("z", Math.round(uv.v * (volSize.z - 1)));
+        break;
+    }
+
+    this.updateTripleSliceCrosshairs();
+    this.tripleSliceCallback?.(this.image.tripleSliceIndices);
+    this.canvas3d.redraw();
+  }
+
+  // --- Public triple-slice API ---
+
+  /**
+   * Set a callback that fires when triple-slice crosshair indices change.
+   */
+  setTripleSliceCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | null): void {
+    this.tripleSliceCallback = cb ?? undefined;
+  }
+
+  /**
+   * Get the current triple-slice indices.
+   */
+  getTripleSliceIndices(): { x: number; y: number; z: number } | undefined {
+    return this.image?.tripleSliceIndices;
+  }
+
+  /**
+   * Set a triple-slice index for a given axis.
+   */
+  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+    if (!this.image) {
+      return;
+    }
+    this.image.setTripleSliceIndex(axis, index);
+    this.updateTripleSliceCrosshairs();
     this.canvas3d.redraw();
   }
 

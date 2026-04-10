@@ -37,7 +37,13 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   private boxHelper: Box3Helper;
   private uniforms: ReturnType<typeof sliceShaderUniforms>;
   private channelData!: FusedChannelData;
+  /** When set, this renderer shares another renderer's FusedChannelData instead of owning its own. */
+  private sharedChannelData: FusedChannelData | null = null;
   private sliceUpdateWaiting = false;
+  /** 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y) */
+  private viewAxisValue = 0;
+  /** When true, always request the full volume (all Z slices) even for viewAxis 0. */
+  private requireFullVolume = false;
 
   /**
    * Creates a new Atlas2DSlice.
@@ -70,18 +76,40 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
   /**
    * Syncs `this.settings.zSlice` with the corresponding shader uniform, or defers syncing until the slice is loaded.
+   * For non-XY views, zSlice represents the coordinate along the slicing axis (X for YZ, Y for XZ).
    * @returns a boolean indicating whether the slice is out of bounds of the volume entirely.
    */
   private updateSlice(): boolean {
     const slice = Math.floor(this.settings.zSlice);
-    const sizez = this.volume.imageInfo.volumeSize.z;
-    if (slice < 0 || slice >= sizez) {
+    const volSize = this.volume.imageInfo.volumeSize;
+
+    // Determine the axis-appropriate size and subregion bounds
+    let axisSize: number;
+    let regionMin: number;
+    let regionMax: number;
+    switch (this.viewAxisValue) {
+      case 1: // YZ view: slicing along X
+        axisSize = volSize.x;
+        regionMin = this.volume.imageInfo.subregionOffset.x;
+        regionMax = regionMin + this.volume.imageInfo.subregionSize.x;
+        break;
+      case 2: // XZ view: slicing along Y
+        axisSize = volSize.y;
+        regionMin = this.volume.imageInfo.subregionOffset.y;
+        regionMax = regionMin + this.volume.imageInfo.subregionSize.y;
+        break;
+      default: // XY view: slicing along Z
+        axisSize = volSize.z;
+        regionMin = this.volume.imageInfo.subregionOffset.z;
+        regionMax = regionMin + this.volume.imageInfo.subregionSize.z;
+        break;
+    }
+
+    if (slice < 0 || slice >= axisSize) {
       return false;
     }
 
-    const regionMinZ = this.volume.imageInfo.subregionOffset.z;
-    const regionMaxZ = regionMinZ + this.volume.imageInfo.subregionSize.z;
-    if (slice < regionMinZ || slice >= regionMaxZ) {
+    if (slice < regionMin || slice >= regionMax) {
       // If the slice is outside the current loaded subregion, defer until the subregion is updated
       this.sliceUpdateWaiting = true;
     } else {
@@ -96,9 +124,24 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     const volumeScale = this.volume.normPhysicalSize.clone().multiply(this.settings.scale);
     const regionScale = volumeScale.clone().multiply(this.volume.normRegionSize);
     const volumeOffset = this.volume.getContentCenter().clone().multiply(this.settings.scale);
-    this.geometryMesh.position.copy(volumeOffset);
-    // set scale
-    this.geometryMesh.scale.copy(regionScale);
+
+    // For non-XY views, remap scale/position so the face appears correctly in the XY plane.
+    // The PlaneGeometry is always in XY, so we set mesh X/Y scale to the target face dimensions.
+    switch (this.viewAxisValue) {
+      case 1: // YZ face: volume Z → mesh X, volume Y → mesh Y (Y vertical to align with XY)
+        this.geometryMesh.position.set(volumeOffset.z, volumeOffset.y, 0);
+        this.geometryMesh.scale.set(regionScale.z, regionScale.y, 1);
+        break;
+      case 2: // XZ face: volume X → mesh X, volume Z → mesh Y
+        this.geometryMesh.position.set(volumeOffset.x, volumeOffset.z, 0);
+        this.geometryMesh.scale.set(regionScale.x, regionScale.z, 1);
+        break;
+      default: // XY face (standard)
+        this.geometryMesh.position.copy(volumeOffset);
+        this.geometryMesh.scale.copy(regionScale);
+        break;
+    }
+
     this.setUniform("volumeScale", regionScale);
     this.boxHelper.box.set(volumeScale.clone().multiplyScalar(-0.5), volumeScale.clone().multiplyScalar(0.5));
 
@@ -109,14 +152,17 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.setUniform("ATLAS_DIMS", atlasTileDims);
     this.setUniform("textureRes", atlasSize);
     this.setUniform("SLICES", volumeSize.z);
+    this.setUniform("volumeSize", volumeSize);
     if (this.sliceUpdateWaiting) {
       this.updateSlice();
     }
 
-    // (re)create channel data
-    if (!this.channelData || this.channelData.width !== atlasSize.x || this.channelData.height !== atlasSize.y) {
-      this.channelData?.cleanup();
-      this.channelData = new FusedChannelData(atlasSize.x, atlasSize.y);
+    // (re)create channel data (skip if sharing from another renderer)
+    if (!this.sharedChannelData) {
+      if (!this.channelData || this.channelData.width !== atlasSize.x || this.channelData.height !== atlasSize.y) {
+        this.channelData?.cleanup();
+        this.channelData = new FusedChannelData(atlasSize.x, atlasSize.y);
+      }
     }
   }
 
@@ -184,11 +230,18 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
       const sliceInBounds = this.updateSlice();
       if (sliceInBounds) {
-        const sliceLowerBound = Math.floor(this.settings.zSlice) / this.volume.imageInfo.volumeSize.z;
-        const sliceUpperBound = (Math.floor(this.settings.zSlice) + 1) / this.volume.imageInfo.volumeSize.z;
-        this.volume.updateRequiredData({
-          subregion: new Box3(new Vector3(0, 0, sliceLowerBound), new Vector3(1, 1, sliceUpperBound)),
-        });
+        if (this.viewAxisValue !== 0 || this.requireFullVolume) {
+          // For non-XY views (or triple-mode), we need the full volume loaded
+          this.volume.updateRequiredData({
+            subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
+          });
+        } else {
+          const sliceLowerBound = Math.floor(this.settings.zSlice) / this.volume.imageInfo.volumeSize.z;
+          const sliceUpperBound = (Math.floor(this.settings.zSlice) + 1) / this.volume.imageInfo.volumeSize.z;
+          this.volume.updateRequiredData({
+            subregion: new Box3(new Vector3(0, 0, sliceLowerBound), new Vector3(1, 1, sliceUpperBound)),
+          });
+        }
       }
     }
 
@@ -236,7 +289,28 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
 
-    this.channelData.cleanup();
+    // Only clean up channelData if we own it (not shared)
+    if (!this.sharedChannelData) {
+      this.channelData?.cleanup();
+    }
+    this.sharedChannelData = null;
+  }
+
+  /** Returns the FusedChannelData owned by this renderer. */
+  public getChannelData(): FusedChannelData {
+    return this.channelData;
+  }
+
+  /**
+   * Sets a shared FusedChannelData from another renderer.
+   * When set, this renderer will not create or maintain its own fused data.
+   */
+  public setSharedChannelData(data: FusedChannelData): void {
+    // Clean up own channelData if we had one
+    if (!this.sharedChannelData && this.channelData) {
+      this.channelData.cleanup();
+    }
+    this.sharedChannelData = data;
   }
 
   public viewpointMoved(): void {
@@ -248,9 +322,10 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
       return;
     }
 
-    this.channelData.gpuFuse(renderer);
-    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
-    this.setUniform("textureAtlasMask", this.channelData.maskTexture);
+    const cdata = this.sharedChannelData || this.channelData;
+    cdata.gpuFuse(renderer);
+    this.setUniform("textureAtlas", cdata.getFusedTexture());
+    this.setUniform("textureAtlasMask", cdata.maskTexture);
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -268,6 +343,10 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
   public updateActiveChannels(channelcolors: FuseChannel[], channeldata: Channel[]): void {
+    // Skip fusion if sharing another renderer's fused data
+    if (this.sharedChannelData) {
+      return;
+    }
     this.channelData.fuse(channelcolors, channeldata);
 
     // update to fused texture
@@ -287,5 +366,23 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {
     return;
+  }
+
+  /**
+   * Sets the view axis for this slice renderer.
+   * @param axis 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y)
+   */
+  public setViewAxis(axis: number): void {
+    this.viewAxisValue = axis;
+    this.setUniform("viewAxis", axis);
+  }
+
+  /**
+   * When set to true, this renderer will always request the full volume (all Z slices)
+   * instead of only the single slice needed for XY view. Required for triple-slice mode
+   * so that YZ/XZ renderers sharing this renderer's fused texture can sample all slices.
+   */
+  public setRequireFullVolume(require: boolean): void {
+    this.requireFullVolume = require;
   }
 }

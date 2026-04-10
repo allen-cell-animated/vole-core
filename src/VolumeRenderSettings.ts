@@ -36,6 +36,8 @@ export enum Axis {
   XYZ = "",
   /** No current axis, indicates 3D mode */
   NONE = "",
+  /** Triple orthographic slice view (XY + YZ + XZ) */
+  TRIPLE = "triple",
 }
 
 /**
