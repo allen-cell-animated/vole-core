@@ -614,11 +614,7 @@ export class View3d {
       return;
     }
     const volSize = this.image.volume.imageInfo.volumeSize;
-    this.tripleSliceCrosshairs.update(
-      this.image.tripleSliceIndices,
-      volSize,
-      this.image.volume.normPhysicalSize
-    );
+    this.tripleSliceCrosshairs.update(this.image.tripleSliceIndices, volSize, this.image.volume.normPhysicalSize);
   }
 
   /**
@@ -633,7 +629,10 @@ export class View3d {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
 
-    for (const [key, pane] of Object.entries(panes) as ["xy" | "yz" | "xz", { x: number; y: number; w: number; h: number }][]) {
+    for (const [key, pane] of Object.entries(panes) as [
+      "xy" | "yz" | "xz",
+      { x: number; y: number; w: number; h: number }
+    ][]) {
       if (x >= pane.x && x <= pane.x + pane.w && y >= pane.y && y <= pane.y + pane.h) {
         return key;
       }
