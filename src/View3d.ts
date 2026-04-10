@@ -411,6 +411,11 @@ export class View3d {
 
   // Add a new volume image to the viewer.  The viewer currently only supports a single image at a time, and will return any prior existing image.
   setImage(img: VolumeDrawable): VolumeDrawable | undefined {
+    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
+    if (wasTriple) {
+      this.exitTripleSliceMode();
+    }
+
     const oldImage = this.unsetImage();
 
     this.image = img;
@@ -439,6 +444,13 @@ export class View3d {
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
+
+    // If we were in triple mode, re-enter it with the new image
+    if (wasTriple) {
+      this.image.setViewMode("TRIPLE", this.volumeRenderMode);
+      this.image.setIsOrtho(true);
+      this.enterTripleSliceMode();
+    }
 
     // redraw if not already in draw loop
     this.redraw();
