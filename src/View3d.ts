@@ -69,6 +69,9 @@ export class View3d {
 
   private tweakpane: Pane | null;
 
+  // Triple slice state
+  private tripleSliceCallback?: (indices: { x: number; y: number; z: number }) => void;
+
   /**
    * @param {Object} options Optional options.
    * @param {boolean} options.useWebGL2 Default true
@@ -113,9 +116,11 @@ export class View3d {
       lightContainer.rotation.setFromRotationMatrix(this.canvas3d.camera.matrixWorld);
     }
     // keep the ortho scale up to date.
-    if (this.image && isOrthographicCamera(this.canvas3d.camera)) {
-      const { top, zoom } = this.canvas3d.camera;
-      this.image.setOrthoScale(Math.abs(top) / zoom);
+    if (this.image && (isOrthographicCamera(this.canvas3d.camera) || this.canvas3d.getViewMode() === Axis.TRIPLE)) {
+      if (isOrthographicCamera(this.canvas3d.camera)) {
+        const { top, zoom } = this.canvas3d.camera;
+        this.image.setOrthoScale(Math.abs(top) / zoom);
+      }
       this.updateOrthoScaleBar(this.image.volume);
     }
   }
@@ -273,6 +278,8 @@ export class View3d {
   onVolumeData(volume: Volume, channels: number[]): void {
     this.image?.updateScale();
     this.image?.onChannelLoaded(channels);
+    // Update crosshairs after volume data changes (resolution may have changed)
+    this.updateTripleSliceCrosshairs();
     if (volume.isLoaded() && this.tweakpane) {
       this.tweakpane.refresh();
     }
@@ -401,6 +408,11 @@ export class View3d {
 
   // Add a new volume image to the viewer.  The viewer currently only supports a single image at a time, and will return any prior existing image.
   setImage(img: VolumeDrawable): VolumeDrawable | undefined {
+    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
+    if (wasTriple) {
+      this.exitTripleSliceMode();
+    }
+
     const oldImage = this.unsetImage();
 
     this.image = img;
@@ -429,6 +441,13 @@ export class View3d {
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
+
+    // If we were in triple mode, re-enter it with the new image
+    if (wasTriple) {
+      this.image.setViewMode("TRIPLE", this.volumeRenderMode);
+      this.image.setIsOrtho(true);
+      this.enterTripleSliceMode();
+    }
 
     // redraw if not already in draw loop
     this.redraw();
@@ -520,12 +539,83 @@ export class View3d {
   // TODO: Change mode to an enum
   /**
    * Change the camera projection to look along an axis, or to view in a 3d perspective camera.
-   * @param {string} mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y".  3D is a perspective view, and all the others are orthographic projections
+   * @param {string} mode Mode can be "3D", "XY" or "Z", "YZ" or "X", "XZ" or "Y", or "TRIPLE".
+   *   3D is a perspective view, all single-axis modes are orthographic projections,
+   *   and TRIPLE shows three linked orthographic slices (XY, YZ, XZ).
    */
   setCameraMode(mode: string): void {
+    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
+    const isTriple = mode.toUpperCase() === "TRIPLE";
+
     this.canvas3d.switchViewMode(mode);
     this.image?.setViewMode(mode, this.volumeRenderMode);
-    this.image?.setIsOrtho(mode !== "3D");
+    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
+
+    if (isTriple && this.image) {
+      this.enterTripleSliceMode();
+    } else if (wasTriple && !isTriple) {
+      this.exitTripleSliceMode();
+    }
+
+    this.canvas3d.redraw();
+  }
+
+  private enterTripleSliceMode(): void {
+    if (!this.image) {
+      return;
+    }
+
+    // Set physical size for pane layout
+    this.canvas3d.setTripleViewPhysicalSize(this.image.volume.normPhysicalSize);
+
+    // Set up the triple-slice render callback
+    this.canvas3d.tripleSliceRenderFunc = (renderer, camera, sliceIndex) => {
+      this.image?.onAnimateTripleSlice(renderer, camera, sliceIndex);
+    };
+
+    // Enter triple slice mode with interaction callbacks
+    this.canvas3d.enterTripleSliceMode({
+      getIndices: () => this.image?.tripleSliceIndices ?? { x: 0, y: 0, z: 0 },
+      getVolumeSize: () => this.image?.volume.imageInfo.volumeSize ?? new Vector3(1, 1, 1),
+      setSliceIndex: (axis, index) => this.image?.setTripleSliceIndex(axis, index),
+      onIndicesChanged: (indices) => this.tripleSliceCallback?.(indices),
+    });
+  }
+
+  private exitTripleSliceMode(): void {
+    this.canvas3d.exitTripleSliceMode();
+    this.canvas3d.tripleSliceRenderFunc = undefined;
+  }
+
+  private updateTripleSliceCrosshairs(): void {
+    this.canvas3d.updateTripleSliceCrosshairs();
+  }
+
+  // --- Public triple-slice API ---
+
+  /**
+   * Set a callback that fires when triple-slice crosshair indices change.
+   */
+  setTripleSliceCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | null): void {
+    this.tripleSliceCallback = cb ?? undefined;
+  }
+
+  /**
+   * Get the current triple-slice indices.
+   */
+  getTripleSliceIndices(): { x: number; y: number; z: number } | undefined {
+    return this.image?.tripleSliceIndices;
+  }
+
+  /**
+   * Set a triple-slice index for a given axis.
+   */
+  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+    if (!this.image) {
+      return;
+    }
+    this.image.setTripleSliceIndex(axis, index);
+    this.updateTripleSliceCrosshairs();
     this.canvas3d.redraw();
   }
 

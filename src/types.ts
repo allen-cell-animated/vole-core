@@ -162,6 +162,7 @@ export enum RenderMode {
   RAYMARCH = 0,
   PATHTRACE = 1,
   SLICE = 2,
+  TRIPLE_SLICE = 3,
 }
 
 /**

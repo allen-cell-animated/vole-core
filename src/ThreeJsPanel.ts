@@ -28,6 +28,7 @@ import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRig
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import TripleSliceCrosshairs from "./TripleSliceCrosshairs.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
@@ -42,6 +43,26 @@ const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
 const DEFAULT_PERSPECTIVE_CAMERA_FAR = 20.0;
 
 const DEFAULT_ORTHO_SCALE = 0.5;
+
+const TRIPLE_VIEW_GAP = 2;
+
+export type TripleViewPaneRect = { x: number; y: number; w: number; h: number };
+
+export type TripleViewPanes = {
+  /** XY slice (bottom-left) */
+  xy: TripleViewPaneRect;
+  /** YZ slice (bottom-right) */
+  yz: TripleViewPaneRect;
+  /** XZ slice (top-left) */
+  xz: TripleViewPaneRect;
+};
+
+/** Callback from VolumeDrawable to render one triple-slice pane */
+export type TripleSliceRenderFunc = (
+  renderer: WebGLRenderer,
+  camera: PerspectiveCamera | OrthographicCamera,
+  sliceIndex: number
+) => void;
 
 export type CameraState = {
   position: [number, number, number];
@@ -58,6 +79,13 @@ type AnimateFunction = (
   camera: PerspectiveCamera | OrthographicCamera,
   depthTexture?: DepthTexture | null
 ) => void;
+
+export type TripleSliceInteractionConfig = {
+  getIndices: () => { x: number; y: number; z: number };
+  getVolumeSize: () => Vector3;
+  setSliceIndex: (axis: "x" | "y" | "z", index: number) => void;
+  onIndicesChanged: (indices: { x: number; y: number; z: number }) => void;
+};
 
 export class ThreeJsPanel {
   public containerdiv: HTMLDivElement;
@@ -108,6 +136,23 @@ export class ThreeJsPanel {
 
   private dataurlcallback?: (url: string) => void;
   private onRenderCallback?: () => void;
+  /** Callback to render individual triple-slice panes (set by View3d) */
+  public tripleSliceRenderFunc?: TripleSliceRenderFunc;
+  /** Cached pane layout for triple view (in physical pixels) */
+  private tripleViewPanes?: TripleViewPanes;
+  /** Physical size of the volume, used for pane layout proportions */
+  private tripleViewPhysicalSize?: Vector3;
+  /** Dedicated orthographic camera for triple-view pane rendering */
+  private triplePaneCamera: OrthographicCamera;
+  private tripleSliceCrosshairs?: TripleSliceCrosshairs;
+  private tripleSliceConfig?: TripleSliceInteractionConfig;
+  private tripleSliceDragging = false;
+  private tripleSliceDragPane?: "xy" | "yz" | "xz";
+  private tripleSliceDragAxis?: "u" | "v";
+  private boundTriplePointerDown?: (e: PointerEvent) => void;
+  private boundTriplePointerMove?: (e: PointerEvent) => void;
+  private boundTriplePointerUp?: (e: PointerEvent) => void;
+  private boundTripleDblClick?: (e: MouseEvent) => void;
 
   constructor(parentElement: HTMLElement | undefined, _useWebGL2: boolean) {
     this.containerdiv = document.createElement("div");
@@ -265,6 +310,12 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
+
+    // Dedicated camera for triple-slice pane rendering — always looks down Z at the XY plane
+    this.triplePaneCamera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.001, 20);
+    this.triplePaneCamera.position.set(0, 0, 2);
+    this.triplePaneCamera.up.set(0, 1, 0);
+    this.triplePaneCamera.lookAt(new Vector3(0, 0, 0));
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -390,6 +441,14 @@ export class ThreeJsPanel {
   }
 
   orthoScreenPixelsToPhysicalUnits(pixels: number, physicalUnitsPerWorldUnit: number): number {
+    if (this.viewMode === Axis.TRIPLE) {
+      // In triple mode, use the XY pane dimensions to compute the conversion.
+      // The XY pane is xyW CSS pixels wide and covers phys.x world units.
+      const panes = this.computeTripleViewPanes();
+      const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
+      const worldUnitsPerPixel = phys.x / panes.xy.w;
+      return pixels * worldUnitsPerPixel * physicalUnitsPerWorldUnit;
+    }
     const worldUnitsPerPixel = 1 / (this.camera.zoom * this.getHeight());
     // Multiply by devicePixelRatio to convert from scaled CSS pixels to physical pixels
     // (to account for high dpi monitors, e.g.). We didn't do this to height above because
@@ -488,7 +547,7 @@ export class ThreeJsPanel {
   }
 
   updateScaleBarVisibility(): void {
-    const isOrtho = isOrthographicCamera(this.camera);
+    const isOrtho = isOrthographicCamera(this.camera) || this.viewMode === Axis.TRIPLE;
     const orthoVisible = isOrtho && this.showOrthoScaleBar;
     const perspectiveVisible = !isOrtho && this.showPerspectiveScaleBar;
     this.orthoScaleBarElement.style.display = orthoVisible ? "" : "none";
@@ -541,6 +600,7 @@ export class ThreeJsPanel {
 
   replaceControls(newControls: TrackballControls): void {
     if (this.controls === newControls) {
+      this.controls.enabled = true;
       return;
     }
     // disable the old, install the new.
@@ -590,6 +650,15 @@ export class ThreeJsPanel {
         this.axisHelperObject.rotation.set(0, 0, 0);
         this.viewMode = Axis.Z;
         break;
+      case "TRIPLE":
+        // In triple mode, disable all controls — no rotate/zoom/pan
+        this.perspectiveControls.enabled = false;
+        this.orthoControlsX.enabled = false;
+        this.orthoControlsY.enabled = false;
+        this.orthoControlsZ.enabled = false;
+        this.controls.enabled = false;
+        this.viewMode = Axis.TRIPLE;
+        break;
       default:
         this.replaceCamera(this.perspectiveCamera);
         this.replaceControls(this.perspectiveControls);
@@ -602,6 +671,107 @@ export class ThreeJsPanel {
 
   getMeshDepthTexture(): DepthTexture | null {
     return this.meshRenderTarget.depthTexture;
+  }
+
+  getViewMode(): Axis {
+    return this.viewMode;
+  }
+
+  /**
+   * Sets the physical size for triple-view pane layout proportions.
+   * Must be called before entering TRIPLE mode to get correct pane sizing.
+   */
+  setTripleViewPhysicalSize(physicalSize: Vector3): void {
+    this.tripleViewPhysicalSize = physicalSize.clone();
+    this.tripleViewPanes = undefined; // invalidate cache
+  }
+
+  /**
+   * Computes the per-pane viewport rectangles for triple-slice view.
+   * Layout: XY (bottom-left), YZ (bottom-right), XZ (top-left).
+   * Pane sizes are proportional to volume physical dimensions with a uniform scale.
+   * Returns values in CSS pixels (Three.js setViewport/setScissor expect CSS pixels
+   * and apply devicePixelRatio internally).
+   */
+  computeTripleViewPanes(): TripleViewPanes {
+    if (this.tripleViewPanes) {
+      return this.tripleViewPanes;
+    }
+
+    const dpr = this.renderer.getPixelRatio();
+    const canvasW = this.getWidth() / dpr;
+    const canvasH = this.getHeight() / dpr;
+    const gap = TRIPLE_VIEW_GAP;
+
+    // Default to unit cube if no physical size set
+    const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
+    const px = phys.x;
+    const py = phys.y;
+    const pz = phys.z;
+
+    // Layout:
+    //  +--------+--------+
+    //  |   XZ   |        |
+    //  | (px,pz)|        |
+    //  +--------+--------+
+    //  |   XY   |   YZ   |
+    //  | (px,py)| (py,pz)|
+    //  +--------+--------+
+    //
+    // Left column width ∝ px, right column width ∝ pz
+    // Bottom row height ∝ py, top row height ∝ pz
+    // (YZ pane: width ∝ pz, height ∝ py)  [Z horizontal, Y vertical]
+    // (XZ pane: width ∝ px, height ∝ pz)
+    // (XY pane: width ∝ px, height ∝ py)
+
+    // Find a uniform pixels-per-physical-unit that fits everything.
+    // Total width = px + gap + pz, total height = py + gap + pz
+    const scaleX = (canvasW - gap) / (px + pz);
+    const scaleY = (canvasH - gap) / (py + pz);
+    const scale = Math.min(scaleX, scaleY);
+
+    const xyW = Math.floor(px * scale);
+    const xyH = Math.floor(py * scale);
+    const yzW = Math.floor(pz * scale);
+    const yzH = Math.floor(py * scale);
+    const xzW = Math.floor(px * scale);
+    const xzH = Math.floor(pz * scale);
+
+    // Center the fitted layout within the canvas
+    const totalW = xyW + gap + yzW;
+    const totalH = xyH + gap + xzH;
+    const offsetX = Math.floor((canvasW - totalW) / 2);
+    const offsetY = Math.floor((canvasH - totalH) / 2);
+
+    // Position panes (origin is bottom-left in WebGL viewport coords)
+    const xy: TripleViewPaneRect = { x: offsetX, y: offsetY, w: xyW, h: xyH };
+    const yz: TripleViewPaneRect = { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH };
+    const xz: TripleViewPaneRect = { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH };
+
+    this.tripleViewPanes = { xy, yz, xz };
+    return this.tripleViewPanes;
+  }
+
+  /** Returns pane rects in CSS pixel coordinates (top-left origin) for hit testing. */
+  getTripleViewPanesCSS(): TripleViewPanes | undefined {
+    if (this.viewMode !== Axis.TRIPLE) {
+      return undefined;
+    }
+    const panes = this.computeTripleViewPanes();
+    const dpr = this.renderer.getPixelRatio();
+    const canvasHCSS = this.getHeight() / dpr;
+    // Panes are in CSS pixels with bottom-left origin; flip Y to top-left for hit testing
+    const toCSS = (r: TripleViewPaneRect): TripleViewPaneRect => ({
+      x: r.x,
+      y: canvasHCSS - (r.y + r.h),
+      w: r.w,
+      h: r.h,
+    });
+    return {
+      xy: toCSS(panes.xy),
+      yz: toCSS(panes.yz),
+      xz: toCSS(panes.xz),
+    };
   }
 
   resize(comp: HTMLElement | null, w?: number, h?: number, _ow?: number, _oh?: number, _eOpts?: unknown): void {
@@ -641,6 +811,9 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
+
+    // Invalidate triple-view pane cache on resize
+    this.tripleViewPanes = undefined;
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
@@ -715,6 +888,11 @@ export class ThreeJsPanel {
       }
     }
 
+    if (this.viewMode === Axis.TRIPLE) {
+      this.renderTriple();
+      return;
+    }
+
     // RENDERING
     // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
     // layer 1.) This is necessary to access the depth buffer.
@@ -763,6 +941,78 @@ export class ThreeJsPanel {
       this.renderer.render(this.axisHelperScene, this.axisCamera);
       this.renderer.autoClear = true;
     }
+
+    if (this.dataurlcallback) {
+      this.dataurlcallback(this.canvas.toDataURL());
+      this.dataurlcallback = undefined;
+    }
+  }
+
+  /**
+   * Renders the triple-slice view using scissored viewports for XY, YZ, and XZ panes.
+   * Uses a single Z-facing orthographic camera with per-pane frustum adjustment.
+   */
+  private renderTriple(): void {
+    if (!this.tripleSliceRenderFunc) {
+      return;
+    }
+
+    const panes = this.computeTripleViewPanes();
+    const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
+
+    // Clear the full canvas first
+    this.renderer.setRenderTarget(null);
+    this.renderer.clear();
+
+    this.renderer.setScissorTest(true);
+
+    const camera = this.triplePaneCamera;
+
+    // Face dimensions [width, height] in normalized physical units for each pane
+    const faceDims: [number, number][] = [
+      [phys.x, phys.y], // XY
+      [phys.z, phys.y], // YZ (Z horizontal, Y vertical to align with XY)
+      [phys.x, phys.z], // XZ
+    ];
+    const paneRects = [panes.xy, panes.yz, panes.xz];
+
+    for (let i = 0; i < 3; i++) {
+      const rect = paneRects[i];
+      const [faceW, faceH] = faceDims[i];
+
+      this.renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
+      this.renderer.setScissor(rect.x, rect.y, rect.w, rect.h);
+
+      // Set camera frustum to exactly frame the face content
+      camera.left = -faceW / 2;
+      camera.right = faceW / 2;
+      camera.top = faceH / 2;
+      camera.bottom = -faceH / 2;
+      camera.updateProjectionMatrix();
+
+      // Call the animate func to update uniforms and toggle visibility for this pane
+      this.tripleSliceRenderFunc(this.renderer, camera, i);
+      // Show only this pane's crosshair lines
+      this.tripleSliceCrosshairs?.showPaneLines(i);
+
+      // Render the volume layer (the Atlas2DSlice plane) for this pane
+      camera.layers.set(VOLUME_LAYER);
+      this.renderer.render(this.scene, camera);
+
+      // Render overlays (crosshairs) for this pane
+      this.renderer.autoClear = false;
+      camera.layers.set(OVERLAY_LAYER);
+      this.renderer.render(this.scene, camera);
+      this.renderer.autoClear = true;
+    }
+
+    // Restore full viewport and disable scissor (in CSS pixels)
+    const dpr = this.renderer.getPixelRatio();
+    const w = this.getWidth() / dpr;
+    const h = this.getHeight() / dpr;
+    this.renderer.setViewport(0, 0, w, h);
+    this.renderer.setScissor(0, 0, w, h);
+    this.renderer.setScissorTest(false);
 
     if (this.dataurlcallback) {
       this.dataurlcallback(this.canvas.toDataURL());
@@ -879,5 +1129,265 @@ export class ThreeJsPanel {
       const instance = Math.round(pixel[1]);
       return instance;
     }
+  }
+
+  // --- Triple-slice interaction ---
+
+  private static readonly CROSSHAIR_GRAB_THRESHOLD = 8;
+
+  enterTripleSliceMode(config: TripleSliceInteractionConfig): void {
+    this.tripleSliceConfig = config;
+
+    // Create crosshairs and add to scene
+    this.tripleSliceCrosshairs = new TripleSliceCrosshairs();
+    this.scene.add(this.tripleSliceCrosshairs.get3dObject());
+    this.updateTripleSliceCrosshairs();
+
+    // Set up pointer handlers
+    this.boundTriplePointerDown = this.onTriplePointerDown.bind(this);
+    this.boundTriplePointerMove = this.onTriplePointerMove.bind(this);
+    this.boundTriplePointerUp = this.onTriplePointerUp.bind(this);
+    this.boundTripleDblClick = this.onTripleDblClick.bind(this);
+    this.containerdiv.addEventListener("pointerdown", this.boundTriplePointerDown);
+    this.containerdiv.addEventListener("pointermove", this.boundTriplePointerMove);
+    this.containerdiv.addEventListener("pointerup", this.boundTriplePointerUp);
+    this.containerdiv.addEventListener("dblclick", this.boundTripleDblClick);
+  }
+
+  exitTripleSliceMode(): void {
+    // Clean up crosshairs
+    if (this.tripleSliceCrosshairs) {
+      this.scene.remove(this.tripleSliceCrosshairs.get3dObject());
+      this.tripleSliceCrosshairs.cleanup();
+      this.tripleSliceCrosshairs = undefined;
+    }
+
+    // Remove pointer handlers
+    if (this.boundTriplePointerDown) {
+      this.containerdiv.removeEventListener("pointerdown", this.boundTriplePointerDown);
+    }
+    if (this.boundTriplePointerMove) {
+      this.containerdiv.removeEventListener("pointermove", this.boundTriplePointerMove);
+    }
+    if (this.boundTriplePointerUp) {
+      this.containerdiv.removeEventListener("pointerup", this.boundTriplePointerUp);
+    }
+    if (this.boundTripleDblClick) {
+      this.containerdiv.removeEventListener("dblclick", this.boundTripleDblClick);
+    }
+    this.boundTriplePointerDown = undefined;
+    this.boundTriplePointerMove = undefined;
+    this.boundTriplePointerUp = undefined;
+    this.boundTripleDblClick = undefined;
+    this.tripleSliceDragging = false;
+    this.tripleSliceDragAxis = undefined;
+    this.tripleSliceConfig = undefined;
+  }
+
+  updateTripleSliceCrosshairs(): void {
+    if (!this.tripleSliceCrosshairs || !this.tripleSliceConfig || !this.tripleViewPhysicalSize) {
+      return;
+    }
+    this.tripleSliceCrosshairs.update(
+      this.tripleSliceConfig.getIndices(),
+      this.tripleSliceConfig.getVolumeSize(),
+      this.tripleViewPhysicalSize
+    );
+  }
+
+  private hitTestTriplePane(clientX: number, clientY: number): "xy" | "yz" | "xz" | null {
+    const panes = this.getTripleViewPanesCSS();
+    if (!panes) {
+      return null;
+    }
+    const rect = this.containerdiv.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    for (const [key, pane] of Object.entries(panes) as [
+      "xy" | "yz" | "xz",
+      { x: number; y: number; w: number; h: number }
+    ][]) {
+      if (x >= pane.x && x <= pane.x + pane.w && y >= pane.y && y <= pane.y + pane.h) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  private pointerToPaneUV(
+    clientX: number,
+    clientY: number,
+    paneKey: "xy" | "yz" | "xz"
+  ): { u: number; v: number } | null {
+    const panes = this.getTripleViewPanesCSS();
+    if (!panes) {
+      return null;
+    }
+    const rect = this.containerdiv.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const pane = panes[paneKey];
+
+    const u = Math.max(0, Math.min(1, (x - pane.x) / pane.w));
+    // v is inverted: top of CSS = 0, but top of UV should be 1
+    const v = Math.max(0, Math.min(1, 1 - (y - pane.y) / pane.h));
+    return { u, v };
+  }
+
+  private hitTestCrosshairLine(clientX: number, clientY: number, paneKey: "xy" | "yz" | "xz"): "u" | "v" | null {
+    if (!this.tripleSliceConfig) {
+      return null;
+    }
+    const panes = this.getTripleViewPanesCSS();
+    if (!panes) {
+      return null;
+    }
+    const containerRect = this.containerdiv.getBoundingClientRect();
+    const mx = clientX - containerRect.left;
+    const my = clientY - containerRect.top;
+    const pane = panes[paneKey];
+
+    const indices = this.tripleSliceConfig.getIndices();
+    const volSize = this.tripleSliceConfig.getVolumeSize();
+
+    // Compute normalized crosshair positions for this pane
+    let uNorm: number; // normalized position of the vertical line
+    let vNorm: number; // normalized position of the horizontal line
+    switch (paneKey) {
+      case "xy":
+        uNorm = volSize.x > 1 ? indices.x / (volSize.x - 1) : 0.5;
+        vNorm = volSize.y > 1 ? indices.y / (volSize.y - 1) : 0.5;
+        break;
+      case "yz":
+        uNorm = volSize.z > 1 ? indices.z / (volSize.z - 1) : 0.5;
+        vNorm = volSize.y > 1 ? indices.y / (volSize.y - 1) : 0.5;
+        break;
+      case "xz":
+        uNorm = volSize.x > 1 ? indices.x / (volSize.x - 1) : 0.5;
+        vNorm = volSize.z > 1 ? indices.z / (volSize.z - 1) : 0.5;
+        break;
+    }
+
+    // Convert to CSS pixel positions within the pane
+    const verticalLineX = pane.x + uNorm * pane.w;
+    const horizontalLineY = pane.y + (1 - vNorm) * pane.h;
+
+    const threshold = ThreeJsPanel.CROSSHAIR_GRAB_THRESHOLD;
+    const distToVertical = Math.abs(mx - verticalLineX);
+    const distToHorizontal = Math.abs(my - horizontalLineY);
+
+    // If both are within threshold, pick the closer one
+    if (distToVertical <= threshold && distToHorizontal <= threshold) {
+      return distToVertical <= distToHorizontal ? "v" : "u";
+    }
+    if (distToVertical <= threshold) {
+      return "v";
+    }
+    if (distToHorizontal <= threshold) {
+      return "u";
+    }
+    return null;
+  }
+
+  private onTriplePointerDown(e: PointerEvent): void {
+    const pane = this.hitTestTriplePane(e.clientX, e.clientY);
+    if (!pane) {
+      return;
+    }
+    const lineHit = this.hitTestCrosshairLine(e.clientX, e.clientY, pane);
+    if (lineHit) {
+      this.tripleSliceDragging = true;
+      this.tripleSliceDragPane = pane;
+      this.tripleSliceDragAxis = lineHit;
+      this.handleTripleSliceDrag(e.clientX, e.clientY, pane, lineHit);
+    }
+  }
+
+  private onTriplePointerMove(e: PointerEvent): void {
+    if (this.tripleSliceDragging && this.tripleSliceDragPane && this.tripleSliceDragAxis) {
+      this.handleTripleSliceDrag(e.clientX, e.clientY, this.tripleSliceDragPane, this.tripleSliceDragAxis);
+    }
+  }
+
+  private onTriplePointerUp(_e: PointerEvent): void {
+    this.tripleSliceDragging = false;
+    this.tripleSliceDragPane = undefined;
+    this.tripleSliceDragAxis = undefined;
+  }
+
+  private onTripleDblClick(e: MouseEvent): void {
+    const pane = this.hitTestTriplePane(e.clientX, e.clientY);
+    if (!pane || !this.tripleSliceConfig) {
+      return;
+    }
+    const uv = this.pointerToPaneUV(e.clientX, e.clientY, pane);
+    if (!uv) {
+      return;
+    }
+
+    const volSize = this.tripleSliceConfig.getVolumeSize();
+
+    // Move both crosshairs to the double-click point
+    switch (pane) {
+      case "xy":
+        this.tripleSliceConfig.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        this.tripleSliceConfig.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        break;
+      case "yz":
+        this.tripleSliceConfig.setSliceIndex("z", Math.round(uv.u * (volSize.z - 1)));
+        this.tripleSliceConfig.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        break;
+      case "xz":
+        this.tripleSliceConfig.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        this.tripleSliceConfig.setSliceIndex("z", Math.round(uv.v * (volSize.z - 1)));
+        break;
+    }
+
+    this.updateTripleSliceCrosshairs();
+    this.tripleSliceConfig.onIndicesChanged(this.tripleSliceConfig.getIndices());
+    this.redraw();
+  }
+
+  private handleTripleSliceDrag(clientX: number, clientY: number, paneKey: "xy" | "yz" | "xz", axis: "u" | "v"): void {
+    if (!this.tripleSliceConfig) {
+      return;
+    }
+    const uv = this.pointerToPaneUV(clientX, clientY, paneKey);
+    if (!uv) {
+      return;
+    }
+
+    const volSize = this.tripleSliceConfig.getVolumeSize();
+
+    // axis "v" → dragging the vertical line → updates the u-coordinate
+    // axis "u" → dragging the horizontal line → updates the v-coordinate
+    switch (paneKey) {
+      case "xy":
+        if (axis === "v") {
+          this.tripleSliceConfig.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        } else {
+          this.tripleSliceConfig.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        }
+        break;
+      case "yz":
+        if (axis === "v") {
+          this.tripleSliceConfig.setSliceIndex("z", Math.round(uv.u * (volSize.z - 1)));
+        } else {
+          this.tripleSliceConfig.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        }
+        break;
+      case "xz":
+        if (axis === "v") {
+          this.tripleSliceConfig.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+        } else {
+          this.tripleSliceConfig.setSliceIndex("z", Math.round(uv.v * (volSize.z - 1)));
+        }
+        break;
+    }
+
+    this.updateTripleSliceCrosshairs();
+    this.tripleSliceConfig.onIndicesChanged(this.tripleSliceConfig.getIndices());
+    this.redraw();
   }
 }
