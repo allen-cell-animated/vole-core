@@ -362,6 +362,7 @@ export default class VolumeDrawable {
       XZ: Axis.Y,
       Z: Axis.Z,
       XY: Axis.Z,
+      TRIPLE: Axis.TRIPLE,
     };
     return modeToAxis[mode] || Axis.NONE;
   }
@@ -373,7 +374,7 @@ export default class VolumeDrawable {
     const axis = this.modeStringToAxis(mode);
     this.viewMode = axis;
     // Force a volume render reset if we have switched to or from Z mode while raymarching is enabled.
-    if (mode.toUpperCase() === "TRIPLE") {
+    if (axis === Axis.TRIPLE) {
       if (this.renderMode !== RenderMode.TRIPLE_SLICE) {
         this.setVolumeRendering(RenderMode.TRIPLE_SLICE);
       }

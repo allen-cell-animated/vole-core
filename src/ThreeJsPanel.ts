@@ -83,8 +83,10 @@ type AnimateFunction = (
 export type TripleSliceInteractionConfig = {
   getIndices: () => { x: number; y: number; z: number };
   getVolumeSize: () => Vector3;
+  getPhysicalSize: () => Vector3;
   setSliceIndex: (axis: "x" | "y" | "z", index: number) => void;
   onIndicesChanged: (indices: { x: number; y: number; z: number }) => void;
+  renderSlice: TripleSliceRenderFunc;
 };
 
 export class ThreeJsPanel {
@@ -136,8 +138,6 @@ export class ThreeJsPanel {
 
   private dataurlcallback?: (url: string) => void;
   private onRenderCallback?: () => void;
-  /** Callback to render individual triple-slice panes (set by View3d) */
-  public tripleSliceRenderFunc?: TripleSliceRenderFunc;
   /** Cached pane layout for triple view (in physical pixels) */
   private tripleViewPanes?: TripleViewPanes;
   /** Physical size of the volume, used for pane layout proportions */
@@ -627,7 +627,13 @@ export class ThreeJsPanel {
   }
 
   switchViewMode(mode: string): void {
+    const wasTriple = this.viewMode === Axis.TRIPLE;
     mode = mode.toUpperCase();
+
+    if (wasTriple) {
+      this.exitTripleSliceMode();
+    }
+
     switch (mode) {
       case "YZ":
       case "X":
@@ -651,6 +657,7 @@ export class ThreeJsPanel {
         this.viewMode = Axis.Z;
         break;
       case "TRIPLE":
+        this.replaceCamera(this.orthographicCameraZ);
         // In triple mode, disable all controls — no rotate/zoom/pan
         this.perspectiveControls.enabled = false;
         this.orthoControlsX.enabled = false;
@@ -658,6 +665,7 @@ export class ThreeJsPanel {
         this.orthoControlsZ.enabled = false;
         this.controls.enabled = false;
         this.viewMode = Axis.TRIPLE;
+        this.enterTripleSliceMode();
         break;
       default:
         this.replaceCamera(this.perspectiveCamera);
@@ -678,12 +686,23 @@ export class ThreeJsPanel {
   }
 
   /**
-   * Sets the physical size for triple-view pane layout proportions.
-   * Must be called before entering TRIPLE mode to get correct pane sizing.
+   * Sets the triple-slice interaction config. Call this before switching to TRIPLE view mode.
+   * The config provides callbacks for rendering, interaction, and layout.
    */
-  setTripleViewPhysicalSize(physicalSize: Vector3): void {
-    this.tripleViewPhysicalSize = physicalSize.clone();
-    this.tripleViewPanes = undefined; // invalidate cache
+  setTripleSliceConfig(config: TripleSliceInteractionConfig | undefined): void {
+    this.tripleSliceConfig = config;
+  }
+
+  /** Refreshes cached physical size from config, invalidating pane cache if changed. */
+  private refreshTriplePhysicalSize(): void {
+    if (!this.tripleSliceConfig) {
+      return;
+    }
+    const newSize = this.tripleSliceConfig.getPhysicalSize();
+    if (!this.tripleViewPhysicalSize || !this.tripleViewPhysicalSize.equals(newSize)) {
+      this.tripleViewPhysicalSize = newSize.clone();
+      this.tripleViewPanes = undefined;
+    }
   }
 
   /**
@@ -953,9 +972,11 @@ export class ThreeJsPanel {
    * Uses a single Z-facing orthographic camera with per-pane frustum adjustment.
    */
   private renderTriple(): void {
-    if (!this.tripleSliceRenderFunc) {
+    if (!this.tripleSliceConfig) {
       return;
     }
+
+    this.refreshTriplePhysicalSize();
 
     const panes = this.computeTripleViewPanes();
     const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
@@ -991,7 +1012,7 @@ export class ThreeJsPanel {
       camera.updateProjectionMatrix();
 
       // Call the animate func to update uniforms and toggle visibility for this pane
-      this.tripleSliceRenderFunc(this.renderer, camera, i);
+      this.tripleSliceConfig!.renderSlice(this.renderer, camera, i);
       // Show only this pane's crosshair lines
       this.tripleSliceCrosshairs?.showPaneLines(i);
 
@@ -1135,8 +1156,12 @@ export class ThreeJsPanel {
 
   private static readonly CROSSHAIR_GRAB_THRESHOLD = 8;
 
-  enterTripleSliceMode(config: TripleSliceInteractionConfig): void {
-    this.tripleSliceConfig = config;
+  private enterTripleSliceMode(): void {
+    if (!this.tripleSliceConfig) {
+      return;
+    }
+
+    this.refreshTriplePhysicalSize();
 
     // Create crosshairs and add to scene
     this.tripleSliceCrosshairs = new TripleSliceCrosshairs();
@@ -1154,7 +1179,7 @@ export class ThreeJsPanel {
     this.containerdiv.addEventListener("dblclick", this.boundTripleDblClick);
   }
 
-  exitTripleSliceMode(): void {
+  private exitTripleSliceMode(): void {
     // Clean up crosshairs
     if (this.tripleSliceCrosshairs) {
       this.scene.remove(this.tripleSliceCrosshairs.get3dObject());
@@ -1181,10 +1206,10 @@ export class ThreeJsPanel {
     this.boundTripleDblClick = undefined;
     this.tripleSliceDragging = false;
     this.tripleSliceDragAxis = undefined;
-    this.tripleSliceConfig = undefined;
   }
 
   updateTripleSliceCrosshairs(): void {
+    this.refreshTriplePhysicalSize();
     if (!this.tripleSliceCrosshairs || !this.tripleSliceConfig || !this.tripleViewPhysicalSize) {
       return;
     }
