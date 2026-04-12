@@ -30,7 +30,7 @@ import type {
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
-import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
+import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import TripleSliceVolume from "./TripleSliceVolume.js";
 import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
@@ -81,6 +81,14 @@ export default class VolumeDrawable {
   /** Returns the current triple slice indices. */
   get tripleSliceIndices(): { x: number; y: number; z: number } {
     return this.settings.tripleSliceIndices;
+  }
+
+  /** Returns the TripleSliceSource if currently in triple-slice render mode, otherwise undefined. */
+  getTripleSliceSource(): TripleSliceSource | undefined {
+    if (this.renderMode === RenderMode.TRIPLE_SLICE && this.volumeRendering instanceof TripleSliceVolume) {
+      return this.volumeRendering;
+    }
+    return undefined;
   }
 
   constructor(volume: Volume, options: VolumeDisplayOptions) {
@@ -368,7 +376,7 @@ export default class VolumeDrawable {
   }
   /**
    * Sets the camera mode of the VolumeDrawable.
-   * @param mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y".
+   * @param mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y", or "TRIPLE".
    */
   setViewMode(mode: string, volumeRenderModeHint: RenderMode.PATHTRACE | RenderMode.RAYMARCH): void {
     const axis = this.modeStringToAxis(mode);
@@ -995,24 +1003,16 @@ export default class VolumeDrawable {
    * @param index Integer voxel index along that axis
    */
   setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
-    const volSize = this.volume.imageInfo.volumeSize;
-    const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
-    this.settings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
-    this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
-    this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
-  }
-
-  /**
-   * Renders all three slices in triple mode. Call once per frame for each camera/viewport.
-   */
-  onAnimateTripleSlice(
-    renderer: WebGLRenderer,
-    camera: PerspectiveCamera | OrthographicCamera,
-    sliceIndex: number
-  ): void {
-    if (this.renderMode === RenderMode.TRIPLE_SLICE) {
-      (this.volumeRendering as TripleSliceVolume).onAnimate(renderer, camera, sliceIndex);
+    const source = this.getTripleSliceSource();
+    if (source) {
+      source.setSliceIndex(axis, index);
+    } else {
+      // Fallback: update settings directly even if not in triple mode
+      const volSize = this.volume.imageInfo.volumeSize;
+      const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
+      this.settings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
     }
+    this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
   }
 
   get showBoundingBox(): boolean {

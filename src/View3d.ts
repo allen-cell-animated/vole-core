@@ -441,6 +441,7 @@ export class View3d {
     // If we were in triple mode, re-enter it with the new image
     if (wasTriple) {
       this.image.setViewMode("TRIPLE", this.volumeRenderMode);
+      this.canvas3d.setTripleSliceSource(this.image.getTripleSliceSource());
     }
 
     // redraw if not already in draw loop
@@ -538,22 +539,21 @@ export class View3d {
    *   and TRIPLE shows three linked orthographic slices (XY, YZ, XZ).
    */
   setCameraMode(mode: string): void {
+    // setViewMode must be called before switchViewMode so that the TripleSliceVolume
+    // is created (by VolumeDrawable) before ThreeJsPanel needs the source reference.
+    this.image?.setViewMode(mode, this.volumeRenderMode);
+    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
+
     if (mode.toUpperCase() === "TRIPLE" && this.image) {
-      this.canvas3d.setTripleSliceConfig({
-        getIndices: () => this.image?.tripleSliceIndices ?? { x: 0, y: 0, z: 0 },
-        getVolumeSize: () => this.image?.volume.imageInfo.volumeSize ?? new Vector3(1, 1, 1),
-        getPhysicalSize: () => this.image?.volume.normPhysicalSize ?? new Vector3(1, 1, 1),
-        setSliceIndex: (axis, index) => this.image?.setTripleSliceIndex(axis, index),
-        onIndicesChanged: (indices) => this.tripleSliceCallback?.(indices),
-        renderSlice: (renderer, camera, sliceIndex) => {
-          this.image?.onAnimateTripleSlice(renderer, camera, sliceIndex);
-        },
-      });
+      const source = this.image.getTripleSliceSource();
+      this.canvas3d.setTripleSliceSource(source);
+      this.canvas3d.setTripleSliceChangeCallback((indices) => this.tripleSliceCallback?.(indices));
+    } else {
+      this.canvas3d.setTripleSliceSource(undefined);
+      this.canvas3d.setTripleSliceChangeCallback(undefined);
     }
 
     this.canvas3d.switchViewMode(mode);
-    this.image?.setViewMode(mode, this.volumeRenderMode);
-    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
 
     this.canvas3d.redraw();
   }
@@ -940,7 +940,7 @@ export class View3d {
     this.volumeRenderMode = mode;
     if (this.image) {
       const viewMode = this.image.getViewMode();
-      if (viewMode === Axis.Z) {
+      if (viewMode === Axis.Z || viewMode === Axis.TRIPLE) {
         // if the camera view is in single-slice view, then we don't want to change
         // anything but still remember the mode for when we switch back to a volumetric view
         return;

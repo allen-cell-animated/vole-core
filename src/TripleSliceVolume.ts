@@ -14,7 +14,7 @@ import Atlas2DSlice from "./Atlas2DSlice.js";
 import Channel from "./Channel.js";
 import Volume from "./Volume.js";
 import type { FuseChannel } from "./types.js";
-import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
+import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 
 /**
@@ -22,12 +22,13 @@ import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
  * for triple-slice mode. All three share the XY renderer's fused channel data
  * so only one GPU texture fusion is needed.
  */
-export default class TripleSliceVolume implements VolumeRenderImpl {
+export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceSource {
   private renderers: [Atlas2DSlice, Atlas2DSlice, Atlas2DSlice];
   private group: Group;
   private volume: Volume;
   private baseSettings: VolumeRenderSettings;
   private lastVolumeSize: Vector3;
+  private currentPane = 0;
 
   constructor(volume: Volume, settings: VolumeRenderSettings) {
     this.volume = volume;
@@ -86,7 +87,13 @@ export default class TripleSliceVolume implements VolumeRenderImpl {
     _camera: PerspectiveCamera | OrthographicCamera,
     _depthTexture?: DepthTexture | Texture | null
   ): void {
-    // No-op: triple rendering is per-pane, driven by ThreeJsPanel's renderTriple() callback
+    const pane = this.currentPane;
+    // Toggle visibility so only the active pane's geometry renders
+    for (let i = 0; i < 3; i++) {
+      this.renderers[i].get3dObject().visible = i === pane;
+    }
+    this.renderers[pane].doRender(_renderer, _camera);
+    this.currentPane = (this.currentPane + 1) % 3;
   }
 
   updateVolumeDimensions(): void {
@@ -159,17 +166,25 @@ export default class TripleSliceVolume implements VolumeRenderImpl {
     return this.baseSettings.tripleSliceIndices;
   }
 
+  /** Returns the volume dimensions in voxels. */
+  getVolumeSize(): Vector3 {
+    return this.volume.imageInfo.volumeSize;
+  }
+
+  /** Returns the normalized physical size of the volume. */
+  getPhysicalSize(): Vector3 {
+    return this.volume.normPhysicalSize;
+  }
+
   /**
-   * Per-pane render callback for triple mode. Toggles visibility so only the active
-   * pane's geometry renders, then calls doRender on that renderer.
+   * Sets the slice index for a given axis, clamping to valid range.
+   * Updates the corresponding internal renderer.
    */
-  onAnimate(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera, sliceIndex: number): void {
-    for (let i = 0; i < 3; i++) {
-      this.renderers[i].get3dObject().visible = i === sliceIndex;
-    }
-    camera.updateMatrixWorld(true);
-    camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    this.renderers[sliceIndex].doRender(renderer, camera);
+  setSliceIndex(axis: "x" | "y" | "z", index: number): void {
+    const volSize = this.volume.imageInfo.volumeSize;
+    const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
+    this.baseSettings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
+    this.applySliceToRenderer(axis);
   }
 
   /** Returns the three internal Atlas2DSlice renderers [XY, YZ, XZ]. */
