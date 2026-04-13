@@ -589,6 +589,9 @@ export default class VolumeDrawable {
       }
     }
 
+    this.volumeRendering.updateActiveChannels(this.fusion, this.volume.channels);
+    this.volumeRendering.updateSettings(this.settings, SettingsFlags.MASK_DATA);
+
     // let the outside world have a chance
     this.onChannelDataReadyCallback?.();
   }
