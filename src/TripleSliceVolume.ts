@@ -1,7 +1,11 @@
 import {
   Box3,
+  BufferGeometry,
   DepthTexture,
+  Float32BufferAttribute,
   Group,
+  Line,
+  LineBasicMaterial,
   Object3D,
   OrthographicCamera,
   PerspectiveCamera,
@@ -12,6 +16,7 @@ import {
 
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import Channel from "./Channel.js";
+import { OVERLAY_LAYER } from "./ThreeJsPanel.js";
 import Volume from "./Volume.js";
 import type { FuseChannel } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
@@ -27,13 +32,15 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private group: Group;
   private volume: Volume;
   private baseSettings: VolumeRenderSettings;
-  private lastVolumeSize: Vector3;
   private currentPane = 0;
+
+  // Crosshair lines: 2 per pane (vertical + horizontal)
+  private crosshairMaterial: LineBasicMaterial;
+  private crosshairLines: [Line, Line, Line, Line, Line, Line]; // [xyV, xyH, yzV, yzH, xzV, xzH]
 
   constructor(volume: Volume, settings: VolumeRenderSettings) {
     this.volume = volume;
     this.baseSettings = settings;
-    this.lastVolumeSize = volume.imageInfo.volumeSize.clone();
 
     const xySlice = new Atlas2DSlice(volume, settings.clone());
     xySlice.setViewAxis(0);
@@ -60,8 +67,24 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     // Request full volume data for YZ/XZ slicing
     volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
 
+    // Create crosshair overlay lines (2 per pane, on OVERLAY_LAYER)
+    this.crosshairMaterial = new LineBasicMaterial({ color: 0xffffff, depthTest: false, depthWrite: false });
+    this.crosshairLines = [
+      this.createCrosshairLine(),
+      this.createCrosshairLine(),
+      this.createCrosshairLine(),
+      this.createCrosshairLine(),
+      this.createCrosshairLine(),
+      this.createCrosshairLine(),
+    ];
+    // Add each pair to its renderer's Group
+    this.renderers[0].get3dObject().add(this.crosshairLines[0], this.crosshairLines[1]);
+    this.renderers[1].get3dObject().add(this.crosshairLines[2], this.crosshairLines[3]);
+    this.renderers[2].get3dObject().add(this.crosshairLines[4], this.crosshairLines[5]);
+
     // Apply initial slice indices to renderers
     this.applyAllSliceIndices();
+    this.updateCrosshairs();
   }
 
   // --- VolumeRenderImpl interface ---
@@ -104,22 +127,22 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     this.renderers[1].setSharedChannelData(this.renderers[0].getChannelData());
     this.renderers[2].setSharedChannelData(this.renderers[0].getChannelData());
 
-    // Rescale indices if volumeSize changed (resolution change during async load)
-    const newVolSize = this.volume.imageInfo.volumeSize;
-    const oldVolSize = this.lastVolumeSize;
-    if (newVolSize.x !== oldVolSize.x || newVolSize.y !== oldVolSize.y || newVolSize.z !== oldVolSize.z) {
-      const rescale = (idx: number, oldMax: number, newMax: number) =>
-        Math.round(oldMax > 1 && newMax > 1 ? (idx * (newMax - 1)) / (oldMax - 1) : Math.floor(newMax / 2));
-      const indices = this.baseSettings.tripleSliceIndices;
-      indices.x = rescale(indices.x, oldVolSize.x, newVolSize.x);
-      indices.y = rescale(indices.y, oldVolSize.y, newVolSize.y);
-      indices.z = rescale(indices.z, oldVolSize.z, newVolSize.z);
-      this.lastVolumeSize.copy(newVolSize);
-      this.applyAllSliceIndices();
-    }
+    // Clamp indices to current volume bounds (resolution may differ across mode switches)
+    const volSize = this.volume.imageInfo.volumeSize;
+    const indices = this.baseSettings.tripleSliceIndices;
+    indices.x = Math.min(indices.x, Math.max(0, volSize.x - 1));
+    indices.y = Math.min(indices.y, Math.max(0, volSize.y - 1));
+    indices.z = Math.min(indices.z, Math.max(0, volSize.z - 1));
+    this.applyAllSliceIndices();
+    this.updateCrosshairs();
   }
 
   cleanup(): void {
+    // Dispose crosshair resources
+    this.crosshairMaterial.dispose();
+    for (const line of this.crosshairLines) {
+      line.geometry.dispose();
+    }
     // Clean up non-primary renderers first (they share primary's channel data)
     this.renderers[1].cleanup();
     this.renderers[2].cleanup();
@@ -185,6 +208,52 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
     this.baseSettings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
     this.applySliceToRenderer(axis);
+    this.updateCrosshairs();
+  }
+
+  /** Updates crosshair line positions based on current indices, volume size, and physical size. */
+  updateCrosshairs(): void {
+    const indices = this.baseSettings.tripleSliceIndices;
+    const volumeSize = this.volume.imageInfo.volumeSize;
+    const phys = this.volume.normPhysicalSize;
+
+    const nx = volumeSize.x > 1 ? (indices.x / (volumeSize.x - 1) - 0.5) * phys.x : 0;
+    const ny = volumeSize.y > 1 ? (indices.y / (volumeSize.y - 1) - 0.5) * phys.y : 0;
+    const nz = volumeSize.z > 1 ? (indices.z / (volumeSize.z - 1) - 0.5) * phys.z : 0;
+
+    const halfPx = phys.x * 0.5;
+    const halfPy = phys.y * 0.5;
+    const halfPz = phys.z * 0.5;
+
+    const [xyV, xyH, yzV, yzH, xzV, xzH] = this.crosshairLines;
+
+    // XY pane: vertical at x=nx spanning Y, horizontal at y=ny spanning X
+    this.setCrosshairEndpoints(xyV, [nx, -halfPy, 0], [nx, halfPy, 0]);
+    this.setCrosshairEndpoints(xyH, [-halfPx, ny, 0], [halfPx, ny, 0]);
+
+    // YZ pane: vertical at display X=nz spanning Y, horizontal at y=ny spanning Z
+    this.setCrosshairEndpoints(yzV, [nz, -halfPy, 0], [nz, halfPy, 0]);
+    this.setCrosshairEndpoints(yzH, [-halfPz, ny, 0], [halfPz, ny, 0]);
+
+    // XZ pane: vertical at display X=nx spanning Z, horizontal at y=nz spanning X
+    this.setCrosshairEndpoints(xzV, [nx, -halfPz, 0], [nx, halfPz, 0]);
+    this.setCrosshairEndpoints(xzH, [-halfPx, nz, 0], [halfPx, nz, 0]);
+  }
+
+  private createCrosshairLine(): Line {
+    const geom = new BufferGeometry();
+    geom.setAttribute("position", new Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
+    const line = new Line(geom, this.crosshairMaterial);
+    line.layers.set(OVERLAY_LAYER);
+    line.frustumCulled = false;
+    return line;
+  }
+
+  private setCrosshairEndpoints(line: Line, p1: [number, number, number], p2: [number, number, number]): void {
+    const posAttr = line.geometry.getAttribute("position");
+    posAttr.setXYZ(0, p1[0], p1[1], p1[2]);
+    posAttr.setXYZ(1, p2[0], p2[1], p2[2]);
+    posAttr.needsUpdate = true;
   }
 
   /** Returns the three internal Atlas2DSlice renderers [XY, YZ, XZ]. */

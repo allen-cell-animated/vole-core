@@ -29,7 +29,6 @@ import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.j
 import { Axis } from "./VolumeRenderSettings.js";
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
 import RenderToBuffer from "./RenderToBuffer.js";
-import TripleSliceCrosshairs from "./TripleSliceCrosshairs.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
@@ -129,7 +128,6 @@ export class ThreeJsPanel {
   private tripleViewPhysicalSize?: Vector3;
   /** Dedicated orthographic camera for triple-view pane rendering */
   private triplePaneCamera: OrthographicCamera;
-  private tripleSliceCrosshairs?: TripleSliceCrosshairs;
   private tripleSliceSource?: TripleSliceSource;
   private tripleSliceChangeCallback?: (indices: { x: number; y: number; z: number }) => void;
   private tripleSliceDragging = false;
@@ -1012,9 +1010,6 @@ export class ThreeJsPanel {
         }
       }
 
-      // Show only this pane's crosshair lines
-      this.tripleSliceCrosshairs?.showPaneLines(i);
-
       // Render the volume layer (the Atlas2DSlice plane) for this pane
       camera.layers.set(VOLUME_LAYER);
       this.renderer.render(this.scene, camera);
@@ -1161,11 +1156,7 @@ export class ThreeJsPanel {
     }
 
     this.refreshTriplePhysicalSize();
-
-    // Create crosshairs and add to scene
-    this.tripleSliceCrosshairs = new TripleSliceCrosshairs();
-    this.scene.add(this.tripleSliceCrosshairs.get3dObject());
-    this.updateTripleSliceCrosshairs();
+    this.tripleSliceSource.updateCrosshairs();
 
     // Set up pointer handlers
     this.boundTriplePointerDown = this.onTriplePointerDown.bind(this);
@@ -1179,13 +1170,6 @@ export class ThreeJsPanel {
   }
 
   private exitTripleSliceMode(): void {
-    // Clean up crosshairs
-    if (this.tripleSliceCrosshairs) {
-      this.scene.remove(this.tripleSliceCrosshairs.get3dObject());
-      this.tripleSliceCrosshairs.cleanup();
-      this.tripleSliceCrosshairs = undefined;
-    }
-
     // Remove pointer handlers
     if (this.boundTriplePointerDown) {
       this.containerdiv.removeEventListener("pointerdown", this.boundTriplePointerDown);
@@ -1209,14 +1193,7 @@ export class ThreeJsPanel {
 
   updateTripleSliceCrosshairs(): void {
     this.refreshTriplePhysicalSize();
-    if (!this.tripleSliceCrosshairs || !this.tripleSliceSource || !this.tripleViewPhysicalSize) {
-      return;
-    }
-    this.tripleSliceCrosshairs.update(
-      this.tripleSliceSource.getIndices(),
-      this.tripleSliceSource.getVolumeSize(),
-      this.tripleViewPhysicalSize
-    );
+    this.tripleSliceSource?.updateCrosshairs();
   }
 
   private hitTestTriplePane(clientX: number, clientY: number): "xy" | "yz" | "xz" | null {
