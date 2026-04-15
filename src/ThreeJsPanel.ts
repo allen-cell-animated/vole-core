@@ -768,6 +768,7 @@ export class ThreeJsPanel {
       this.dataurlcallback(this.canvas.toDataURL());
       this.dataurlcallback = undefined;
     }
+    console.log('render complete');
   }
 
   redraw(): void {
@@ -779,21 +780,29 @@ export class ThreeJsPanel {
       }
       this.timer.begin();
       this.requestedRender = requestAnimationFrame(this.onAnimationLoop.bind(this));
+    } else {
+      console.log('redraw dropped');
     }
   }
 
   onAnimationLoop(): void {
-    // delta is in seconds
     this.timer.update();
     const delta = this.timer.lastFrameMs / 1000.0;
-
     this.controls.update(delta);
-
     this.render();
+    // Temp debug: draw a counter directly on the canvas
+    const ctx = this.canvas.getContext('2d');
+    if (ctx) {
+      ctx.fillStyle = 'red';
+      ctx.fillRect(0, 0, 50, 20);
+      ctx.fillStyle = 'white';
+      ctx.fillText(String(Date.now()), 5, 14);
+    }
     this.onRenderCallback?.();
   }
 
   startRenderLoop(): void {
+    console.log('startRenderLoop');
     this.inRenderLoop = true;
     // reset the timer so that the time delta won't go back to the last time we were animating.
     this.timer.begin();
@@ -801,6 +810,7 @@ export class ThreeJsPanel {
   }
 
   stopRenderLoop(): void {
+    console.log('stopRenderLoop');
     this.renderer.setAnimationLoop(null);
     this.inRenderLoop = false;
 

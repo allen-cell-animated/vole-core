@@ -82,8 +82,6 @@ export default class VolumeDrawable {
     this.volume = volume;
     this.settings = new VolumeRenderSettings(volume);
 
-    this.onChannelDataReadyCallback = undefined;
-
     this.viewMode = Axis.NONE; // 3D mode
 
     this.channelColors = this.volume.channelColorsDefault.slice();

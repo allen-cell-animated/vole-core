@@ -24,6 +24,61 @@ import {
   FloatType,
 } from "three";
 
+class Timer {
+  private beginTime: number;
+  private prevTime: number;
+  private frameLengths: number[];
+  public lastFrameMs: number;
+
+  constructor() {
+    this.beginTime = (performance || Date).now();
+    this.prevTime = this.beginTime;
+    this.lastFrameMs = 0;
+    this.frameLengths = [];
+  }
+
+  begin(): void {
+    this.beginTime = (performance || Date).now();
+    this.prevTime = this.beginTime;
+    this.lastFrameMs = 0;
+    this.frameLengths = [];
+  }
+
+  update(): void {
+    const time = (performance || Date).now();
+    this.lastFrameMs = time - this.prevTime;
+    this.frameLengths.push(this.lastFrameMs);
+    this.prevTime = time;
+  }
+
+  get avgFPS(): number {
+    return this.frameLengths.length * 1000 / (this.prevTime - this.beginTime);
+  }
+
+  // Coefficient of variaation (stddev / mean) of the time between frames
+  get timingCV(): number {
+    const sum = this.frameLengths.reduce((acc, next) => acc + next);
+    const mean = sum / this.frameLengths.length;
+    const variance = (this.frameLengths
+      .map(val => (val - mean) ** 2)
+      .reduce((acc, next) => acc + next)
+    ) / this.frameLengths.length;
+    console.log('mean', mean, 'variance', variance);
+    console.log(this.frameLengths);
+    return Math.sqrt(variance) / mean;
+  }
+
+  printStats(): void {
+    console.log(this.frameLengths.length, "frames,", this.avgFPS, "FPS, CV =", this.timingCV);
+  }
+}
+
+declare global {
+  // Note the capital "W"
+  interface Window { timer: Timer; }
+}
+window.timer = new Timer();
+
 import Channel from "./Channel.js";
 import { renderToBufferVertShader } from "./constants/basicShaders.js";
 import fuseShaderSrcUI from "./constants/shaders/fuseUI.frag";
@@ -272,6 +327,7 @@ export default class FusedChannelData {
       }
     });
     this.fuseScene.clear();
+    let anyChannelAdded = false;
     for (let i = 0; i < combination.length; ++i) {
       const chIndex = combination[i].chIndex;
       const snap = combination[i].snapshot;
@@ -313,6 +369,7 @@ export default class FusedChannelData {
         mat.uniforms.lutSampler.value = snap.lutTexture;
       }
       this.fuseScene.add(new Mesh(this.fuseGeometry, mat));
+      anyChannelAdded = true;
     }
     if (this.fuseScene.children.length > 0) {
       renderer.setRenderTarget(this.fuseRenderTarget);
@@ -324,6 +381,11 @@ export default class FusedChannelData {
       renderer.render(this.fuseScene, this.quadCamera);
       renderer.setRenderTarget(null);
       renderer.setClearColor(prevClearColor, prevClearAlpha);
+      // console.log('new frame rendered');
+      window.timer.update();
+      window.timer.printStats();
+    } else {
+      console.log('frame dropped?');
     }
     // "dirty flag"
     this.fuseRequested = null;
