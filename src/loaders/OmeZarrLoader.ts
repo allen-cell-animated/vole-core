@@ -86,8 +86,10 @@ type ZarrChunkFetchInfo = {
   coords: number[];
 };
 
-const DEFAULT_FETCH_OPTIONS = {
-  maxPrefetchDistance: [5, 5, 5, 5] as [number, number, number, number],
+const DEFAULT_FETCH_OPTIONS: ZarrLoaderFetchOptions = {
+  // Make sure maxPrefetchDistance in T is large enough that during playback in
+  // T, Vol-E is almost always prefetching in T.
+  maxPrefetchDistance: [30, 5, 5, 5] as [number, number, number, number],
   maxPrefetchChunks: 30,
 };
 
