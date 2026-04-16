@@ -86,9 +86,10 @@ type ZarrChunkFetchInfo = {
   coords: number[];
 };
 
-const DEFAULT_FETCH_OPTIONS = {
-  maxPrefetchDistance: [5, 5, 5, 5] as [number, number, number, number],
-  maxPrefetchChunks: 30,
+const DEFAULT_FETCH_OPTIONS: ZarrLoaderFetchOptions = {
+  maxPrefetchDistance: [6, 5, 5, 5] as [number, number, number, number],
+  maxPrefetchChunks: 6,
+  onlyPriorityDirections: true,
 };
 
 class OMEZarrLoader extends ThreadableVolumeLoader {
