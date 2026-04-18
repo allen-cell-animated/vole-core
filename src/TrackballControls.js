@@ -11,7 +11,6 @@ import { EventDispatcher, Quaternion, Vector2, Vector3, MOUSE } from "three";
 // linting rules just for this file, to allow it to keep a similar form to the
 // original.
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-this-alias */
 class TrackballControls extends EventDispatcher {
   constructor(object, domElement) {
