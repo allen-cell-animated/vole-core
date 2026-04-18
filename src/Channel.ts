@@ -1,6 +1,5 @@
 import {
   DataTexture,
-  LuminanceFormat,
   RedFormat,
   RedIntegerFormat,
   UnsignedByteType,
@@ -16,8 +15,8 @@ import {
   UVMapping,
   ClampToEdgeWrapping,
   Vector3,
-  PixelFormatGPU,
-  PixelFormat,
+  type PixelFormatGPU,
+  type PixelFormat,
   TextureDataType,
 } from "three";
 import Histogram from "./Histogram.js";
@@ -114,7 +113,7 @@ export default class Channel {
       }
     }
 
-    this.lutTexture.image.data.set(ret);
+    this.lutTexture.image.data = ret;
     this.lutTexture.needsUpdate = true;
 
     return ret;
@@ -157,7 +156,7 @@ export default class Channel {
     if (this.dataTexture) {
       this.dataTexture.dispose();
     }
-    let format: PixelFormat = LuminanceFormat;
+    let format: PixelFormat = RedFormat;
     let dataType: TextureDataType = UnsignedByteType;
     let internalFormat: PixelFormatGPU = "LUMINANCE";
     switch (this.dtype) {
