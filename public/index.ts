@@ -1,7 +1,7 @@
 import { Color, Vector3 } from "three";
 import GUI from "lil-gui";
 
-import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer";
+import { colormaps as colorizercolormaps, features as colorizerfeatures } from "./colorizer.js";
 import {
   CreateLoaderOptions,
   ImageInfo,
@@ -19,13 +19,13 @@ import {
   RENDERMODE_RAYMARCH,
   SKY_LIGHT,
   VolumeFileFormat,
-} from "../src";
+} from "../src/index.js";
 // special loader really just for this demo app but lives with the other loaders
-import { OpenCellLoader } from "../src/loaders/OpenCellLoader";
-import { State, TestDataSpec } from "./types";
-import VolumeLoaderContext from "../src/workers/VolumeLoaderContext";
-import { DATARANGE_UINT8, ColorizeFeature, type NumberType } from "../src/types";
-import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader";
+import { OpenCellLoader } from "../src/loaders/OpenCellLoader.js";
+import { State, TestDataSpec } from "./types.js";
+import VolumeLoaderContext from "../src/workers/VolumeLoaderContext.js";
+import { DATARANGE_UINT8, ColorizeFeature, type NumberType } from "../src/types.js";
+import { RawArrayLoaderOptions } from "../src/loaders/RawArrayLoader.js";
 
 const CACHE_MAX_SIZE = 1_000_000_000;
 const CONCURRENCY_LIMIT = 8;

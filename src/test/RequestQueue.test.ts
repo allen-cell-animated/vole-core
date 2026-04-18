@@ -3,8 +3,8 @@ import { vi } from "vitest";
 import { Vector3 } from "three";
 import type { TypedArray } from "zarrita";
 
-import RequestQueue, { Request } from "../utils/RequestQueue";
-import { LoadSpec, loadSpecToString } from "../loaders/IVolumeLoader";
+import RequestQueue, { type Request } from "../utils/RequestQueue.js";
+import { LoadSpec, loadSpecToString } from "../loaders/IVolumeLoader.js";
 
 /**
  * Returns a promise that resolves once the timeout (give in ms) is completed.

@@ -60,8 +60,10 @@ export default function wrapArray<
   });
 }
 
+type NewFetchStoreOptions = ConstructorParameters<typeof FetchStore>[1];
+
 export class RelaxedFetchStore extends FetchStore {
-  constructor(baseUrl: string, options?: RequestInit) {
+  constructor(baseUrl: string, options?: NewFetchStoreOptions) {
     super(baseUrl, options);
   }
 

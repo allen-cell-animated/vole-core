@@ -1,4 +1,4 @@
-import VolumeCache from "../VolumeCache";
+import VolumeCache from "../VolumeCache.js";
 
 describe("VolumeCache", () => {
   it("creates an empty cache with the specified max size", () => {
