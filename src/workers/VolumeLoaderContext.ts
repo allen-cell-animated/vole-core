@@ -1,5 +1,5 @@
 import { deserializeError } from "serialize-error";
-import throttledQueue from "throttled-queue";
+import { throttledQueue } from "throttled-queue";
 
 import { ImageInfo } from "../ImageInfo.js";
 import { VolumeDims } from "../VolumeDims.js";
@@ -31,7 +31,7 @@ type StoredPromise<T extends WorkerMsgType> = {
   reject: (reason?: unknown) => void;
 };
 
-const throttle = throttledQueue(1, 16);
+const throttle = throttledQueue({ maxPerInterval: 1, interval: 16 });
 /**
  * A handle that holds the worker and manages requests and messages to/from it.
  *
