@@ -16,7 +16,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import { Channel, Volume } from ".";
+import { Channel, Volume } from "./index.js";
 import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";

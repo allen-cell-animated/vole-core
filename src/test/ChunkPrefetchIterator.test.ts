@@ -1,6 +1,5 @@
-import { TCZYX } from "../loaders/zarr_utils/types";
-import ChunkPrefetchIterator from "../loaders/zarr_utils/ChunkPrefetchIterator";
-import { PrefetchDirection } from "../loaders/zarr_utils/types";
+import { PrefetchDirection, type TCZYX } from "../loaders/zarr_utils/types.js";
+import ChunkPrefetchIterator from "../loaders/zarr_utils/ChunkPrefetchIterator.js";
 
 const EXPECTED_3X3X3X3 = [
   [0, 0, 1, 1, 1], // T-
