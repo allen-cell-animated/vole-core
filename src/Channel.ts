@@ -256,19 +256,14 @@ export default class Channel {
 
     const numXtiles = this.imgData.width / x;
     const atlasrow = this.imgData.width;
-    let tilex = 0,
-      tiley = 0,
-      tileoffset = 0,
-      tilerowoffset = 0,
-      destOffset = 0;
     for (let i = 0; i < z; ++i) {
       // tile offset
-      tilex = i % numXtiles;
-      tiley = Math.floor(i / numXtiles);
-      tileoffset = tilex * x + tiley * y * atlasrow;
+      const tilex = i % numXtiles;
+      const tiley = Math.floor(i / numXtiles);
+      const tileoffset = tilex * x + tiley * y * atlasrow;
       for (let j = 0; j < y; ++j) {
-        tilerowoffset = j * atlasrow;
-        destOffset = i * (x * y) + j * x;
+        const tilerowoffset = j * atlasrow;
+        const destOffset = i * (x * y) + j * x;
         this.volumeData.set(
           volimgdata.subarray(tileoffset + tilerowoffset, tileoffset + tilerowoffset + x),
           destOffset
@@ -332,19 +327,14 @@ export default class Channel {
 
     const numXtiles = this.imgData.width / x;
     const atlasrow = this.imgData.width;
-    let tilex = 0,
-      tiley = 0,
-      tileoffset = 0,
-      tilerowoffset = 0,
-      sourceOffset = 0;
     for (let i = 0; i < z; ++i) {
       // tile offset
-      tilex = i % numXtiles;
-      tiley = Math.floor(i / numXtiles);
-      tileoffset = tilex * x + tiley * y * atlasrow;
+      const tilex = i % numXtiles;
+      const tiley = Math.floor(i / numXtiles);
+      const tileoffset = tilex * x + tiley * y * atlasrow;
       for (let j = 0; j < y; ++j) {
-        tilerowoffset = j * atlasrow;
-        sourceOffset = i * (x * y) + j * x;
+        const tilerowoffset = j * atlasrow;
+        const sourceOffset = i * (x * y) + j * x;
         volimgdata.set(this.volumeData.subarray(sourceOffset, sourceOffset + x), tileoffset + tilerowoffset);
       }
     }

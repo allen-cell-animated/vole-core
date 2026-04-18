@@ -460,7 +460,6 @@ export default class PathTracedVolume implements VolumeRenderImpl {
       if (this.settings.maskChannelIndex !== -1 && this.settings.maskAlpha < 1.0) {
         const maskChannel = this.volume.getChannel(this.settings.maskChannelIndex);
         // const maskMax = maskChannel.getHistogram().dataMax;
-        let maskVal = 1.0;
         const maskAlpha = this.settings.maskAlpha;
         for (let iz = 0; iz < sz; ++iz) {
           for (let iy = 0; iy < sy; ++iy) {
@@ -469,7 +468,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
               // maskVal = maskChannel.getIntensity(ix,iy,iz) * maskAlpha / maskMax;
 
               // binary masking
-              maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
+              const maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
 
               data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] *= maskVal;
             }

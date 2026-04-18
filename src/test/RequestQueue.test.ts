@@ -466,7 +466,7 @@ describe("test RequestQueue", () => {
       };
 
       let requests = getLoadSpecRequests(0, numFrames, xDim, yDim, action);
-      let promises = rq.addRequests(requests);
+      rq.addRequests(requests);
       // Allow some but not all requests to complete
       await sleep(maxDelayMs * 0.5);
       rq.cancelAllRequests();
@@ -476,7 +476,7 @@ describe("test RequestQueue", () => {
 
       // Reissue overlapping requests
       requests = getLoadSpecRequests(60, numFrames, xDim, yDim, action);
-      promises = rq.addRequests(requests);
+      const promises = rq.addRequests(requests);
       await Promise.all(promises);
 
       // Verify promise return types and dimensions
