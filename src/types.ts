@@ -92,6 +92,10 @@ export interface ColorizeFeature {
   featureMin: number;
   featureMax: number;
   outlineColor: Color;
+  outlinePalette: DataTexture;
+  useOutlinePalette: boolean;
+  innerOutlineColor: Color;
+  innerOutlineThickness: number;
   outlineAlpha: number;
   outlierColor: Color;
   outOfRangeColor: Color;
@@ -124,8 +128,6 @@ export interface FuseChannel {
   lut: Uint8Array;
   // zero is a sentinel value to disable from fusion
   rgbColor: [number, number, number] | number;
-  // the selected id will have its intensity auto-mapped to a pick color
-  selectedID: number;
   // if we are colorizing by feature, all the following inputs are needed
   feature?: ColorizeFeature;
 }

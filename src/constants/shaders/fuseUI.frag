@@ -7,7 +7,6 @@ precision highp sampler3D;
 uniform sampler2D lutSampler;
 
 uniform vec2 lutMinMax;
-uniform uint highlightedId;
 
 // src texture is the raw volume intensity data
 uniform usampler2D srcTexture;

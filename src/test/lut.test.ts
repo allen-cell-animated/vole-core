@@ -1,7 +1,6 @@
-import type { ControlPoint } from "../Lut";
-import { Lut, remapLut, remapControlPoints } from "../Lut";
-import Histogram from "../Histogram";
-import VolumeMaker from "../VolumeMaker";
+import { Lut, remapLut, remapControlPoints, type ControlPoint } from "../Lut.js";
+import Histogram from "../Histogram.js";
+import VolumeMaker from "../VolumeMaker.js";
 
 import { describe, expect, it } from "vitest";
 

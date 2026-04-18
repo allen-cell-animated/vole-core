@@ -1,11 +1,14 @@
-import { Color, DataTexture, FloatType, RGBAFormat, RedFormat, RedIntegerFormat, LinearFilter, UnsignedByteType } from "three";
-
-function getSquarestTextureDimensions(size: number): [number, number] {
-  const width = Math.ceil(Math.sqrt(size));
-  const height = Math.ceil(size / width);
-
-  return [width, height];
-}
+import {
+  Color,
+  DataTexture,
+  FloatType,
+  RGBAFormat,
+  RedFormat,
+  RedIntegerFormat,
+  LinearFilter,
+  UnsignedByteType,
+} from "three";
+import { getSquarestTextureDimensions } from "../src/utils/texture_utils.js";
 
 function loadColormap(colorStops: string[]): DataTexture {
   const colorColorStops = colorStops.map((color) => new Color(color));
@@ -24,7 +27,13 @@ function loadColormap(colorStops: string[]): DataTexture {
   return colormapTex;
 }
 
-function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMax: number, outlierData: DataTexture, inRangeIds: DataTexture } {
+function loadFeature(): {
+  featureTex: DataTexture;
+  featureMin: number;
+  featureMax: number;
+  outlierData: DataTexture;
+  inRangeIds: DataTexture;
+} {
   const idsToFeatureValue = new Float32Array(256 * 256);
   // fill with random between 0 and 1
   for (let i = 0; i < idsToFeatureValue.length; i++) {
@@ -48,7 +57,7 @@ function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMa
     outlierData,
     ...getSquarestTextureDimensions(outlierData.length),
     RedIntegerFormat,
-    UnsignedByteType,
+    UnsignedByteType
   );
   outlierTex.internalFormat = "R8UI";
   outlierTex.needsUpdate = true;
@@ -62,7 +71,7 @@ function loadFeature(): { featureTex: DataTexture; featureMin: number; featureMa
     inRangeIds,
     ...getSquarestTextureDimensions(inRangeIds.length),
     RedIntegerFormat,
-    UnsignedByteType,
+    UnsignedByteType
   );
   inRangeTex.internalFormat = "R8UI";
   inRangeTex.needsUpdate = true;

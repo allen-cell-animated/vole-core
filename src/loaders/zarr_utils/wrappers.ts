@@ -10,7 +10,7 @@ type AsyncReadableExt<Opts> = AsyncReadable<Opts & WrappedArrayOpts>;
 export default function wrapArray<
   T extends DataType,
   Opts = unknown,
-  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
+  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>,
 >(
   array: ZarrArray<T, Store>,
   basePath: string,
@@ -60,8 +60,10 @@ export default function wrapArray<
   });
 }
 
+type NewFetchStoreOptions = ConstructorParameters<typeof FetchStore>[1];
+
 export class RelaxedFetchStore extends FetchStore {
-  constructor(baseUrl: string, options?: RequestInit) {
+  constructor(baseUrl: string, options?: NewFetchStoreOptions) {
     super(baseUrl, options);
   }
 

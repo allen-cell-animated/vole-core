@@ -358,7 +358,7 @@ export default class MeshVolume implements IDrawableObject {
     const output = ex.parse(input, { binary: true });
     // STLExporter's typing shows that it returns string
     // but this is not the case when binary=true.
-    FileSaver.saveBinary((output as unknown as DataView).buffer, fname + ".stl");
+    FileSaver.saveBinary(output.buffer, fname + ".stl");
   }
 
   // takes a scene or object or array of scenes or objects or both!
