@@ -41,7 +41,7 @@
     "@babel/runtime": "^7.25.6",
     "geotiff": "^2.0.5",
     "serialize-error": "^11.0.3",
-    "three": "^0.171.0",
+    "three": "^0.184.0",
     "throttled-queue": "^2.1.4",
     "tweakpane": "^3.1.9",
     "zarrita": "^0.5.1"
@@ -53,7 +53,7 @@
     "@babel/preset-typescript": "^7.24.7",
     "@babel/register": "^7.24.6",
     "@tweakpane/core": "^1.1.9",
-    "@types/three": "^0.171.0",
+    "@types/three": "^0.184.0",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
     "acorn": "^8.7.0",
