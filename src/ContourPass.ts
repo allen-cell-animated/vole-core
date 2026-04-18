@@ -7,6 +7,7 @@ import {
   RGBAFormat,
   Texture,
   Uniform,
+  UnsignedByteType,
   UnsignedIntType,
   WebGLRenderer,
   WebGLRenderTarget,
@@ -16,29 +17,57 @@ import { clamp } from "three/src/math/MathUtils.js";
 import RenderToBuffer, { RenderPassType } from "./RenderToBuffer.js";
 import contourFragShader from "./constants/shaders/contour.frag";
 import { ColorizeFeature } from "./types.js";
+import { getSquarestTextureDimensions } from "./utils/texture_utils.js";
 
 type ContourUniforms = {
+  // Base image (pick buffer)
   pickBuffer: IUniform<Texture>;
-  highlightedId: IUniform<number>;
+  // Outline style
   outlineThickness: IUniform<number>;
+  innerOutlineThickness: IUniform<number>;
+  innerOutlineColor: IUniform<Color>;
   outlineColor: IUniform<Color>;
+  outlinePalette: IUniform<Texture>;
+  useOutlinePalette: IUniform<boolean>;
   outlineAlpha: IUniform<number>;
+  // ID information
+  selectedId: IUniform<number>;
+  selectedIds: IUniform<Texture>;
   useGlobalIdLookup: IUniform<boolean>;
   localIdToGlobalId: IUniform<Texture>;
   localIdOffset: IUniform<number>;
+
   devicePixelRatio: IUniform<number>;
 };
 
 const makeDefaultUniforms = (): ContourUniforms => {
-  const pickBufferTex = new DataTexture(new Float32Array([1, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  // RGBA float texture for pick buffer
+  const pickBufferTex = new DataTexture(new Float32Array([0, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
+  pickBufferTex.internalFormat = "RGBA32F";
+  pickBufferTex.needsUpdate = true;
+  // R32UI texture for local ID to global ID lookup
   const localIdToGlobalId = new DataTexture(new Uint32Array([0]), 1, 1, RedIntegerFormat, UnsignedIntType);
+  localIdToGlobalId.internalFormat = "R32UI";
   localIdToGlobalId.needsUpdate = true;
+  // RGBA float texture for outline palette
+  const outlinePaletteTex = new DataTexture(new Float32Array([1, 1, 1, 0]), 1, 1, RGBAFormat, FloatType);
+  outlinePaletteTex.internalFormat = "RGBA32F";
+  outlinePaletteTex.needsUpdate = true;
+  // R8UI texture for selected IDs
+  const selectedIds = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
+  selectedIds.internalFormat = "R8UI";
+  selectedIds.needsUpdate = true;
   return {
     pickBuffer: new Uniform(pickBufferTex),
-    highlightedId: new Uniform(94),
+    selectedId: new Uniform(-1),
+    selectedIds: new Uniform(selectedIds),
     outlineThickness: new Uniform(2.0),
+    innerOutlineThickness: new Uniform(2.0),
+    useOutlinePalette: new Uniform(false),
+    innerOutlineColor: new Uniform(new Color(1, 1, 1)),
     outlineColor: new Uniform(new Color(1, 0, 1)),
     outlineAlpha: new Uniform(1.0),
+    outlinePalette: new Uniform(outlinePaletteTex),
     useGlobalIdLookup: new Uniform(false),
     localIdToGlobalId: new Uniform(localIdToGlobalId),
     localIdOffset: new Uniform(0),
@@ -50,6 +79,8 @@ export default class ContourPass {
   private pass: RenderToBuffer;
   private frameToGlobalIdLookup: ColorizeFeature["frameToGlobalIdLookup"] | null;
   private frame: number;
+
+  private selectedIdsTexture: DataTexture | null = null;
 
   constructor() {
     this.pass = new RenderToBuffer(contourFragShader, makeDefaultUniforms(), RenderPassType.TRANSPARENT);
@@ -66,6 +97,18 @@ export default class ContourPass {
     this.pass.material.uniforms.outlineThickness.value = Math.floor(thickness);
   }
 
+  public setInnerOutlineColor(color: Color): void {
+    this.pass.material.uniforms.innerOutlineColor.value = color;
+  }
+
+  /**
+   * Optional inner outline shown for better contrast, specified in integer
+   * pixels. Disabled if `thicknessPx` is 0.
+   */
+  public setInnerOutlineThickness(thicknessPx: number): void {
+    this.pass.material.uniforms.innerOutlineThickness.value = Math.floor(Math.max(0, thicknessPx));
+  }
+
   private syncGlobalIdLookup(): void {
     const uniforms = this.pass.material.uniforms as ContourUniforms;
     const globalIdLookupInfo = this.frameToGlobalIdLookup?.get(this.frame);
@@ -80,7 +123,7 @@ export default class ContourPass {
 
   /**
    * Sets a frame-dependent lookup for global IDs. Set to a non-null value if
-   * the `highlightedId` represents a global ID instead of a local (pixel) ID.
+   * the `selectedId` represents a global ID instead of a local (pixel) ID.
    * @param frameToGlobalIdLookup A map from a frame number to a lookup object,
    * containing a texture and an offset value; see `ColorizeFeature` for more
    * details. If `null`, the pass will not use a global ID lookup.
@@ -108,8 +151,54 @@ export default class ContourPass {
    * @param id The ID to highlight. If a global ID lookup has been set
    * (`setGlobalIdLookup`), this should be a global ID.
    */
-  public setHighlightedId(id: number) {
-    this.pass.material.uniforms.highlightedId.value = id;
+  public setSelectedId(id: number) {
+    this.pass.material.uniforms.selectedId.value = id;
+  }
+
+  /**
+   * Sets the lookup table that maps from an ID to whether the ID is selected or
+   * not.
+   *
+   * For some ID `i`, if `selectedIds[i] > 0`, the ID is selected. When
+   * `useOutlinePalette` is true, `selectedIds[i] - 1` is the index of the
+   * outline color in the outline palette.
+   *
+   * By default, the ID is a local (pixel) ID. If a global ID lookup has been
+   * set (`setGlobalIdLookup`), the ID is parsed as a global ID.
+   */
+  public setSelectedIdLut(selectedIds: Uint8Array) {
+    if (this.selectedIdsTexture) {
+      this.selectedIdsTexture.dispose();
+    }
+    // Pack into square texture
+    const [width, height] = getSquarestTextureDimensions(selectedIds.length);
+    let paddedSelectedIds = selectedIds;
+    if (selectedIds.length < width * height) {
+      // Pad the array with zeros to fit the texture size
+      paddedSelectedIds = new Uint8Array(width * height);
+      paddedSelectedIds.set(selectedIds);
+    }
+    this.selectedIdsTexture = new DataTexture(paddedSelectedIds, width, height, RedIntegerFormat, UnsignedByteType);
+    this.selectedIdsTexture.internalFormat = "R8UI";
+    this.selectedIdsTexture.unpackAlignment = 1;
+    this.selectedIdsTexture.needsUpdate = true;
+    this.pass.material.uniforms.selectedIds.value = this.selectedIdsTexture;
+  }
+
+  /**
+   * Whether to use the outline palette texture for coloring outlines.
+   * Otherwise, a solid outline color is used.
+   */
+  public setUseOutlinePalette(usePalette: boolean) {
+    this.pass.material.uniforms.useOutlinePalette.value = usePalette;
+  }
+
+  /**
+   * Sets a texture containing the outline palette colors.
+   */
+  public setOutlinePaletteTexture(texture: DataTexture) {
+    this.pass.material.uniforms.outlinePalette.value = texture;
+    this.pass.material.needsUpdate = true;
   }
 
   /**

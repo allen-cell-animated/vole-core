@@ -1,14 +1,14 @@
 import type { AbsolutePath, AsyncReadable, AsyncWritable } from "zarrita";
 import * as zarr from "zarrita";
 
-import {
+import type {
   NumericZarrArray,
   OMEDataset,
   OMEMultiscale,
   OmeroTransitionalMetadata,
   TCZYX,
   ZarrSource,
-} from "../loaders/zarr_utils/types";
+} from "../loaders/zarr_utils/types.js";
 import {
   getDimensionCount,
   getScale,
@@ -18,7 +18,7 @@ import {
   orderByTCZYX,
   parseHexColor,
   remapAxesToTCZYX,
-} from "../loaders/zarr_utils/utils";
+} from "../loaders/zarr_utils/utils.js";
 
 /** Contains only the data required to produce a mock `ZarrSourceMeta` which is useful for testing */
 type ZarrSourceMockSpec = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { constrainToAxis, formatNumber, getTimestamp } from "../utils/num_utils";
+import { constrainToAxis, formatNumber, getTimestamp } from "../utils/num_utils.js";
 import { Axis } from "../VolumeRenderSettings.js";
 
 describe("num_utils", () => {

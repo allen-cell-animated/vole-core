@@ -102,7 +102,6 @@ export default class VolumeDrawable {
         chIndex: index,
         lut: new Uint8Array(LUT_ARRAY_LENGTH),
         rgbColor: rgbColor,
-        selectedID: -1,
       };
     });
 
@@ -508,16 +507,12 @@ export default class VolumeDrawable {
     return this.meshVolume.hasIsosurface(channel);
   }
 
-  setSelectedID(channelIndex: number, id: number): boolean {
-    this.contourRendering.setHighlightedId(id);
-    if (this.fusion.length > 0) {
-      // TODO does it make sense to do this for a particular channel?
-      if (id !== this.fusion[channelIndex].selectedID) {
-        this.fusion[channelIndex].selectedID = id;
-        return true;
-      }
-    }
-    return false;
+  setSelectedID(_channelIndex: number, id: number): void {
+    this.contourRendering.setSelectedId(id);
+  }
+
+  setSelectedIdsLut(selectedIds: Uint8Array): void {
+    this.contourRendering.setSelectedIdLut(selectedIds);
   }
 
   fuse(): void {
@@ -609,7 +604,6 @@ export default class VolumeDrawable {
         this.channelColors[newChannelIndex][1],
         this.channelColors[newChannelIndex][2],
       ],
-      selectedID: -1,
     };
 
     this.settings.diffuse[newChannelIndex] = [
@@ -742,10 +736,13 @@ export default class VolumeDrawable {
     // TODO only one channel can ever have this?
     if (!featureInfo) {
       this.fusion[channelIndex].feature = undefined;
-      this.contourRendering.setGlobalIdLookup(null);
     } else {
       this.fusion[channelIndex].feature = featureInfo;
       this.contourRendering.setOutlineColor(featureInfo.outlineColor, featureInfo.outlineAlpha);
+      this.contourRendering.setInnerOutlineColor(featureInfo.innerOutlineColor);
+      this.contourRendering.setInnerOutlineThickness(featureInfo.innerOutlineThickness);
+      this.contourRendering.setOutlinePaletteTexture(featureInfo.outlinePalette);
+      this.contourRendering.setUseOutlinePalette(featureInfo.useOutlinePalette);
       this.contourRendering.setGlobalIdLookup(featureInfo.frameToGlobalIdLookup);
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.MATERIAL);

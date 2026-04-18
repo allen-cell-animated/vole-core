@@ -336,9 +336,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // we need to make sure that the corresponding matched shapes
     // use the min size of T
-    let times = 1;
     if (hasT) {
-      times = shapeLv[t];
+      let times = shapeLv[t];
       for (let i = 0; i < this.sources.length; i++) {
         const shape = this.sources[i].scaleLevels[levelToLoad].shape;
         const tindex = this.sources[i].axesTCZYX[0];
@@ -565,15 +564,20 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
 
-      const result = await zarr
-        .get(level, sliceSpec, { opts: { subscriber, reportChunk } })
-        .catch(
-          wrapVolumeLoadError(
-            "Could not load OME-Zarr volume data",
-            VolumeLoadErrorType.LOAD_DATA_FAILED,
-            CHUNK_REQUEST_CANCEL_REASON
-          )
-        );
+      const result = await zarr.get(level, sliceSpec, { opts: { subscriber, reportChunk } }).catch((e) => {
+        if (e === CHUNK_REQUEST_CANCEL_REASON) {
+          return e;
+        }
+        if (e instanceof VolumeLoadError) {
+          throw e;
+        }
+        const msg =
+          e instanceof RangeError
+            ? "Could not allocate enough memory for the requested OME-Zarr data"
+            : "Could not load OME-Zarr volume data";
+        const type = e instanceof RangeError ? VolumeLoadErrorType.TOO_LARGE : VolumeLoadErrorType.LOAD_DATA_FAILED;
+        throw new VolumeLoadError(msg, { type, cause: e });
+      });
 
       if (result?.data === undefined) {
         return;
