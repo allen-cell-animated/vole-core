@@ -1,4 +1,4 @@
-import { Texture, Vector2, Vector3, Vector4 } from "three";
+import { DataTexture, Texture, Vector2, Vector3, Vector4 } from "three";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "../Light.js";
 import pathTraceFragmentShader from "./shaders/pathtrace.frag";
 
@@ -55,7 +55,7 @@ export const pathTracingUniforms = () => {
 
     volumeTexture: { type: "t", value: new Texture() },
     // per channel
-    gLutTexture: { type: "t", value: new Texture() },
+    gLutTexture: { type: "t", value: new DataTexture() },
     gIntensityMax: { type: "v4", value: new Vector4(1, 1, 1, 1) },
     gIntensityMin: { type: "v4", value: new Vector4(0, 0, 0, 0) },
     gOpacity: { type: "1fv", value: [1, 1, 1, 1] },

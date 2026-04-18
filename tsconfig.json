@@ -4,10 +4,9 @@
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "declarationDir": "es/types",
-    "downlevelIteration": true,
     "lib": ["DOM", "ES2022", "ES6", "DOM.Iterable", "ScriptHost", "ES2016.Array.Include"],
-    "module": "ES2020",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "node16",
     "noImplicitAny": false,
     "paths": {
       "three/addons/lines/*": ["./node_modules/@types/three/examples/jsm/lines/*"]
@@ -17,7 +16,7 @@
     "sourceMap": true,
     "strict": true,
     "target": "ES6",
-    "typeRoots": ["src/types", "node_modules/@types"],
+    "typeRoots": ["src/types", "node_modules"],
     "types": ["vitest/globals"]
   },
   "files": ["src/index.ts", "public/index.ts"],

@@ -99,7 +99,7 @@ function arrayFromControlPoints(controlPoints: ControlPoint[]): Uint8Array {
   let color0 = controlPointToRGBA(c0);
   let color1 = controlPointToRGBA(c1);
   let lastIndex = 1;
-  let a = 0;
+  let a: number;
   for (let i = 0; i < len; ++i) {
     // find the two control points that i is between
     while (i > c1.x) {
@@ -288,10 +288,10 @@ export class Lut {
     if (div > 0) {
       // compute lut and track control points for the piecewise linear sections
       const lutControlPoints: ControlPoint[] = [{ x: 0, opacity: 0, color: [255, 255, 255] }];
-      let slope = 0;
+      let slope: number;
       let lastSlope = 0;
       let opacity = 0;
-      let lastOpacity = 0;
+      let lastOpacity: number;
       for (let i = 1; i < LUT_ENTRIES; ++i) {
         lastOpacity = opacity;
         opacity = clamp(Math.round(255 * (map[i] - map[0])), 0, 255);
@@ -328,10 +328,10 @@ export class Lut {
     let lastg = 0;
     let lastb = 0;
     let lasta = 0;
-    let r = 0;
-    let g = 0;
-    let b = 0;
-    let a = 0;
+    let r: number;
+    let g: number;
+    let b: number;
+    let a: number;
 
     // assumes exactly one color per bin
     for (let i = 1; i < LUT_ENTRIES; ++i) {
