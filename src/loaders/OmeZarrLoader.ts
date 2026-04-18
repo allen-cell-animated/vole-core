@@ -336,9 +336,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // we need to make sure that the corresponding matched shapes
     // use the min size of T
-    let times = 1;
     if (hasT) {
-      times = shapeLv[t];
+      let times = shapeLv[t];
       for (let i = 0; i < this.sources.length; i++) {
         const shape = this.sources[i].scaleLevels[levelToLoad].shape;
         const tindex = this.sources[i].axesTCZYX[0];

@@ -16,7 +16,7 @@ export default defineConfig([
     "es/",
     "webpack.*.js",
     "babel.config.js",
-    ".eslintrc.js",
+    "eslint.config.js",
   ]),
   {
     languageOptions: {
@@ -26,9 +26,9 @@ export default defineConfig([
       }
     },
     rules: {
-      "@typescript-eslint/no-empty-object-type": ["warn"],
-      "@typescript-eslint/no-unsafe-function-type": ["warn"],
-      "@typescript-eslint/no-wrapper-object-types": ["warn"],
+      "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/no-unsafe-function-type": "warn",
+      "@typescript-eslint/no-wrapper-object-types": "warn",
       "@typescript-eslint/naming-convention": [
         "warn",
         {
@@ -57,16 +57,24 @@ export default defineConfig([
           leadingUnderscore: "allow"
         }
       ],
-      "@typescript-eslint/indent": ["off"],
-      "@typescript-eslint/no-empty-function": ["warn"],
-      "@typescript-eslint/no-inferrable-types": ["warn"],
-      "@typescript-eslint/no-this-alias": ["warn"],
-      "prefer-const": ["warn"],
-      "prefer-spread": ["warn"],
-      "no-var": ["warn"],
+      "@typescript-eslint/indent": "off",
+      "@typescript-eslint/no-empty-function": "warn",
+      "@typescript-eslint/no-inferrable-types": "warn",
+      "@typescript-eslint/no-this-alias": "warn",
+      "prefer-const": "warn",
+      "prefer-spread": "warn",
+      "no-var": "warn",
       // note you must disable the base rule as it can report incorrect errors
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-expressions": ["error", { allowShortCircuit: true }],
+    }
+  },
+  {
+    files: ["src/test/*.test.ts"],
+    rules: {
+      // this rule does not like `expect`, so it's very bad for tests
+      "@typescript-eslint/no-unused-expressions": "off",
     }
   }
 ]);
