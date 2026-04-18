@@ -10,7 +10,7 @@ type AsyncReadableExt<Opts> = AsyncReadable<Opts & WrappedArrayOpts>;
 export default function wrapArray<
   T extends DataType,
   Opts = unknown,
-  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>
+  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>,
 >(
   array: ZarrArray<T, Store>,
   basePath: string,
