@@ -32,7 +32,6 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private group: Group;
   private volume: Volume;
   private baseSettings: VolumeRenderSettings;
-  private currentPane = 0;
 
   // Crosshair lines: 2 per pane (vertical + horizontal)
   private crosshairMaterial: LineBasicMaterial;
@@ -99,6 +98,10 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     if (nonRoiFlags === undefined || nonRoiFlags !== 0) {
       this.renderers[0].updateSettings(settings, nonRoiFlags);
     }
+    // Recompute layout when resolution or view parameters change
+    if (dirtyFlags === undefined || dirtyFlags & (SettingsFlags.SAMPLING | SettingsFlags.VIEW)) {
+      this.updateLayout();
+    }
   }
 
   get3dObject(): Object3D {
@@ -110,13 +113,11 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     _camera: PerspectiveCamera | OrthographicCamera,
     _depthTexture?: DepthTexture | Texture | null
   ): void {
-    const pane = this.currentPane;
-    // Toggle visibility so only the active pane's geometry renders
+    // Render all three slices; they are positioned in world space by updateLayout
     for (let i = 0; i < 3; i++) {
-      this.renderers[i].get3dObject().visible = i === pane;
+      this.renderers[i].get3dObject().visible = true;
+      this.renderers[i].doRender(_renderer, _camera);
     }
-    this.renderers[pane].doRender(_renderer, _camera);
-    this.currentPane = (this.currentPane + 1) % 3;
   }
 
   updateVolumeDimensions(): void {
@@ -135,6 +136,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     indices.z = Math.min(indices.z, Math.max(0, volSize.z - 1));
     this.applyAllSliceIndices();
     this.updateCrosshairs();
+    this.updateLayout();
   }
 
   cleanup(): void {
@@ -254,6 +256,66 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     posAttr.setXYZ(0, p1[0], p1[1], p1[2]);
     posAttr.setXYZ(1, p2[0], p2[1], p2[2]);
     posAttr.needsUpdate = true;
+  }
+
+  /** Gap between panes in CSS pixels. */
+  private static readonly TRIPLE_VIEW_GAP = 2;
+
+  /**
+   * Recomputes the layout of the three slice panes to fit within the current camera frustum.
+   * Uses `baseSettings.resolution` and `baseSettings.orthoScale` to derive the frustum,
+   * then scales and positions all three slice groups accordingly.
+   *
+   * Layout (bottom-left origin):
+   *  +--------+--------+
+   *  |   XZ   |        |
+   *  +--------+--------+
+   *  |   XY   |   YZ   |
+   *  +--------+--------+
+   */
+  private updateLayout(): void {
+    const { resolution, orthoScale } = this.baseSettings;
+    if (resolution.x === 0 || resolution.y === 0) {
+      return;
+    }
+
+    const frustumHeight = 2 * orthoScale;
+    const frustumWidth = frustumHeight * (resolution.x / resolution.y);
+
+    const phys = this.volume.normPhysicalSize;
+    const px = phys.x;
+    const py = phys.y;
+    const pz = phys.z;
+
+    // Compute uniform world-units-per-physical-unit scale to fit all panes in frustum
+    const pixelsPerWorldUnit = resolution.y / frustumHeight;
+    const gapWorld = pixelsPerWorldUnit > 0 ? TripleSliceVolume.TRIPLE_VIEW_GAP / pixelsPerWorldUnit : 0;
+
+    const scaleX = (frustumWidth - gapWorld) / (px + pz);
+    const scaleY = (frustumHeight - gapWorld) / (py + pz);
+    const fitScale = Math.min(scaleX, scaleY);
+
+    // Apply uniform scale to the parent group
+    this.group.scale.set(fitScale, fitScale, 1);
+
+    // Layout in unscaled physical coords (group.scale handles the fitting)
+    const totalW = px + gapWorld / fitScale + pz;
+    const totalH = py + gapWorld / fitScale + pz;
+
+    // XY pane (bottom-left)
+    const xyX = -totalW / 2 + px / 2;
+    const xyY = -totalH / 2 + py / 2;
+    this.renderers[0].get3dObject().position.set(xyX, xyY, 0);
+
+    // YZ pane (bottom-right)
+    const yzX = totalW / 2 - pz / 2;
+    const yzY = -totalH / 2 + py / 2;
+    this.renderers[1].get3dObject().position.set(yzX, yzY, 0);
+
+    // XZ pane (top-left)
+    const xzX = -totalW / 2 + px / 2;
+    const xzY = totalH / 2 - pz / 2;
+    this.renderers[2].get3dObject().position.set(xzX, xzY, 0);
   }
 
   /** Returns the three internal Atlas2DSlice renderers [XY, YZ, XZ]. */

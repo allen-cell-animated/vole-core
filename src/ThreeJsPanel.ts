@@ -126,8 +126,7 @@ export class ThreeJsPanel {
   private tripleViewPanes?: TripleViewPanes;
   /** Physical size of the volume, used for pane layout proportions */
   private tripleViewPhysicalSize?: Vector3;
-  /** Dedicated orthographic camera for triple-view pane rendering */
-  private triplePaneCamera: OrthographicCamera;
+
   private tripleSliceSource?: TripleSliceSource;
   private tripleSliceChangeCallback?: (indices: { x: number; y: number; z: number }) => void;
   private tripleSliceDragging = false;
@@ -295,11 +294,7 @@ export class ThreeJsPanel {
     this.setupAxisHelper();
     this.setupIndicatorElements();
 
-    // Dedicated camera for triple-slice pane rendering — always looks down Z at the XY plane
-    this.triplePaneCamera = new OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.001, 20);
-    this.triplePaneCamera.position.set(0, 0, 2);
-    this.triplePaneCamera.up.set(0, 1, 0);
-    this.triplePaneCamera.lookAt(new Vector3(0, 0, 0));
+
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
@@ -531,7 +526,7 @@ export class ThreeJsPanel {
   }
 
   updateScaleBarVisibility(): void {
-    const isOrtho = isOrthographicCamera(this.camera) || this.viewMode === Axis.TRIPLE;
+    const isOrtho = isOrthographicCamera(this.camera);
     const orthoVisible = isOrtho && this.showOrthoScaleBar;
     const perspectiveVisible = !isOrtho && this.showPerspectiveScaleBar;
     this.orthoScaleBarElement.style.display = orthoVisible ? "" : "none";
@@ -642,6 +637,7 @@ export class ThreeJsPanel {
         break;
       case "TRIPLE":
         this.replaceCamera(this.orthographicCameraZ);
+        this.resetOrthographicCameraZ();
         this.controls.enabled = false;
         this.removeControlHandlers();
 
@@ -890,11 +886,7 @@ export class ThreeJsPanel {
   }
 
   render(): void {
-    // In triple mode, renderTriple handles everything including animateFuncs
-    if (this.viewMode === Axis.TRIPLE) {
-      this.renderTriple();
-      return;
-    }
+    const isTriple = this.viewMode === Axis.TRIPLE;
 
     // update the axis helper in case the view was rotated
     if (!isOrthographicCamera(this.camera)) {
@@ -904,35 +896,37 @@ export class ThreeJsPanel {
     // do whatever we have to do before the main render of this.scene
     for (let i = 0; i < this.animateFuncs.length; i++) {
       if (this.animateFuncs[i]) {
-        this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+        this.animateFuncs[i](this.renderer, this.camera, isTriple ? null : this.meshRenderTarget.depthTexture);
       }
     }
 
-    // RENDERING
-    // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
-    // layer 1.) This is necessary to access the depth buffer.
-    this.camera.layers.set(MESH_LAYER);
-    this.renderer.setRenderTarget(this.meshRenderTarget);
-    this.renderer.render(this.scene, this.camera);
+    if (!isTriple) {
+      // RENDERING
+      // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
+      // layer 1.) This is necessary to access the depth buffer.
+      this.camera.layers.set(MESH_LAYER);
+      this.renderer.setRenderTarget(this.meshRenderTarget);
+      this.renderer.render(this.scene, this.camera);
 
-    // Step 2. Render any passes that have to happen after the meshes are
-    // rendered but before volume rendering (e.g. pick buffer).
-    this.postMeshRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-    });
+      // Step 2. Render any passes that have to happen after the meshes are
+      // rendered but before volume rendering (e.g. pick buffer).
+      this.postMeshRenderFuncs.forEach((func) => {
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      });
 
-    // Step 3: Render meshes that do not interact with the pick buffer. This
-    // must happen after the pick buffer is rendered so picking isn't occluded
-    // by them, but before the volume renders so that volumes can still depth
-    // test against the lines.
-    this.renderer.autoClear = false;
-    this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    this.renderer.setRenderTarget(this.meshRenderTarget);
-    this.renderer.render(this.scene, this.camera);
+      // Step 3: Render meshes that do not interact with the pick buffer. This
+      // must happen after the pick buffer is rendered so picking isn't occluded
+      // by them, but before the volume renders so that volumes can still depth
+      // test against the lines.
+      this.renderer.autoClear = false;
+      this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+      this.renderer.setRenderTarget(this.meshRenderTarget);
+      this.renderer.render(this.scene, this.camera);
 
-    // Step 4: Render the mesh render target out to the screen.
-    this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
-    this.meshRenderToBuffer.render(this.renderer);
+      // Step 4: Render the mesh render target out to the screen.
+      this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
+      this.meshRenderToBuffer.render(this.renderer);
+    }
 
     // Step 5: Render volumes, which can now depth test against the meshes.
     this.camera.layers.set(VOLUME_LAYER);
@@ -940,94 +934,27 @@ export class ThreeJsPanel {
     this.renderer.render(this.scene, this.camera);
 
     // Step 6: Render lines and other objects that must render over volumes and meshes.
+    this.renderer.autoClear = false;
     this.camera.layers.set(OVERLAY_LAYER);
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
 
-    // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
-    this.overlayRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-    });
+    if (!isTriple) {
+      // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
+      this.overlayRenderFuncs.forEach((func) => {
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      });
+    }
     this.renderer.autoClear = true;
 
-    // Step 8: Render axis helper and other overlays.
-    if (this.showAxis) {
-      this.renderer.autoClear = false;
-      this.renderer.render(this.axisHelperScene, this.axisCamera);
-      this.renderer.autoClear = true;
-    }
-
-    if (this.dataurlcallback) {
-      this.dataurlcallback(this.canvas.toDataURL());
-      this.dataurlcallback = undefined;
-    }
-  }
-
-  /**
-   * Renders the triple-slice view using scissored viewports for XY, YZ, and XZ panes.
-   * Uses a single Z-facing orthographic camera with per-pane frustum adjustment.
-   */
-  private renderTriple(): void {
-    this.refreshTriplePhysicalSize();
-
-    const panes = this.computeTripleViewPanes();
-    const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
-
-    // Clear the full canvas first
-    this.renderer.setRenderTarget(null);
-    this.renderer.clear();
-
-    this.renderer.setScissorTest(true);
-
-    const camera = this.triplePaneCamera;
-
-    // Face dimensions [width, height] in normalized physical units for each pane
-    const faceDims: [number, number][] = [
-      [phys.x, phys.y], // XY
-      [phys.z, phys.y], // YZ (Z horizontal, Y vertical to align with XY)
-      [phys.x, phys.z], // XZ
-    ];
-    const paneRects = [panes.xy, panes.yz, panes.xz];
-
-    for (let i = 0; i < 3; i++) {
-      const rect = paneRects[i];
-      const [faceW, faceH] = faceDims[i];
-
-      this.renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
-      this.renderer.setScissor(rect.x, rect.y, rect.w, rect.h);
-
-      // Set camera frustum to exactly frame the face content
-      camera.left = -faceW / 2;
-      camera.right = faceW / 2;
-      camera.top = faceH / 2;
-      camera.bottom = -faceH / 2;
-      camera.updateProjectionMatrix();
-
-      // Run animate funcs with pane camera (drives TripleSliceVolume.doRender via internal counter)
-      for (let j = 0; j < this.animateFuncs.length; j++) {
-        if (this.animateFuncs[j]) {
-          this.animateFuncs[j](this.renderer, camera, null);
-        }
+    if (!isTriple) {
+      // Step 8: Render axis helper and other overlays.
+      if (this.showAxis) {
+        this.renderer.autoClear = false;
+        this.renderer.render(this.axisHelperScene, this.axisCamera);
+        this.renderer.autoClear = true;
       }
-
-      // Render the volume layer (the Atlas2DSlice plane) for this pane
-      camera.layers.set(VOLUME_LAYER);
-      this.renderer.render(this.scene, camera);
-
-      // Render overlays (crosshairs) for this pane
-      this.renderer.autoClear = false;
-      camera.layers.set(OVERLAY_LAYER);
-      this.renderer.render(this.scene, camera);
-      this.renderer.autoClear = true;
     }
-
-    // Restore full viewport and disable scissor (in CSS pixels)
-    const dpr = this.renderer.getPixelRatio();
-    const w = this.getWidth() / dpr;
-    const h = this.getHeight() / dpr;
-    this.renderer.setViewport(0, 0, w, h);
-    this.renderer.setScissor(0, 0, w, h);
-    this.renderer.setScissorTest(false);
 
     if (this.dataurlcallback) {
       this.dataurlcallback(this.canvas.toDataURL());
