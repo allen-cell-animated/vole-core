@@ -98,6 +98,7 @@ export class ThreeJsPanel {
   private orthoControlsY: TrackballControls;
   private orthographicCameraZ: OrthographicCamera;
   private orthoControlsZ: TrackballControls;
+  private tripleCamera: OrthographicCamera;
   public camera: PerspectiveCamera | OrthographicCamera;
   private viewMode: Axis;
   public controls: TrackballControls;
@@ -276,6 +277,9 @@ export class ThreeJsPanel {
     this.orthoControlsZ.enabled = false;
     this.orthoControlsZ.panSpeed = this.canvas.clientWidth * 0.5;
 
+    this.tripleCamera = new OrthographicCamera(-scale * aspect, scale * aspect, scale, -scale, 0.001, 20);
+    this.resetTripleCamera();
+
     this.camera = this.perspectiveCamera;
     this.controls = this.perspectiveControls;
     this.viewMode = Axis.NONE;
@@ -340,6 +344,12 @@ export class ThreeJsPanel {
     this.orthographicCameraZ.lookAt(new Vector3(0, 0, 0));
   }
 
+  private resetTripleCamera(): void {
+    this.tripleCamera.position.set(0, 0, 2);
+    this.tripleCamera.up.set(0, 1, 0);
+    this.tripleCamera.lookAt(new Vector3(0, 0, 0));
+  }
+
   requestCapture(dataurlcallback: (name: string) => void): void {
     this.dataurlcallback = dataurlcallback;
     this.redraw();
@@ -374,6 +384,8 @@ export class ThreeJsPanel {
       this.resetOrthographicCameraY();
     } else if (this.camera === this.orthographicCameraZ) {
       this.resetOrthographicCameraZ();
+    } else if (this.camera === this.tripleCamera) {
+      this.resetTripleCamera();
     }
     this.controls.reset();
   }
@@ -576,20 +588,17 @@ export class ThreeJsPanel {
   }
 
   replaceControls(newControls: TrackballControls): void {
-    if (this.controls === newControls) {
-      this.controls.enabled = true;
-      return;
+    if (this.controls !== newControls) {
+      // disable the old, install the new.
+      this.controls.enabled = false;
+      this.removeControlHandlers();
+      this.controls = newControls;
     }
-    // disable the old, install the new.
-    this.controls.enabled = false;
 
-    // detach old control change handlers
-    this.removeControlHandlers();
-
-    this.controls = newControls;
     this.controls.enabled = true;
 
-    // re-install existing control change handlers on new controls
+    // (Re-)install existing control change handlers on the active controls.
+    // Three.js EventDispatcher deduplicates, so this is safe even if already attached.
     if (this.controlStartHandler) {
       this.controls.addEventListener("start", this.controlStartHandler);
     }
@@ -634,8 +643,8 @@ export class ThreeJsPanel {
         this.viewMode = Axis.Z;
         break;
       case "TRIPLE":
-        this.replaceCamera(this.orthographicCameraZ);
-        this.resetOrthographicCameraZ();
+        this.replaceCamera(this.tripleCamera);
+        this.resetTripleCamera();
         this.controls.enabled = false;
         this.removeControlHandlers();
 
