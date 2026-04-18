@@ -37,8 +37,8 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   private boxHelper: Box3Helper;
   private uniforms: ReturnType<typeof sliceShaderUniforms>;
   private channelData!: FusedChannelData;
-  /** When set, this renderer shares another renderer's FusedChannelData instead of owning its own. */
-  private sharedChannelData: FusedChannelData | null = null;
+  /** When false, `channelData` is shared from another renderer and must not be cleaned up by this instance. */
+  private ownsChannelData = true;
   private sliceUpdateWaiting = false;
   /** 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y) */
   private viewAxisValue = 0;
@@ -158,7 +158,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     }
 
     // (re)create channel data (skip if sharing from another renderer)
-    if (!this.sharedChannelData) {
+    if (this.ownsChannelData) {
       if (!this.channelData || this.channelData.width !== atlasSize.x || this.channelData.height !== atlasSize.y) {
         this.channelData?.cleanup();
         this.channelData = new FusedChannelData(atlasSize.x, atlasSize.y);
@@ -289,11 +289,9 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
 
-    // Only clean up channelData if we own it (not shared)
-    if (!this.sharedChannelData) {
+    if (this.ownsChannelData) {
       this.channelData?.cleanup();
     }
-    this.sharedChannelData = null;
   }
 
   /** Returns the FusedChannelData owned by this renderer. */
@@ -306,11 +304,11 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
    * When set, this renderer will not create or maintain its own fused data.
    */
   public setSharedChannelData(data: FusedChannelData): void {
-    // Clean up own channelData if we had one
-    if (!this.sharedChannelData && this.channelData) {
+    if (this.ownsChannelData && this.channelData) {
       this.channelData.cleanup();
     }
-    this.sharedChannelData = data;
+    this.channelData = data;
+    this.ownsChannelData = false;
   }
 
   public viewpointMoved(): void {
@@ -322,10 +320,9 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
       return;
     }
 
-    const cdata = this.sharedChannelData || this.channelData;
-    cdata.gpuFuse(renderer);
-    this.setUniform("textureAtlas", cdata.getFusedTexture());
-    this.setUniform("textureAtlasMask", cdata.maskTexture);
+    this.channelData.gpuFuse(renderer);
+    this.setUniform("textureAtlas", this.channelData.getFusedTexture());
+    this.setUniform("textureAtlasMask", this.channelData.maskTexture);
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -344,7 +341,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
   public updateActiveChannels(channelcolors: FuseChannel[], channeldata: Channel[]): void {
     // Skip fusion if sharing another renderer's fused data
-    if (this.sharedChannelData) {
+    if (!this.ownsChannelData) {
       return;
     }
     this.channelData.fuse(channelcolors, channeldata);
