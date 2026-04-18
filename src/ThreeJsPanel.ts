@@ -293,8 +293,6 @@ export class ThreeJsPanel {
 
     this.setupAxisHelper();
     this.setupIndicatorElements();
-
-
   }
 
   updateCameraFocus(fov: number, _focalDistance: number, _apertureSize: number): void {
