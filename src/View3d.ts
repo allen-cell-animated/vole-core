@@ -69,6 +69,9 @@ export class View3d {
 
   private tweakpane: Pane | null;
 
+  // Triple slice state
+  private tripleSliceCallback?: (indices: { x: number; y: number; z: number }) => void;
+
   /**
    * @param {Object} options Optional options.
    * @param {boolean} options.useWebGL2 Default true
@@ -113,9 +116,11 @@ export class View3d {
       lightContainer.rotation.setFromRotationMatrix(this.canvas3d.camera.matrixWorld);
     }
     // keep the ortho scale up to date.
-    if (this.image && isOrthographicCamera(this.canvas3d.camera)) {
-      const { top, zoom } = this.canvas3d.camera;
-      this.image.setOrthoScale(Math.abs(top) / zoom);
+    if (this.image && (isOrthographicCamera(this.canvas3d.camera) || this.canvas3d.getViewMode() === Axis.TRIPLE)) {
+      if (isOrthographicCamera(this.canvas3d.camera)) {
+        const { top, zoom } = this.canvas3d.camera;
+        this.image.setOrthoScale(Math.abs(top) / zoom);
+      }
       this.updateOrthoScaleBar(this.image.volume);
     }
   }
@@ -273,6 +278,7 @@ export class View3d {
   onVolumeData(volume: Volume, channels: number[]): void {
     this.image?.updateScale();
     this.image?.onChannelLoaded(channels);
+    this.canvas3d.updateTripleSliceCrosshairs();
     if (volume.isLoaded() && this.tweakpane) {
       this.tweakpane.refresh();
     }
@@ -401,6 +407,8 @@ export class View3d {
 
   // Add a new volume image to the viewer.  The viewer currently only supports a single image at a time, and will return any prior existing image.
   setImage(img: VolumeDrawable): VolumeDrawable | undefined {
+    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
+
     const oldImage = this.unsetImage();
 
     this.image = img;
@@ -429,6 +437,12 @@ export class View3d {
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
+
+    // If we were in triple mode, re-enter it with the new image
+    if (wasTriple) {
+      this.image.setViewMode("TRIPLE", this.volumeRenderMode);
+      this.canvas3d.setTripleSliceSource(this.image.getTripleSliceSource());
+    }
 
     // redraw if not already in draw loop
     this.redraw();
@@ -520,12 +534,55 @@ export class View3d {
   // TODO: Change mode to an enum
   /**
    * Change the camera projection to look along an axis, or to view in a 3d perspective camera.
-   * @param {string} mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y".  3D is a perspective view, and all the others are orthographic projections
+   * @param {string} mode Mode can be "3D", "XY" or "Z", "YZ" or "X", "XZ" or "Y", or "TRIPLE".
+   *   3D is a perspective view, all single-axis modes are orthographic projections,
+   *   and TRIPLE shows three linked orthographic slices (XY, YZ, XZ).
    */
   setCameraMode(mode: string): void {
-    this.canvas3d.switchViewMode(mode);
+    // setViewMode must be called before switchViewMode so that the TripleSliceVolume
+    // is created (by VolumeDrawable) before ThreeJsPanel needs the source reference.
     this.image?.setViewMode(mode, this.volumeRenderMode);
-    this.image?.setIsOrtho(mode !== "3D");
+    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
+
+    if (mode.toUpperCase() === "TRIPLE" && this.image) {
+      const source = this.image.getTripleSliceSource();
+      this.canvas3d.setTripleSliceSource(source);
+      this.canvas3d.setTripleSliceChangeCallback((indices) => this.tripleSliceCallback?.(indices));
+    } else {
+      this.canvas3d.setTripleSliceSource(undefined);
+      this.canvas3d.setTripleSliceChangeCallback(undefined);
+    }
+
+    this.canvas3d.switchViewMode(mode);
+
+    this.canvas3d.redraw();
+  }
+
+  // --- Public triple-slice API ---
+
+  /**
+   * Set a callback that fires when triple-slice crosshair indices change.
+   */
+  setTripleSliceCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | null): void {
+    this.tripleSliceCallback = cb ?? undefined;
+  }
+
+  /**
+   * Get the current triple-slice indices.
+   */
+  getTripleSliceIndices(): { x: number; y: number; z: number } | undefined {
+    return this.image?.tripleSliceIndices;
+  }
+
+  /**
+   * Set a triple-slice index for a given axis.
+   */
+  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+    if (!this.image) {
+      return;
+    }
+    this.image.setTripleSliceIndex(axis, index);
+    this.canvas3d.updateTripleSliceCrosshairs();
     this.canvas3d.redraw();
   }
 
@@ -883,7 +940,7 @@ export class View3d {
     this.volumeRenderMode = mode;
     if (this.image) {
       const viewMode = this.image.getViewMode();
-      if (viewMode === Axis.Z) {
+      if (viewMode === Axis.Z || viewMode === Axis.TRIPLE) {
         // if the camera view is in single-slice view, then we don't want to change
         // anything but still remember the mode for when we switch back to a volumetric view
         return;

@@ -19,6 +19,9 @@ uniform int Z_SLICE;
 uniform float SLICES;
 uniform bool interpolationEnabled;
 uniform vec3 flipVolume;
+// 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y)
+uniform int viewAxis;
+uniform vec3 volumeSize;
 
 varying vec2 vUv;
 
@@ -74,14 +77,47 @@ void main() {
   // Normalize UV for [-0.5, 0.5] range
   vec2 normUv = vUv - vec2(0.5);
 
+  // Determine which pair of clip axes to check based on viewAxis
+  vec2 clipMin2, clipMax2;
+  if (viewAxis == 1) {
+    // YZ view: UV.x -> Z, UV.y -> Y (Y vertical to align with XY pane)
+    clipMin2 = vec2(boxMin.z, boxMin.y);
+    clipMax2 = vec2(boxMax.z, boxMax.y);
+  } else if (viewAxis == 2) {
+    // XZ view: UV.x -> X, UV.y -> Z
+    clipMin2 = vec2(boxMin.x, boxMin.z);
+    clipMax2 = vec2(boxMax.x, boxMax.z);
+  } else {
+    // XY view (default): UV.x -> X, UV.y -> Y
+    clipMin2 = vec2(boxMin.x, boxMin.y);
+    clipMax2 = vec2(boxMax.x, boxMax.y);
+  }
+
   // Return background color if outside of clipping box
-  if (normUv.x < boxMin.x || normUv.x > boxMax.x || normUv.y < boxMin.y || normUv.y > boxMax.y) {
+  if (normUv.x < clipMin2.x || normUv.x > clipMax2.x || normUv.y < clipMin2.y || normUv.y > clipMax2.y) {
     gl_FragColor = vec4(0.0);
     return;
   }
 
-  // Normalize z-slice by total slices
-  vec4 pos = vec4(vUv, (SLICES == 1.0 && Z_SLICE == 0) ? 0.0 : float(Z_SLICE) / (SLICES - 1.0), 0.0);
+  // Compute the normalized slice coordinate
+  float sliceNorm = (SLICES == 1.0 && Z_SLICE == 0) ? 0.0 : float(Z_SLICE) / (SLICES - 1.0);
+
+  // Build the 3D sample position based on viewAxis
+  vec4 pos;
+  if (viewAxis == 1) {
+    // YZ view: UV.x -> Z, UV.y -> Y, slice along X (Y vertical to align with XY pane)
+    // Z_SLICE is an X voxel index; normalize by volumeSize.x
+    float xNorm = (volumeSize.x <= 1.0) ? 0.0 : float(Z_SLICE) / (volumeSize.x - 1.0);
+    pos = vec4(xNorm, vUv.y, vUv.x, 0.0);
+  } else if (viewAxis == 2) {
+    // XZ view: UV.x -> X, UV.y -> Z, slice along Y
+    // Z_SLICE is a Y voxel index; normalize by volumeSize.y
+    float yNorm = (volumeSize.y <= 1.0) ? 0.0 : float(Z_SLICE) / (volumeSize.y - 1.0);
+    pos = vec4(vUv.x, yNorm, vUv.y, 0.0);
+  } else {
+    // XY view (default): UV -> XY, slice along Z
+    pos = vec4(vUv, sliceNorm, 0.0);
+  }
 
   vec4 C;
   C = sampleAtlas(textureAtlas, pos);
