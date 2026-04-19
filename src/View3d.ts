@@ -116,11 +116,9 @@ export class View3d {
       lightContainer.rotation.setFromRotationMatrix(this.canvas3d.camera.matrixWorld);
     }
     // keep the ortho scale up to date.
-    if (this.image && (isOrthographicCamera(this.canvas3d.camera) || this.canvas3d.getViewMode() === Axis.TRIPLE)) {
-      if (isOrthographicCamera(this.canvas3d.camera)) {
-        const { top, zoom } = this.canvas3d.camera;
-        this.image.setOrthoScale(Math.abs(top) / zoom);
-      }
+    if (this.image && isOrthographicCamera(this.canvas3d.camera)) {
+      const { top, zoom } = this.canvas3d.camera;
+      this.image.setOrthoScale(Math.abs(top) / zoom);
       this.updateOrthoScaleBar(this.image.volume);
     }
   }
@@ -278,7 +276,6 @@ export class View3d {
   onVolumeData(volume: Volume, channels: number[]): void {
     this.image?.updateScale();
     this.image?.onChannelLoaded(channels);
-    this.canvas3d.updateTripleSliceCrosshairs();
     if (volume.isLoaded() && this.tweakpane) {
       this.tweakpane.refresh();
     }

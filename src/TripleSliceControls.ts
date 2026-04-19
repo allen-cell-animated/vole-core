@@ -93,7 +93,7 @@ export default class TripleSliceControls {
 
     for (const [key, pane] of Object.entries(panes) as [
       "xy" | "yz" | "xz",
-      { x: number; y: number; w: number; h: number },
+      { x: number; y: number; w: number; h: number }
     ][]) {
       if (x >= pane.x && x <= pane.x + pane.w && y >= pane.y && y <= pane.y + pane.h) {
         return key;
