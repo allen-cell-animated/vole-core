@@ -13,9 +13,9 @@ import {
   Material,
   Matrix4,
   Mesh,
+  NodeMaterial,
   OrthographicCamera,
   PerspectiveCamera,
-  ShaderMaterial,
   Texture,
   Vector2,
   Vector3,
@@ -23,17 +23,13 @@ import {
 } from "three/webgpu";
 
 import FusedChannelData from "./FusedChannelData.js";
-import {
-  rayMarchingVertexShaderSrc,
-  rayMarchingFragmentShaderSrc,
-  rayMarchingShaderUniforms,
-} from "./constants/volumeRayMarchShader.js";
 import { Volume } from "./index.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 
 import type { FuseChannel } from "./types.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
+import { raymarchNode } from "./constants/shaders/raymarch.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
 
@@ -46,7 +42,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   private boxHelper: Box3Helper;
   private tickMarksMesh: LineSegments;
   private geometryTransformNode: Group;
-  private uniforms: ReturnType<typeof rayMarchingShaderUniforms>;
+  private uniforms: ReturnType<typeof raymarchNode>["uniforms"];
   private channelData!: FusedChannelData;
   private emptyPositionTex: DataTexture;
 
@@ -59,8 +55,20 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   constructor(volume: Volume, settings: VolumeRenderSettings = new VolumeRenderSettings(volume)) {
     this.volume = volume;
 
-    this.uniforms = rayMarchingShaderUniforms();
-    [this.geometry, this.geometryMesh] = this.createGeometry(this.uniforms);
+    const { vertex, fragment, uniforms } = raymarchNode();
+    this.uniforms = uniforms;
+    this.geometry = new BoxGeometry(1.0, 1.0, 1.0);
+
+    // shader,vtx and frag.
+
+    const material = new NodeMaterial();
+    material.vertexNode = vertex();
+    material.fragmentNode = fragment();
+    material.transparent = true;
+    material.depthTest = true;
+    material.depthWrite = false;
+    this.geometryMesh = new Mesh(this.geometry, material);
+    this.geometryMesh.name = "Volume";
 
     this.boxHelper = new Box3Helper(
       new Box3(new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5)),
@@ -208,32 +216,6 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     }
   }
 
-  /**
-   * Creates the geometry mesh and material for rendering the volume.
-   * @param uniforms object containing uniforms to pass to the shader material.
-   * @returns the new geometry and geometry mesh.
-   */
-  private createGeometry(
-    uniforms: ReturnType<typeof rayMarchingShaderUniforms>
-  ): [BoxGeometry, Mesh<BufferGeometry, Material>] {
-    const geom = new BoxGeometry(1.0, 1.0, 1.0);
-
-    // shader,vtx and frag.
-
-    const threeMaterial = new ShaderMaterial({
-      uniforms: uniforms,
-      vertexShader: rayMarchingVertexShaderSrc,
-      fragmentShader: rayMarchingFragmentShaderSrc,
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
-    });
-    const mesh: Mesh<BufferGeometry, Material> = new Mesh(geom, threeMaterial);
-    mesh.name = "Volume";
-
-    return [geom, mesh];
-  }
-
   private createTickMarks(): LineSegments {
     // Length of tick mark lines in world units
     const TICK_LENGTH = 0.025;
@@ -345,9 +327,9 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   //////////////////////////////////////////
   //////////////////////////////////////////
 
-  private setUniform<U extends keyof ReturnType<typeof rayMarchingShaderUniforms>>(
+  private setUniform<U extends keyof ReturnType<typeof raymarchNode>["uniforms"]>(
     name: U,
-    value: ReturnType<typeof rayMarchingShaderUniforms>[U]["value"]
+    value: ReturnType<typeof raymarchNode>["uniforms"][U]["value"]
   ) {
     if (!this.uniforms[name]) {
       return;
