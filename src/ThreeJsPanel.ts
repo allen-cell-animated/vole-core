@@ -17,9 +17,8 @@ import {
   UnsignedByteType,
   Vector2,
   Vector3,
-  WebGLRenderer,
-  WebGLRenderTarget,
 } from "three";
+import { WebGPURenderer, RenderTarget } from "three/webgpu";
 
 import TrackballControls from "./TrackballControls.js";
 import Timing from "./Timing.js";
@@ -43,6 +42,9 @@ const DEFAULT_PERSPECTIVE_CAMERA_FAR = 20.0;
 
 const DEFAULT_ORTHO_SCALE = 0.5;
 
+/** For some reason, the return type of `WebGPURenderer.getContext()` is currently `unknown`. */
+type RenderContext = WebGL2RenderingContext | GPUCanvasContext;
+
 export type CameraState = {
   position: [number, number, number];
   up: [number, number, number];
@@ -54,7 +56,7 @@ export type CameraState = {
 };
 
 type AnimateFunction = (
-  renderer: WebGLRenderer,
+  renderer: WebGPURenderer,
   camera: PerspectiveCamera | OrthographicCamera,
   depthTexture?: DepthTexture | null
 ) => void;
@@ -64,7 +66,7 @@ export class ThreeJsPanel {
   private canvas: HTMLCanvasElement;
   public scene: Scene;
 
-  private meshRenderTarget: WebGLRenderTarget;
+  private meshRenderTarget: RenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
 
   public animateFuncs: AnimateFunction[];
@@ -73,7 +75,7 @@ export class ThreeJsPanel {
   private inRenderLoop: boolean;
   private requestedRender: number;
   public hasWebGL2: boolean;
-  public renderer: WebGLRenderer;
+  public renderer: WebGPURenderer;
   private timer: Timing;
   private fov: number;
   private perspectiveCamera: PerspectiveCamera;
@@ -124,7 +126,7 @@ export class ThreeJsPanel {
     }
 
     this.scene = new Scene();
-    this.meshRenderTarget = new WebGLRenderTarget(this.canvas.width, this.canvas.height, {
+    this.meshRenderTarget = new RenderTarget(this.canvas.width, this.canvas.height, {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
@@ -159,7 +161,7 @@ export class ThreeJsPanel {
     const context = this.canvas.getContext("webgl2");
     if (context) {
       this.hasWebGL2 = true;
-      this.renderer = new WebGLRenderer({
+      this.renderer = new WebGPURenderer({
         context: context,
         canvas: this.canvas,
         preserveDrawingBuffer: true,
@@ -171,14 +173,14 @@ export class ThreeJsPanel {
       this.renderer.setPixelRatio(window.devicePixelRatio);
       this.renderer.state.setBlending(NormalBlending);
       //required by WebGL 2.0 for rendering to FLOAT textures
-      this.renderer.getContext().getExtension("EXT_color_buffer_float");
+      (this.renderer.getContext() as RenderContext).getExtension("EXT_color_buffer_float");
     } else {
       // TODO Deprecate this code path.
       console.warn(
         "WebGL 2.0 not available. Some functionality may be limited. Please use a browser that supports WebGL 2.0."
       );
 
-      this.renderer = new WebGLRenderer({
+      this.renderer = new WebGPURenderer({
         canvas: this.canvas,
         preserveDrawingBuffer: true,
         alpha: true,
@@ -653,11 +655,11 @@ export class ThreeJsPanel {
   }
 
   getWidth(): number {
-    return this.renderer.getContext().canvas.width;
+    return (this.renderer.getContext() as RenderContext).canvas.width;
   }
 
   getHeight(): number {
-    return this.renderer.getContext().canvas.height;
+    return (this.renderer.getContext() as RenderContext).canvas.height;
   }
 
   getCameraState(): CameraState {
@@ -849,7 +851,7 @@ export class ThreeJsPanel {
     }
   }
 
-  hitTest(offsetX: number, offsetY: number, pickBuffer: WebGLRenderTarget | undefined): number {
+  hitTest(offsetX: number, offsetY: number, pickBuffer: RenderTarget | undefined): number {
     if (!pickBuffer) {
       return -1;
     }
