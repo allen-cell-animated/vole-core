@@ -20,7 +20,7 @@ import { OVERLAY_LAYER } from "./ThreeJsPanel.js";
 import Volume from "./Volume.js";
 import type { FuseChannel } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
-import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
+import { Axis, SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 
 /**
  * A VolumeRenderImpl that manages three Atlas2DSlice renderers (XY, YZ, XZ)
@@ -42,14 +42,14 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     this.baseSettings = settings;
 
     const xySlice = new Atlas2DSlice(volume, settings.clone());
-    xySlice.setViewAxis(0);
+    xySlice.setViewAxis(Axis.Z);
     xySlice.setRequireFullVolume(true);
 
     const yzSlice = new Atlas2DSlice(volume, settings.clone());
-    yzSlice.setViewAxis(1);
+    yzSlice.setViewAxis(Axis.X);
 
     const xzSlice = new Atlas2DSlice(volume, settings.clone());
-    xzSlice.setViewAxis(2);
+    xzSlice.setViewAxis(Axis.Y);
 
     this.renderers = [xySlice, yzSlice, xzSlice];
 

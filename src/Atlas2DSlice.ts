@@ -19,11 +19,23 @@ import {
 import { Channel, Volume } from ".";
 import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
-import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
+import { Axis, SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import FusedChannelData from "./FusedChannelData.js";
 import type { FuseChannel } from "./types.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
+
+/** Maps the slice-along Axis to the integer expected by the viewAxis shader uniform. */
+function axisToShaderInt(axis: Axis): number {
+  switch (axis) {
+    case Axis.X:
+      return 1;
+    case Axis.Y:
+      return 2;
+    default:
+      return 0;
+  }
+}
 
 /**
  * Creates a plane that renders a 2D XY slice of volume atlas data.
@@ -40,8 +52,8 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   /** When false, `channelData` is shared from another renderer and must not be cleaned up by this instance. */
   private ownsChannelData = true;
   private sliceUpdateWaiting = false;
-  /** 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y) */
-  private viewAxisValue = 0;
+  /** The axis being sliced along: Z = XY view, X = YZ view, Y = XZ view. */
+  private viewAxisValue: Axis = Axis.Z;
   /** When true, always request the full volume (all Z slices) even for viewAxis 0. */
   private requireFullVolume = false;
 
@@ -88,12 +100,12 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     let regionMin: number;
     let regionMax: number;
     switch (this.viewAxisValue) {
-      case 1: // YZ view: slicing along X
+      case Axis.X: // YZ view: slicing along X
         axisSize = volSize.x;
         regionMin = this.volume.imageInfo.subregionOffset.x;
         regionMax = regionMin + this.volume.imageInfo.subregionSize.x;
         break;
-      case 2: // XZ view: slicing along Y
+      case Axis.Y: // XZ view: slicing along Y
         axisSize = volSize.y;
         regionMin = this.volume.imageInfo.subregionOffset.y;
         regionMax = regionMin + this.volume.imageInfo.subregionSize.y;
@@ -128,11 +140,11 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     // For non-XY views, remap scale/position so the face appears correctly in the XY plane.
     // The PlaneGeometry is always in XY, so we set mesh X/Y scale to the target face dimensions.
     switch (this.viewAxisValue) {
-      case 1: // YZ face: volume Z → mesh X, volume Y → mesh Y (Y vertical to align with XY)
+      case Axis.X: // YZ face: volume Z → mesh X, volume Y → mesh Y (Y vertical to align with XY)
         this.geometryMesh.position.set(volumeOffset.z, volumeOffset.y, 0);
         this.geometryMesh.scale.set(regionScale.z, regionScale.y, 1);
         break;
-      case 2: // XZ face: volume X → mesh X, volume Z → mesh Y
+      case Axis.Y: // XZ face: volume X → mesh X, volume Z → mesh Y
         this.geometryMesh.position.set(volumeOffset.x, volumeOffset.z, 0);
         this.geometryMesh.scale.set(regionScale.x, regionScale.z, 1);
         break;
@@ -230,7 +242,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
       const sliceInBounds = this.updateSlice();
       if (sliceInBounds) {
-        if (this.viewAxisValue !== 0 || this.requireFullVolume) {
+        if (this.viewAxisValue !== Axis.Z || this.requireFullVolume) {
           // For non-XY views (or triple-mode), we need the full volume loaded
           this.volume.updateRequiredData({
             subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
@@ -367,11 +379,11 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
   /**
    * Sets the view axis for this slice renderer.
-   * @param axis 0 = XY (slice along Z), 1 = YZ (slice along X), 2 = XZ (slice along Y)
+   * @param axis The axis to slice along: Axis.Z = XY view, Axis.X = YZ view, Axis.Y = XZ view.
    */
-  public setViewAxis(axis: number): void {
+  public setViewAxis(axis: Axis): void {
     this.viewAxisValue = axis;
-    this.setUniform("viewAxis", axis);
+    this.setUniform("viewAxis", axisToShaderInt(axis));
   }
 
   /**
