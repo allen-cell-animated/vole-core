@@ -477,7 +477,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
       }
     }
     // defaults to rgba and unsignedbytetype so dont need to supply format this time.
-    this.volumeTexture.image.data = data;
+    this.volumeTexture.image.data?.set(data);
     this.volumeTexture.needsUpdate = true;
   }
 

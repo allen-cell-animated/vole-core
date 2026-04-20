@@ -113,7 +113,7 @@ export default class Channel {
       }
     }
 
-    this.lutTexture.image.data = ret;
+    this.lutTexture.image.data?.set(ret);
     this.lutTexture.needsUpdate = true;
 
     return ret;
