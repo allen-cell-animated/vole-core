@@ -1071,7 +1071,7 @@ export class View3d {
    * @param offsetY mouse event y coordinate
    * @returns id of object that is under offsetX, offsetY. -1 if none
    */
-  hitTest(offsetX: number, offsetY: number): number {
+  async hitTest(offsetX: number, offsetY: number): Promise<number> {
     if (!this.image) {
       return -1;
     }

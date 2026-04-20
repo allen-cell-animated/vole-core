@@ -852,7 +852,7 @@ export class ThreeJsPanel {
     }
   }
 
-  hitTest(offsetX: number, offsetY: number, pickBuffer: RenderTarget | undefined): number {
+  async hitTest(offsetX: number, offsetY: number, pickBuffer: RenderTarget | undefined): Promise<number> {
     if (!pickBuffer) {
       return -1;
     }
@@ -870,7 +870,7 @@ export class ThreeJsPanel {
 
     // read from the instance buffer
     const pixel = new Float32Array(4).fill(-1);
-    this.renderer.readRenderTargetPixels(pickBuffer, sx, sy, 1, 1, pixel);
+    pixel.set(await this.renderer.readRenderTargetPixelsAsync(pickBuffer, sx, sy, 1, 1));
     // For future reference, Simularium stores the following:
     // (typeId), (instanceId), fragViewPos.z, fragPosDepth;
 
