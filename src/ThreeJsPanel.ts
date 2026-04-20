@@ -17,8 +17,9 @@ import {
   UnsignedByteType,
   Vector2,
   Vector3,
-} from "three";
-import { WebGPURenderer, RenderTarget } from "three/webgpu";
+  RenderTarget,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import TrackballControls from "./TrackballControls.js";
 import Timing from "./Timing.js";

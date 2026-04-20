@@ -9,8 +9,9 @@ import {
   PerspectiveCamera,
   Texture,
   Group,
-} from "three";
-import { WebGPURenderer, RenderTarget } from "three/webgpu";
+  RenderTarget,
+  WebGPURenderer,
+} from "three/webgpu";
 import { Pane } from "tweakpane";
 
 import MeshVolume from "./MeshVolume.js";
