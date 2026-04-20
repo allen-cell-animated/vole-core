@@ -128,15 +128,21 @@ export default class VolumeDrawable {
     options.renderMode = options.renderMode || RenderMode.RAYMARCH;
     switch (options.renderMode) {
       case RenderMode.PATHTRACE:
-        this.renderMode = RenderMode.PATHTRACE;
         this.volumeRendering = new PathTracedVolume(this.volume, this.settings);
         break;
-      case RenderMode.SLICE: // default to raymarch even when slice is selected
+      case RenderMode.TRIPLE_SLICE:
+        this.volumeRendering = new TripleSliceVolume(this.volume, this.settings);
+        break;
+      case RenderMode.SLICE:
+        this.volumeRendering = new Atlas2DSlice(this.volume, this.settings);
+        break;
       case RenderMode.RAYMARCH:
       default:
-        this.renderMode = RenderMode.RAYMARCH;
         this.volumeRendering = new RayMarchedAtlasVolume(this.volume, this.settings);
+        break;
     }
+    this.renderMode = options.renderMode;
+
     if (this.pickRendering) {
       this.pickRendering = new PickVolume(this.volume, this.settings);
     }

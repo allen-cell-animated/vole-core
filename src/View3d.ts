@@ -215,6 +215,13 @@ export class View3d {
     volume.addVolumeDataObserver(this);
     options = options || {};
     options.renderMode = this.volumeRenderMode;
+    if (this.canvas3d.getViewMode() === Axis.XYZ || this.canvas3d.getViewMode() === Axis.NONE) {
+      options.renderMode = this.volumeRenderMode;
+    } else if (this.canvas3d.getViewMode() === Axis.TRIPLE) {
+      options.renderMode = RenderMode.TRIPLE_SLICE;
+    } else {
+      options.renderMode = RenderMode.SLICE;
+    }
     this.setImage(new VolumeDrawable(volume, options));
   }
 
@@ -404,8 +411,6 @@ export class View3d {
 
   // Add a new volume image to the viewer.  The viewer currently only supports a single image at a time, and will return any prior existing image.
   setImage(img: VolumeDrawable): VolumeDrawable | undefined {
-    const wasTriple = this.canvas3d.getViewMode() === Axis.TRIPLE;
-
     const oldImage = this.unsetImage();
 
     this.image = img;
@@ -434,12 +439,6 @@ export class View3d {
 
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
-
-    // If we were in triple mode, re-enter it with the new image
-    if (wasTriple) {
-      this.image.setViewMode("TRIPLE", this.volumeRenderMode);
-      this.canvas3d.setTripleSliceSource(this.image.getTripleSliceSource());
-    }
 
     // redraw if not already in draw loop
     this.redraw();
@@ -541,6 +540,9 @@ export class View3d {
     this.image?.setViewMode(mode, this.volumeRenderMode);
     this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
 
+    // we need to set up a coupling between the canvas3d and the volumedrawable
+    // for triple slice mode, so that the canvas3d can update the slice indices
+    // in the volumedrawable when the user drags the crosshairs.
     if (mode.toUpperCase() === "TRIPLE" && this.image) {
       const source = this.image.getTripleSliceSource();
       this.canvas3d.setTripleSliceSource(source);
@@ -927,6 +929,8 @@ export class View3d {
 
   /**
    * Switch between single pass ray-marched volume rendering and progressive path traced rendering.
+   * This setting is relevant for 3d modes and in particular is used to distinguish path trace
+   * from any other rendering algorithm.
    * @param {RenderMode} mode RAYMARCH for single pass ray march, PATHTRACE for progressive path trace
    */
   setVolumeRenderMode(mode: RenderMode.PATHTRACE | RenderMode.RAYMARCH): void {

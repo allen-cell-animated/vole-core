@@ -93,13 +93,16 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
       // Apply per-axis slice indices to each renderer
       this.applyAllSliceIndices();
     }
-    // Forward non-ROI flags to primary (XY) renderer
+    // Forward non-ROI flags to all renderers
     const nonRoiFlags = dirtyFlags !== undefined ? dirtyFlags & ~SettingsFlags.ROI : dirtyFlags;
     if (nonRoiFlags === undefined || nonRoiFlags !== 0) {
-      this.renderers[0].updateSettings(settings, nonRoiFlags);
+      for (const r of this.renderers) {
+        r.updateSettings(settings, nonRoiFlags);
+      }
     }
     // Recompute layout when resolution or view parameters change
     if (dirtyFlags === undefined || dirtyFlags & (SettingsFlags.SAMPLING | SettingsFlags.VIEW)) {
+      this.updateCrosshairs();
       this.updateLayout();
     }
   }
