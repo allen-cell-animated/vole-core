@@ -991,5 +991,4 @@ export class ThreeJsPanel {
       return instance;
     }
   }
-
 }
