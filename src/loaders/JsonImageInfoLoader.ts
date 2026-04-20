@@ -301,7 +301,7 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
       ctx.drawImage(bitmap, 0, 0);
       const iData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
 
-      const channelsBits: Uint8Array[] = [];
+      const channelsBits: Uint8Array<ArrayBuffer>[] = [];
       const length = bitmap.width * bitmap.height;
 
       // allocate channels in batch

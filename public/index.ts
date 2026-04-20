@@ -909,7 +909,7 @@ function showChannelUI(volume: Volume) {
   }
 }
 
-function loadImageData(jsonData: ImageInfo, volumeData: Uint8Array[]) {
+function loadImageData(jsonData: ImageInfo, volumeData: Uint8Array<ArrayBuffer>[]) {
   const vol = new Volume(jsonData);
   myState.volume = vol;
 
