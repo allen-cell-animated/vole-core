@@ -1261,9 +1261,9 @@ function main() {
   }
   view3D = new View3d({ parentElement: el });
 
-  el.addEventListener("mousemove", (e: Event) => {
+  el.addEventListener("mousemove", async (e: Event) => {
     const event = e as MouseEvent;
-    const intersectedObject = view3D.hitTest(event.offsetX, event.offsetY);
+    const intersectedObject = await view3D.hitTest(event.offsetX, event.offsetY);
     if (intersectedObject !== -1) {
       el.style.cursor = "pointer";
       console.log("picked " + intersectedObject);
