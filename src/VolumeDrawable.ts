@@ -7,11 +7,10 @@ import {
   DepthTexture,
   OrthographicCamera,
   PerspectiveCamera,
-  WebGLRenderer,
-  WebGLRenderTarget,
   Texture,
   Group,
 } from "three";
+import { WebGPURenderer, RenderTarget } from "three/webgpu";
 import { Pane } from "tweakpane";
 
 import MeshVolume from "./MeshVolume.js";
@@ -150,7 +149,7 @@ export default class VolumeDrawable {
     // this.volumeRendering.setZSlice(this.zSlice);
   }
 
-  public getPickBuffer(): WebGLRenderTarget | undefined {
+  public getPickBuffer(): RenderTarget | undefined {
     return this.pickRendering?.getPickBuffer();
   }
 
@@ -447,7 +446,7 @@ export default class VolumeDrawable {
   }
 
   onAnimate(
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ): void {
@@ -481,14 +480,14 @@ export default class VolumeDrawable {
   }
 
   fillPickBuffer(
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ): void {
     this.pickRendering?.doRender(renderer, camera, depthTexture);
   }
 
-  drawContours(renderer: WebGLRenderer): void {
+  drawContours(renderer: WebGPURenderer): void {
     if (!this.pickRendering || !this.contourRendering) {
       return;
     }
