@@ -20,7 +20,7 @@ export type RawArrayData = {
   // [c,z,y,x]
   shape: [number, number, number, number];
   // the bits
-  buffer: DataView;
+  buffer: DataView<ArrayBuffer>;
 };
 
 // minimal metadata for visualization
@@ -157,7 +157,7 @@ class RawArrayLoader extends ThreadableVolumeLoader {
       const volSizePixels = this.data.shape[3] * this.data.shape[2] * this.data.shape[1];
       const ctor = ARRAY_CONSTRUCTORS[this.data.dtype];
       const channelData = new ctor(
-        this.data.buffer.buffer as ArrayBuffer,
+        this.data.buffer.buffer,
         chindex * volSizePixels * getBytesPerPixel(this.data.dtype),
         volSizePixels
       );
