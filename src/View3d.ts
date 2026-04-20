@@ -37,7 +37,6 @@ export const RENDERMODE_PATHTRACE = RenderMode.PATHTRACE;
 
 export interface View3dOptions {
   parentElement?: HTMLElement;
-  useWebGL2?: boolean;
 }
 
 const allGlobalLoadingOptions = {
@@ -69,16 +68,19 @@ export class View3d {
 
   private tweakpane: Pane | null;
 
+  static async new(options?: View3dOptions): Promise<View3d> {
+    const panel = await ThreeJsPanel.new(options?.parentElement);
+    return new View3d(panel);
+  }
+
   /**
    * @param {Object} options Optional options.
    * @param {boolean} options.useWebGL2 Default true
    * @param {HTMLElement} options.parentElement An optional element to which to append the viewer element on creation.
    *   The viewer will attempt to fill this element if provided.
    */
-  constructor(options?: View3dOptions) {
-    const useWebGL2 = options?.useWebGL2 === undefined ? true : options.useWebGL2;
-
-    this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
+  private constructor(panel: ThreeJsPanel) {
+    this.canvas3d = panel;
     this.redraw = this.redraw.bind(this);
     this.scene = new Scene();
     this.backgroundColor = new Color(0x000000);
@@ -887,7 +889,7 @@ export class View3d {
         // if the camera view is in single-slice view, then we don't want to change
         // anything but still remember the mode for when we switch back to a volumetric view
         return;
-      } else if (mode === RenderMode.PATHTRACE && this.canvas3d.hasWebGL2) {
+      } else if (mode === RenderMode.PATHTRACE) {
         this.image.setVolumeRendering(RenderMode.PATHTRACE);
         this.image.updateLights(this.lights);
         // pathtrace is a continuous rendering mode
@@ -942,10 +944,6 @@ export class View3d {
     this.canvas3d.resetCamera();
     this.image?.onResetCamera();
     this.redraw();
-  }
-
-  hasWebGL2(): boolean {
-    return this.canvas3d.hasWebGL2;
   }
 
   handleKeydown = (event: KeyboardEvent): void => {

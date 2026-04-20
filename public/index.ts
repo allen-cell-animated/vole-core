@@ -1254,12 +1254,12 @@ function setupColorizeControls() {
   });
 }
 
-function main() {
+async function main() {
   const el = document.getElementById("vol-e");
   if (!el) {
     return;
   }
-  view3D = new View3d({ parentElement: el });
+  view3D = await View3d.new({ parentElement: el });
 
   el.addEventListener("mousemove", async (e: Event) => {
     const event = e as MouseEvent;
@@ -1469,9 +1469,7 @@ function main() {
   renderModeSelect?.addEventListener("change", ({ currentTarget }) => {
     const target = (currentTarget as HTMLOptionElement)!;
     if (target.value === "PT") {
-      if (view3D.hasWebGL2()) {
-        changeRenderMode(true, false);
-      }
+      changeRenderMode(true, false);
     } else if (target.value === "MP") {
       changeRenderMode(false, true);
     } else {

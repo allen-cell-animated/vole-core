@@ -64,7 +64,6 @@ type AnimateFunction = (
 
 export class ThreeJsPanel {
   public containerdiv: HTMLDivElement;
-  private canvas: HTMLCanvasElement;
   public scene: Scene;
 
   private meshRenderTarget: RenderTarget;
@@ -75,7 +74,6 @@ export class ThreeJsPanel {
   public overlayRenderFuncs: AnimateFunction[];
   private inRenderLoop: boolean;
   private requestedRender: number;
-  public hasWebGL2: boolean;
   public renderer: WebGPURenderer;
   private timer: Timing;
   private fov: number;
@@ -112,22 +110,30 @@ export class ThreeJsPanel {
   private dataurlcallback?: (url: string) => void;
   private onRenderCallback?: () => void;
 
-  constructor(parentElement: HTMLElement | undefined, _useWebGL2: boolean) {
+  static async new(parentElement: HTMLElement | undefined): Promise<ThreeJsPanel> {
+    const renderer = new WebGPURenderer({
+      // preserveDrawingBuffer: true,
+      alpha: true,
+      // premultipliedAlpha: false,
+    });
+    await renderer.init();
+    return new ThreeJsPanel(parentElement, renderer);
+  }
+
+  private constructor(parentElement: HTMLElement | undefined, renderer: WebGPURenderer) {
+    this.renderer = renderer;
+
     this.containerdiv = document.createElement("div");
     this.containerdiv.style.position = "relative";
 
-    this.canvas = document.createElement("canvas");
-    this.containerdiv.appendChild(this.canvas);
-    this.canvas.style.backgroundColor = "black";
-
     if (parentElement) {
-      this.canvas.height = parentElement.offsetHeight;
-      this.canvas.width = parentElement.offsetWidth;
+      this.renderer.domElement.height = parentElement.offsetHeight;
+      this.renderer.domElement.width = parentElement.offsetWidth;
       parentElement.appendChild(this.containerdiv);
     }
 
     this.scene = new Scene();
-    this.meshRenderTarget = new RenderTarget(this.canvas.width, this.canvas.height, {
+    this.meshRenderTarget = new RenderTarget(this.renderer.domElement.width, this.renderer.domElement.height, {
       minFilter: NearestFilter,
       magFilter: NearestFilter,
       format: RGBAFormat,
@@ -137,7 +143,10 @@ export class ThreeJsPanel {
     this.meshRenderToBuffer = new RenderToBuffer(copyImageFragShader, {
       image: { value: this.meshRenderTarget.texture },
     });
-    this.meshRenderTarget.depthTexture = new DepthTexture(this.canvas.width, this.canvas.height);
+    this.meshRenderTarget.depthTexture = new DepthTexture(
+      this.renderer.domElement.width,
+      this.renderer.domElement.height
+    );
 
     this.scaleBarContainerElement = document.createElement("div");
     this.orthoScaleBarElement = document.createElement("div");
@@ -156,40 +165,12 @@ export class ThreeJsPanel {
     // if we're not in a constant render loop, have we queued any single redraws?
     this.requestedRender = 0;
 
-    // if webgl 2 is available, let's just use it anyway.
-    // we are ignoring the useWebGL2 flag
-    this.hasWebGL2 = false;
-    const context = this.canvas.getContext("webgl2");
-    if (context) {
-      this.hasWebGL2 = true;
-      this.renderer = new WebGPURenderer({
-        context: context,
-        canvas: this.canvas,
-        // preserveDrawingBuffer: true,
-        alpha: true,
-        // premultipliedAlpha: false,
-      });
-      //this.renderer.autoClear = false;
-      // set pixel ratio to 0.25 or 0.5 to render at lower res.
-      this.renderer.setPixelRatio(window.devicePixelRatio);
-      // this.renderer.state.setBlending(NormalBlending);
-      //required by WebGL 2.0 for rendering to FLOAT textures
-      // (this.renderer.getContext() as RenderContext).getExtension("EXT_color_buffer_float");
-    } else {
-      // TODO Deprecate this code path.
-      console.warn(
-        "WebGL 2.0 not available. Some functionality may be limited. Please use a browser that supports WebGL 2.0."
-      );
-
-      this.renderer = new WebGPURenderer({
-        canvas: this.canvas,
-        // preserveDrawingBuffer: true,
-        alpha: true,
-        // premultipliedAlpha: false,
-      });
-      this.renderer.setPixelRatio(window.devicePixelRatio);
-      // this.renderer.state.setBlending(NormalBlending);
-    }
+    //this.renderer.autoClear = false;
+    // set pixel ratio to 0.25 or 0.5 to render at lower res.
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    // this.renderer.state.setBlending(NormalBlending);
+    //required by WebGL 2.0 for rendering to FLOAT textures
+    // (this.renderer.getContext() as RenderContext).getExtension("EXT_color_buffer_float");
     // this.renderer.localClippingEnabled = true;
 
     if (parentElement) {
@@ -211,7 +192,7 @@ export class ThreeJsPanel {
       DEFAULT_PERSPECTIVE_CAMERA_FAR
     );
     this.resetPerspectiveCamera();
-    this.perspectiveControls = new TrackballControls(this.perspectiveCamera, this.canvas);
+    this.perspectiveControls = new TrackballControls(this.perspectiveCamera, this.renderer.domElement);
     this.perspectiveControls.rotateSpeed = 4.0 / window.devicePixelRatio;
     this.perspectiveControls.autoRotate = false;
     this.perspectiveControls.staticMoving = true;
@@ -220,36 +201,36 @@ export class ThreeJsPanel {
 
     this.orthographicCameraX = new OrthographicCamera(-scale * aspect, scale * aspect, scale, -scale, 0.001, 20);
     this.resetOrthographicCameraX();
-    this.orthoControlsX = new TrackballControls(this.orthographicCameraX, this.canvas);
+    this.orthoControlsX = new TrackballControls(this.orthographicCameraX, this.renderer.domElement);
     this.orthoControlsX.noRotate = true;
     this.orthoControlsX.scale = scale;
     this.orthoControlsX.scale0 = scale;
     this.orthoControlsX.aspect = aspect;
     this.orthoControlsX.staticMoving = true;
     this.orthoControlsX.enabled = false;
-    this.orthoControlsX.panSpeed = this.canvas.clientWidth * 0.5;
+    this.orthoControlsX.panSpeed = this.renderer.domElement.clientWidth * 0.5;
 
     this.orthographicCameraY = new OrthographicCamera(-scale * aspect, scale * aspect, scale, -scale, 0.001, 20);
     this.resetOrthographicCameraY();
-    this.orthoControlsY = new TrackballControls(this.orthographicCameraY, this.canvas);
+    this.orthoControlsY = new TrackballControls(this.orthographicCameraY, this.renderer.domElement);
     this.orthoControlsY.noRotate = true;
     this.orthoControlsY.scale = scale;
     this.orthoControlsY.scale0 = scale;
     this.orthoControlsY.aspect = aspect;
     this.orthoControlsY.staticMoving = true;
     this.orthoControlsY.enabled = false;
-    this.orthoControlsY.panSpeed = this.canvas.clientWidth * 0.5;
+    this.orthoControlsY.panSpeed = this.renderer.domElement.clientWidth * 0.5;
 
     this.orthographicCameraZ = new OrthographicCamera(-scale * aspect, scale * aspect, scale, -scale, 0.001, 20);
     this.resetOrthographicCameraZ();
-    this.orthoControlsZ = new TrackballControls(this.orthographicCameraZ, this.canvas);
+    this.orthoControlsZ = new TrackballControls(this.orthographicCameraZ, this.renderer.domElement);
     this.orthoControlsZ.noRotate = true;
     this.orthoControlsZ.scale = scale;
     this.orthoControlsZ.scale0 = scale;
     this.orthoControlsZ.aspect = aspect;
     this.orthoControlsZ.staticMoving = true;
     this.orthoControlsZ.enabled = false;
-    this.orthoControlsZ.panSpeed = this.canvas.clientWidth * 0.5;
+    this.orthoControlsZ.panSpeed = this.renderer.domElement.clientWidth * 0.5;
 
     this.camera = this.perspectiveCamera;
     this.controls = this.perspectiveControls;
@@ -768,7 +749,7 @@ export class ThreeJsPanel {
     }
 
     if (this.dataurlcallback) {
-      this.dataurlcallback(this.canvas.toDataURL());
+      this.dataurlcallback(this.renderer.domElement.toDataURL());
       this.dataurlcallback = undefined;
     }
   }
