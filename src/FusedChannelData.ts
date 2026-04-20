@@ -12,7 +12,6 @@ import {
   ShaderMaterialParameters,
   Mesh,
   PlaneGeometry,
-  WebGLRenderer,
   OneFactor,
   CustomBlending,
   MaxEquation,
@@ -22,7 +21,9 @@ import {
   UnsignedIntType,
   RedIntegerFormat,
   FloatType,
-} from "three";
+  WebGPURenderer,
+} from "three/webgpu";
+import Color4 from "three/src/renderers/common/Color4.js";
 
 import Channel from "./Channel.js";
 import { renderToBufferVertShader } from "./constants/basicShaders.js";
@@ -256,7 +257,7 @@ export default class FusedChannelData {
     this.fuseRequested = readyToFuse;
   }
 
-  public gpuFuse(renderer: WebGLRenderer): void {
+  public gpuFuse(renderer: WebGPURenderer): void {
     const combination = this.fuseRequested;
     if (!combination) {
       return;
@@ -317,7 +318,7 @@ export default class FusedChannelData {
     if (this.fuseScene.children.length > 0) {
       renderer.setRenderTarget(this.fuseRenderTarget);
       renderer.autoClearColor = true;
-      const prevClearColor = new Color();
+      const prevClearColor = new Color4();
       renderer.getClearColor(prevClearColor);
       const prevClearAlpha = renderer.getClearAlpha();
       renderer.setClearColor(0x000000, 0);

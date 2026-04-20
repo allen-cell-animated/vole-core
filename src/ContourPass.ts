@@ -1,17 +1,17 @@
+import type { IUniform } from "three";
 import {
   Color,
   DataTexture,
   FloatType,
-  IUniform,
   RedIntegerFormat,
   RGBAFormat,
   Texture,
   Uniform,
   UnsignedByteType,
   UnsignedIntType,
-  WebGLRenderer,
-  WebGLRenderTarget,
-} from "three";
+  WebGPURenderer,
+  RenderTarget,
+} from "three/webgpu";
 import { clamp } from "three/src/math/MathUtils.js";
 
 import RenderToBuffer, { RenderPassType } from "./RenderToBuffer.js";
@@ -208,7 +208,7 @@ export default class ContourPass {
    * @param pickBuffer The pick buffer containing the pixel IDs to highlight,
    * e.g. `PickVolume.getPickBuffer()`.
    */
-  public render(renderer: WebGLRenderer, target: WebGLRenderTarget | null, pickBuffer: WebGLRenderTarget) {
+  public render(renderer: WebGPURenderer, target: RenderTarget | null, pickBuffer: RenderTarget) {
     // Setup uniforms
     const uniforms = this.pass.material.uniforms as ContourUniforms;
     uniforms.devicePixelRatio.value = window.devicePixelRatio;

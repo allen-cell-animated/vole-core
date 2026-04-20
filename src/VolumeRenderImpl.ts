@@ -1,4 +1,11 @@
-import { DepthTexture, Object3D, OrthographicCamera, PerspectiveCamera, Texture, WebGLRenderer } from "three";
+import type {
+  DepthTexture,
+  Object3D,
+  OrthographicCamera,
+  PerspectiveCamera,
+  Texture,
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import type { FuseChannel } from "./types.js";
@@ -17,7 +24,7 @@ export interface VolumeRenderImpl {
 
   get3dObject: () => Object3D;
   doRender: (
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ) => void;

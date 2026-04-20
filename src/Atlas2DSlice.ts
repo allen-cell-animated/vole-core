@@ -14,8 +14,9 @@ import {
   ShaderMaterial,
   Vector2,
   Vector3,
-  WebGLRenderer,
-} from "three";
+  WebGPURenderer,
+} from "three/webgpu";
+
 import { Channel, Volume } from "./index.js";
 import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
@@ -243,7 +244,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     return;
   }
 
-  public doRender(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera): void {
+  public doRender(renderer: WebGPURenderer, camera: PerspectiveCamera | OrthographicCamera): void {
     if (!this.geometryMesh.visible) {
       return;
     }

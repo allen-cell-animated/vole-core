@@ -19,8 +19,8 @@ import {
   Texture,
   Vector2,
   Vector3,
-  WebGLRenderer,
-} from "three";
+  WebGPURenderer,
+} from "three/webgpu";
 
 import FusedChannelData from "./FusedChannelData.js";
 import {
@@ -311,7 +311,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   }
 
   public doRender(
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ): void {

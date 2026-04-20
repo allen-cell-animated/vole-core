@@ -16,8 +16,8 @@ import {
   LinearFilter,
   NearestFilter,
   OrthographicCamera,
-  WebGLRenderer,
-} from "three";
+  WebGPURenderer,
+} from "three/webgpu";
 
 import { renderToBufferVertShader, copyImageFragShader } from "./constants/basicShaders.js";
 import { denoiseFragmentShaderSrc, denoiseShaderUniforms } from "./constants/denoiseShader.js";
@@ -276,7 +276,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
     this.updateSettings(this.settings, SettingsFlags.ROI);
   }
 
-  public doRender(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera): void {
+  public doRender(renderer: WebGPURenderer, camera: PerspectiveCamera | OrthographicCamera): void {
     if (!this.volumeTexture) {
       return;
     }

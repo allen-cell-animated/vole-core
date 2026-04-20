@@ -1,7 +1,6 @@
 import {
   BoxGeometry,
   BufferGeometry,
-  Color,
   DataTexture,
   DepthTexture,
   FloatType,
@@ -17,9 +16,10 @@ import {
   ShaderMaterial,
   Texture,
   Vector2,
-  WebGLRenderer,
-  WebGLRenderTarget,
-} from "three";
+  WebGPURenderer,
+  RenderTarget,
+} from "three/webgpu";
+import Color4 from "three/src/renderers/common/Color4.js";
 
 import {
   pickVertexShaderSrc,
@@ -45,7 +45,7 @@ export default class PickVolume implements VolumeRenderImpl {
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
   public needRedraw = false;
-  private pickBuffer: WebGLRenderTarget;
+  private pickBuffer: RenderTarget;
   private channelToPick = 0;
 
   /**
@@ -71,7 +71,7 @@ export default class PickVolume implements VolumeRenderImpl {
     this.emptyPositionTex = new DataTexture(new Uint8Array(Array(16).fill(0)), 2, 2);
 
     // buffers:
-    this.pickBuffer = new WebGLRenderTarget(2, 2, {
+    this.pickBuffer = new RenderTarget(2, 2, {
       count: 1,
       minFilter: NearestFilter,
       magFilter: NearestFilter,
@@ -97,7 +97,7 @@ export default class PickVolume implements VolumeRenderImpl {
     return this.channelToPick;
   }
 
-  public getPickBuffer(): WebGLRenderTarget {
+  public getPickBuffer(): RenderTarget {
     return this.pickBuffer;
   }
 
@@ -243,7 +243,7 @@ export default class PickVolume implements VolumeRenderImpl {
   }
 
   public doRender(
-    renderer: WebGLRenderer,
+    renderer: WebGPURenderer,
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ): void {
@@ -283,7 +283,7 @@ export default class PickVolume implements VolumeRenderImpl {
     renderer.setRenderTarget(this.pickBuffer);
     renderer.autoClear = true;
 
-    const prevClearColor = new Color();
+    const prevClearColor = new Color4();
     renderer.getClearColor(prevClearColor);
     const prevClearAlpha = renderer.getClearAlpha();
     renderer.setClearColor(0x000000, 0);

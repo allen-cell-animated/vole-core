@@ -1,13 +1,12 @@
 import {
-  IUniform,
   Mesh,
   OrthographicCamera,
   PlaneGeometry,
-  WebGLRenderer,
+  WebGPURenderer,
   Scene,
   ShaderMaterial,
-  WebGLRenderTarget,
-} from "three";
+  RenderTarget,
+} from "three/webgpu";
 
 import { renderToBufferVertShader } from "./constants/basicShaders.js";
 
@@ -29,7 +28,8 @@ export default class RenderToBuffer {
 
   constructor(
     fragmentSrc: string,
-    uniforms: { [key: string]: IUniform },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    uniforms: { [key: string]: { value: any } },
     passType: RenderPassType = RenderPassType.OPAQUE
   ) {
     this.scene = new Scene();
@@ -52,7 +52,7 @@ export default class RenderToBuffer {
   }
 
   /** Renders this pass to `target` using `renderer`, or to the canvas if no `target` is given. */
-  public render(renderer: WebGLRenderer, target?: WebGLRenderTarget) {
+  public render(renderer: WebGPURenderer, target?: RenderTarget) {
     renderer.setRenderTarget(target ?? null);
     renderer.render(this.scene, this.camera);
     // Reset the render target to the screen
