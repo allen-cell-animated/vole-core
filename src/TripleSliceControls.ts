@@ -41,7 +41,6 @@ export default class TripleSliceControls {
     }
 
     this.host.refreshTriplePhysicalSize();
-    this.source.updateCrosshairs();
 
     this.boundPointerDown = this.onPointerDown.bind(this);
     this.boundPointerMove = this.onPointerMove.bind(this);
@@ -77,7 +76,6 @@ export default class TripleSliceControls {
 
   updateCrosshairs(): void {
     this.host.refreshTriplePhysicalSize();
-    this.source?.updateCrosshairs();
   }
 
   // --- Hit testing ---

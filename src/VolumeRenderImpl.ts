@@ -14,7 +14,6 @@ export interface TripleSliceSource {
   getVolumeSize(): Vector3;
   getPhysicalSize(): Vector3;
   setSliceIndex(axis: "x" | "y" | "z", index: number): void;
-  updateCrosshairs(): void;
 }
 
 export interface VolumeRenderImpl {
