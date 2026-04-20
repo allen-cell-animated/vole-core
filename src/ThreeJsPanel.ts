@@ -45,8 +45,6 @@ const DEFAULT_PERSPECTIVE_CAMERA_FAR = 20.0;
 
 const DEFAULT_ORTHO_SCALE = 0.5;
 
-const TRIPLE_VIEW_GAP = 2;
-
 export type TripleViewPaneRect = { x: number; y: number; w: number; h: number };
 
 export type TripleViewPanes = {
@@ -124,10 +122,6 @@ export class ThreeJsPanel {
 
   private dataurlcallback?: (url: string) => void;
   private onRenderCallback?: () => void;
-  /** Cached pane layout for triple view (in physical pixels) */
-  private tripleViewPanes?: TripleViewPanes;
-  /** Physical size of the volume, used for pane layout proportions */
-  private tripleViewPhysicalSize?: Vector3;
 
   private tripleSliceControls: TripleSliceControls;
 
@@ -425,11 +419,14 @@ export class ThreeJsPanel {
   }
 
   orthoScreenPixelsToPhysicalUnits(pixels: number, physicalUnitsPerWorldUnit: number): number {
-    if (this.viewMode === Axis.TRIPLE) {
+    if (this.viewMode === Axis.TRIPLE && this.tripleSliceControls.source) {
       // In triple mode, use the XY pane dimensions to compute the conversion.
-      // The XY pane is xyW CSS pixels wide and covers phys.x world units.
-      const panes = this.computeTripleViewPanes();
-      const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
+      const dpr = this.renderer.getPixelRatio();
+      const panes = this.tripleSliceControls.source.getTripleViewPanesCSS(
+        this.getWidth() / dpr,
+        this.getHeight() / dpr
+      );
+      const phys = this.tripleSliceControls.source.getPhysicalSize();
       const worldUnitsPerPixel = phys.x / panes.xy.w;
       return pixels * worldUnitsPerPixel * physicalUnitsPerWorldUnit;
     }
@@ -686,96 +683,19 @@ export class ThreeJsPanel {
     this.tripleSliceControls.changeCallback = cb;
   }
 
-  /** Refreshes cached physical size from source, invalidating pane cache if changed. */
-  refreshTriplePhysicalSize(): void {
-    if (!this.tripleSliceControls.source) {
-      return;
+  /** Returns pane rects in CSS pixel coordinates (top-left origin) for hit testing. */
+  getTripleViewPanesCSS(): TripleViewPanes | undefined {
+    if (this.viewMode !== Axis.TRIPLE || !this.tripleSliceControls.source) {
+      return undefined;
     }
-    const newSize = this.tripleSliceControls.source.getPhysicalSize();
-    if (!this.tripleViewPhysicalSize || !this.tripleViewPhysicalSize.equals(newSize)) {
-      this.tripleViewPhysicalSize = newSize.clone();
-      this.tripleViewPanes = undefined;
-    }
-  }
-
-  /**
-   * Computes the per-pane viewport rectangles for triple-slice view.
-   * Layout: XY (bottom-left), YZ (bottom-right), XZ (top-left).
-   * Pane sizes are proportional to volume physical dimensions with a uniform scale.
-   * Returns values in CSS pixels (Three.js setViewport/setScissor expect CSS pixels
-   * and apply devicePixelRatio internally).
-   */
-  computeTripleViewPanes(): TripleViewPanes {
-    if (this.tripleViewPanes) {
-      return this.tripleViewPanes;
-    }
-
     const dpr = this.renderer.getPixelRatio();
     const canvasW = this.getWidth() / dpr;
     const canvasH = this.getHeight() / dpr;
-    const gap = TRIPLE_VIEW_GAP;
-
-    // Default to unit cube if no physical size set
-    const phys = this.tripleViewPhysicalSize || new Vector3(1, 1, 1);
-    const px = phys.x;
-    const py = phys.y;
-    const pz = phys.z;
-
-    // Layout:
-    //  +--------+--------+
-    //  |   XZ   |        |
-    //  | (px,pz)|        |
-    //  +--------+--------+
-    //  |   XY   |   YZ   |
-    //  | (px,py)| (py,pz)|
-    //  +--------+--------+
-    //
-    // Left column width ∝ px, right column width ∝ pz
-    // Bottom row height ∝ py, top row height ∝ pz
-    // (YZ pane: width ∝ pz, height ∝ py)  [Z horizontal, Y vertical]
-    // (XZ pane: width ∝ px, height ∝ pz)
-    // (XY pane: width ∝ px, height ∝ py)
-
-    // Find a uniform pixels-per-physical-unit that fits everything.
-    // Total width = px + gap + pz, total height = py + gap + pz
-    const scaleX = (canvasW - gap) / (px + pz);
-    const scaleY = (canvasH - gap) / (py + pz);
-    const scale = Math.min(scaleX, scaleY);
-
-    const xyW = Math.floor(px * scale);
-    const xyH = Math.floor(py * scale);
-    const yzW = Math.floor(pz * scale);
-    const yzH = Math.floor(py * scale);
-    const xzW = Math.floor(px * scale);
-    const xzH = Math.floor(pz * scale);
-
-    // Center the fitted layout within the canvas
-    const totalW = xyW + gap + yzW;
-    const totalH = xyH + gap + xzH;
-    const offsetX = Math.floor((canvasW - totalW) / 2);
-    const offsetY = Math.floor((canvasH - totalH) / 2);
-
-    // Position panes (origin is bottom-left in WebGL viewport coords)
-    const xy: TripleViewPaneRect = { x: offsetX, y: offsetY, w: xyW, h: xyH };
-    const yz: TripleViewPaneRect = { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH };
-    const xz: TripleViewPaneRect = { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH };
-
-    this.tripleViewPanes = { xy, yz, xz };
-    return this.tripleViewPanes;
-  }
-
-  /** Returns pane rects in CSS pixel coordinates (top-left origin) for hit testing. */
-  getTripleViewPanesCSS(): TripleViewPanes | undefined {
-    if (this.viewMode !== Axis.TRIPLE) {
-      return undefined;
-    }
-    const panes = this.computeTripleViewPanes();
-    const dpr = this.renderer.getPixelRatio();
-    const canvasHCSS = this.getHeight() / dpr;
-    // Panes are in CSS pixels with bottom-left origin; flip Y to top-left for hit testing
+    const panes = this.tripleSliceControls.source.getTripleViewPanesCSS(canvasW, canvasH);
+    // Flip Y from bottom-left origin to top-left for CSS hit testing
     const toCSS = (r: TripleViewPaneRect): TripleViewPaneRect => ({
       x: r.x,
-      y: canvasHCSS - (r.y + r.h),
+      y: canvasH - (r.y + r.h),
       w: r.w,
       h: r.h,
     });
@@ -823,9 +743,6 @@ export class ThreeJsPanel {
 
     this.renderer.setSize(w, h);
     this.meshRenderTarget.setSize(w, h);
-
-    // Invalidate triple-view pane cache on resize
-    this.tripleViewPanes = undefined;
 
     this.perspectiveControls.handleResize();
     this.orthoControlsZ.handleResize();
@@ -1075,7 +992,4 @@ export class ThreeJsPanel {
     }
   }
 
-  updateTripleSliceCrosshairs(): void {
-    this.tripleSliceControls.updateCrosshairs();
-  }
 }

@@ -16,7 +16,7 @@ import {
 
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import Channel from "./Channel.js";
-import { OVERLAY_LAYER } from "./ThreeJsPanel.js";
+import { OVERLAY_LAYER, type TripleViewPanes } from "./ThreeJsPanel.js";
 import Volume from "./Volume.js";
 import type { FuseChannel } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
@@ -265,6 +265,32 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private static readonly TRIPLE_VIEW_GAP = 2;
 
   /**
+   * Computes the common layout parameters for triple-slice pane fitting.
+   * @param availableW Available width (CSS pixels or world units)
+   * @param availableH Available height (CSS pixels or world units)
+   * @param gap Gap size in the same units as availableW/H
+   * @returns The uniform scale (units-per-physical-unit) and physical dimensions, or null if degenerate.
+   */
+  private computeLayoutParams(
+    availableW: number,
+    availableH: number,
+    gap: number
+  ): { fitScale: number; px: number; py: number; pz: number; gap: number } | null {
+    const phys = this.volume.normPhysicalSize;
+    const px = phys.x;
+    const py = phys.y;
+    const pz = phys.z;
+
+    const scaleX = (availableW - gap) / (px + pz);
+    const scaleY = (availableH - gap) / (py + pz);
+    const fitScale = Math.min(scaleX, scaleY);
+    if (fitScale <= 0) {
+      return null;
+    }
+    return { fitScale, px, py, pz, gap };
+  }
+
+  /**
    * Recomputes the layout of the three slice panes to fit within the current camera frustum.
    * Uses `baseSettings.resolution` and `baseSettings.orthoScale` to derive the frustum,
    * then scales and positions all three slice groups accordingly.
@@ -285,25 +311,22 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     const frustumHeight = 2 * orthoScale;
     const frustumWidth = frustumHeight * (resolution.x / resolution.y);
 
-    const phys = this.volume.normPhysicalSize;
-    const px = phys.x;
-    const py = phys.y;
-    const pz = phys.z;
-
-    // Compute uniform world-units-per-physical-unit scale to fit all panes in frustum
     const pixelsPerWorldUnit = resolution.y / frustumHeight;
     const gapWorld = pixelsPerWorldUnit > 0 ? TripleSliceVolume.TRIPLE_VIEW_GAP / pixelsPerWorldUnit : 0;
 
-    const scaleX = (frustumWidth - gapWorld) / (px + pz);
-    const scaleY = (frustumHeight - gapWorld) / (py + pz);
-    const fitScale = Math.min(scaleX, scaleY);
+    const layout = this.computeLayoutParams(frustumWidth, frustumHeight, gapWorld);
+    if (!layout) {
+      return;
+    }
+    const { fitScale, px, py, pz } = layout;
 
     // Apply uniform scale to the parent group
     this.group.scale.set(fitScale, fitScale, 1);
 
     // Layout in unscaled physical coords (group.scale handles the fitting)
-    const totalW = px + gapWorld / fitScale + pz;
-    const totalH = py + gapWorld / fitScale + pz;
+    const gapUnscaled = gapWorld / fitScale;
+    const totalW = px + gapUnscaled + pz;
+    const totalH = py + gapUnscaled + pz;
 
     // XY pane (bottom-left)
     const xyX = -totalW / 2 + px / 2;
@@ -319,6 +342,42 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     const xzX = -totalW / 2 + px / 2;
     const xzY = totalH / 2 - pz / 2;
     this.renderers[2].get3dObject().position.set(xzX, xzY, 0);
+  }
+
+  /**
+   * Computes the per-pane rectangles for triple-slice view in CSS pixels (bottom-left origin).
+   * Uses the same layout algorithm as `updateLayout`, but in screen-pixel coordinates.
+   * @param canvasW Canvas width in CSS pixels
+   * @param canvasH Canvas height in CSS pixels
+   */
+  getTripleViewPanesCSS(canvasW: number, canvasH: number): TripleViewPanes {
+    const gap = TripleSliceVolume.TRIPLE_VIEW_GAP;
+    const layout = this.computeLayoutParams(canvasW, canvasH, gap);
+
+    if (!layout) {
+      // Degenerate: return zero-size panes
+      const zero = { x: 0, y: 0, w: 0, h: 0 };
+      return { xy: zero, yz: zero, xz: zero };
+    }
+    const { fitScale, px, py, pz } = layout;
+
+    const xyW = Math.floor(px * fitScale);
+    const xyH = Math.floor(py * fitScale);
+    const yzW = Math.floor(pz * fitScale);
+    const yzH = Math.floor(py * fitScale);
+    const xzW = Math.floor(px * fitScale);
+    const xzH = Math.floor(pz * fitScale);
+
+    const totalW = xyW + gap + yzW;
+    const totalH = xyH + gap + xzH;
+    const offsetX = Math.floor((canvasW - totalW) / 2);
+    const offsetY = Math.floor((canvasH - totalH) / 2);
+
+    return {
+      xy: { x: offsetX, y: offsetY, w: xyW, h: xyH },
+      yz: { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH },
+      xz: { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH },
+    };
   }
 
   /** Returns the three internal Atlas2DSlice renderers [XY, YZ, XZ]. */

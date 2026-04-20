@@ -2,6 +2,7 @@ import { DepthTexture, Object3D, OrthographicCamera, PerspectiveCamera, Texture,
 
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import type { FuseChannel } from "./types.js";
+import type { TripleViewPanes } from "./ThreeJsPanel.js";
 import Channel from "./Channel.js";
 
 /**
@@ -14,6 +15,8 @@ export interface TripleSliceSource {
   getVolumeSize(): Vector3;
   getPhysicalSize(): Vector3;
   setSliceIndex(axis: "x" | "y" | "z", index: number): void;
+  /** Computes per-pane rectangles in CSS pixels (bottom-left origin). */
+  getTripleViewPanesCSS(canvasW: number, canvasH: number): TripleViewPanes;
 }
 
 export interface VolumeRenderImpl {

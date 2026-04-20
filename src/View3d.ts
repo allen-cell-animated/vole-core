@@ -581,7 +581,6 @@ export class View3d {
       return;
     }
     this.image.setTripleSliceIndex(axis, index);
-    this.canvas3d.updateTripleSliceCrosshairs();
     this.canvas3d.redraw();
   }
 

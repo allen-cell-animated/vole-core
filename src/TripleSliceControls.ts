@@ -5,7 +5,6 @@ import type { TripleViewPanes } from "./ThreeJsPanel.js";
 export interface TripleSliceHost {
   containerdiv: HTMLDivElement;
   getTripleViewPanesCSS(): TripleViewPanes | undefined;
-  refreshTriplePhysicalSize(): void;
   redraw(): void;
 }
 
@@ -40,8 +39,6 @@ export default class TripleSliceControls {
       return;
     }
 
-    this.host.refreshTriplePhysicalSize();
-
     this.boundPointerDown = this.onPointerDown.bind(this);
     this.boundPointerMove = this.onPointerMove.bind(this);
     this.boundPointerUp = this.onPointerUp.bind(this);
@@ -72,10 +69,6 @@ export default class TripleSliceControls {
     this.boundDblClick = undefined;
     this.dragging = false;
     this.dragAxis = undefined;
-  }
-
-  updateCrosshairs(): void {
-    this.host.refreshTriplePhysicalSize();
   }
 
   // --- Hit testing ---
@@ -231,7 +224,6 @@ export default class TripleSliceControls {
         break;
     }
 
-    this.updateCrosshairs();
     this.changeCallback?.(this.source.getIndices());
     this.host.redraw();
   }
@@ -273,7 +265,6 @@ export default class TripleSliceControls {
         break;
     }
 
-    this.updateCrosshairs();
     this.changeCallback?.(this.source.getIndices());
     this.host.redraw();
   }
