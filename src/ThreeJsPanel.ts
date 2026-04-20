@@ -164,16 +164,16 @@ export class ThreeJsPanel {
       this.renderer = new WebGPURenderer({
         context: context,
         canvas: this.canvas,
-        preserveDrawingBuffer: true,
+        // preserveDrawingBuffer: true,
         alpha: true,
-        premultipliedAlpha: false,
+        // premultipliedAlpha: false,
       });
       //this.renderer.autoClear = false;
       // set pixel ratio to 0.25 or 0.5 to render at lower res.
       this.renderer.setPixelRatio(window.devicePixelRatio);
-      this.renderer.state.setBlending(NormalBlending);
+      // this.renderer.state.setBlending(NormalBlending);
       //required by WebGL 2.0 for rendering to FLOAT textures
-      (this.renderer.getContext() as RenderContext).getExtension("EXT_color_buffer_float");
+      // (this.renderer.getContext() as RenderContext).getExtension("EXT_color_buffer_float");
     } else {
       // TODO Deprecate this code path.
       console.warn(
@@ -182,14 +182,14 @@ export class ThreeJsPanel {
 
       this.renderer = new WebGPURenderer({
         canvas: this.canvas,
-        preserveDrawingBuffer: true,
+        // preserveDrawingBuffer: true,
         alpha: true,
-        premultipliedAlpha: false,
+        // premultipliedAlpha: false,
       });
       this.renderer.setPixelRatio(window.devicePixelRatio);
-      this.renderer.state.setBlending(NormalBlending);
+      // this.renderer.state.setBlending(NormalBlending);
     }
-    this.renderer.localClippingEnabled = true;
+    // this.renderer.localClippingEnabled = true;
 
     if (parentElement) {
       this.renderer.setSize(parentElement.offsetWidth, parentElement.offsetHeight);
