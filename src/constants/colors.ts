@@ -13,12 +13,13 @@ interface HSVColor {
 // returns 0 <= (r, g, b) <= 255 rounded to nearest integer
 // you can also pass in just one arg as an object of {h, s, v} props.
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+// prettier-ignore
 function HSVtoRGB(h: number | HSVColor, s: number, v: number): [number, number, number] {
   let r: number, g: number, b: number;
   let hh: number;
   if (arguments.length === 1) {
     const hsv = h as HSVColor;
-    ((s = hsv.s), (v = hsv.v), (hh = hsv.h));
+    s = hsv.s; v = hsv.v; hh = hsv.h;
   } else {
     hh = h as number;
   }
@@ -29,23 +30,23 @@ function HSVtoRGB(h: number | HSVColor, s: number, v: number): [number, number, 
   const t = v * (1 - (1 - f) * s);
   switch (i % 6) {
     case 0:
-      ((r = v), (g = t), (b = p));
+      r = v; g = t; b = p;
       break;
     case 1:
-      ((r = q), (g = v), (b = p));
+      r = q; g = v; b = p;
       break;
     case 2:
-      ((r = p), (g = v), (b = t));
+      r = p; g = v; b = t;
       break;
     case 3:
-      ((r = p), (g = q), (b = v));
+      r = p; g = q; b = v;
       break;
     case 4:
-      ((r = t), (g = p), (b = v));
+      r = t; g = p; b = v;
       break;
     case 5:
     default: // will never be used, but convinces ts that r/g/b are definitely assigned
-      ((r = v), (g = p), (b = q));
+      r = v; g = p; b = q;
       break;
   }
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
