@@ -12,7 +12,6 @@ interface HSVColor {
 // 0 <= (h, s, v) <= 1
 // returns 0 <= (r, g, b) <= 255 rounded to nearest integer
 // you can also pass in just one arg as an object of {h, s, v} props.
-/* eslint-disable @typescript-eslint/no-unused-expressions */
 // prettier-ignore
 function HSVtoRGB(h: number | HSVColor, s: number, v: number): [number, number, number] {
   let r: number, g: number, b: number;
@@ -51,7 +50,6 @@ function HSVtoRGB(h: number | HSVColor, s: number, v: number): [number, number, 
   }
   return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
 }
-/* eslint-enable @typescript-eslint/no-unused-expressions */
 
 // 1993 Park-Miller LCG
 function LCG(s: number) {
