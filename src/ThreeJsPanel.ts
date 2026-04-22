@@ -19,6 +19,7 @@ import {
   Vector3,
   RenderTarget,
   WebGPURenderer,
+  type TextureNode,
 } from "three/webgpu";
 
 import TrackballControls from "./TrackballControls.js";
@@ -30,6 +31,7 @@ import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
+import { Fn, texture } from "three/tsl";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
@@ -68,6 +70,7 @@ export class ThreeJsPanel {
 
   private meshRenderTarget: RenderTarget;
   private meshRenderToBuffer: RenderToBuffer;
+  private meshRenderTexUniform: TextureNode<"vec4">;
 
   public animateFuncs: AnimateFunction[];
   public postMeshRenderFuncs: AnimateFunction[];
@@ -121,6 +124,7 @@ export class ThreeJsPanel {
   }
 
   private constructor(parentElement: HTMLElement | undefined, renderer: WebGPURenderer) {
+    window.setTimeout(() => console.log(renderer), 2000);
     this.renderer = renderer;
 
     this.containerdiv = document.createElement("div");
@@ -140,9 +144,8 @@ export class ThreeJsPanel {
       type: UnsignedByteType,
       depthBuffer: true,
     });
-    this.meshRenderToBuffer = new RenderToBuffer(copyImageFragShader, {
-      image: { value: this.meshRenderTarget.texture },
-    });
+    this.meshRenderTexUniform = texture(this.meshRenderTarget.texture);
+    this.meshRenderToBuffer = new RenderToBuffer((uv) => texture(this.meshRenderTexUniform, uv));
     this.meshRenderTarget.depthTexture = new DepthTexture(
       this.renderer.domElement.width,
       this.renderer.domElement.height
@@ -722,7 +725,8 @@ export class ThreeJsPanel {
     this.renderer.render(this.scene, this.camera);
 
     // Step 4: Render the mesh render target out to the screen.
-    this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
+    // TODO is this assignment necessary?
+    this.meshRenderTexUniform.value = this.meshRenderTarget.texture;
     this.meshRenderToBuffer.render(this.renderer);
 
     // Step 5: Render volumes, which can now depth test against the meshes.

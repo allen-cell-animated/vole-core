@@ -32,6 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 import Channel from "./Channel.js";
 import RenderToBuffer from "./RenderToBuffer.js";
+import { texture } from "three/tsl";
 
 export default class PathTracedVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -119,9 +120,9 @@ export default class PathTracedVolume implements VolumeRenderImpl {
     this.pathTracingUniforms.tPreviousTexture.value = this.screenTextureRenderTarget.texture;
 
     this.pathTracingRenderToBuffer = new RenderToBuffer(pathTracingFragmentShaderSrc, this.pathTracingUniforms);
-    this.screenTextureRenderToBuffer = new RenderToBuffer(copyImageFragShader, {
-      image: { value: this.pathTracingRenderTarget.texture },
-    });
+
+    const renderTargetUniform = texture(this.pathTracingRenderTarget.texture);
+    this.screenTextureRenderToBuffer = new RenderToBuffer((uv) => texture(renderTargetUniform, uv));
 
     this.screenOutputGeometry = new PlaneGeometry(2, 2);
 
