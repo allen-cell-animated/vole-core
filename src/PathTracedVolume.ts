@@ -32,7 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 import Channel from "./Channel.js";
 import RenderToBuffer from "./RenderToBuffer.js";
-import { texture } from "three/tsl";
+import { screenCoordinate, texture } from "three/tsl";
 
 export default class PathTracedVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -122,7 +122,9 @@ export default class PathTracedVolume implements VolumeRenderImpl {
     this.pathTracingRenderToBuffer = new RenderToBuffer(pathTracingFragmentShaderSrc, this.pathTracingUniforms);
 
     const renderTargetUniform = texture(this.pathTracingRenderTarget.texture);
-    this.screenTextureRenderToBuffer = new RenderToBuffer((uv) => texture(renderTargetUniform, uv));
+    // TODO is `screenCoordinate` flipped here?
+    // TODO should this be inside a `Fn`?
+    this.screenTextureRenderToBuffer = new RenderToBuffer(texture(renderTargetUniform, screenCoordinate));
 
     this.screenOutputGeometry = new PlaneGeometry(2, 2);
 

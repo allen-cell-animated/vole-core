@@ -31,7 +31,7 @@ import { Axis } from "./VolumeRenderSettings.js";
 import RenderToBuffer from "./RenderToBuffer.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
-import { Fn, texture } from "three/tsl";
+import { Fn, screenCoordinate, texture } from "three/tsl";
 
 export const VOLUME_LAYER = 0;
 export const MESH_LAYER = 1;
@@ -145,7 +145,8 @@ export class ThreeJsPanel {
       depthBuffer: true,
     });
     this.meshRenderTexUniform = texture(this.meshRenderTarget.texture);
-    this.meshRenderToBuffer = new RenderToBuffer((uv) => texture(this.meshRenderTexUniform, uv));
+    // TODO is `screenCoordinate` flipped here?
+    this.meshRenderToBuffer = new RenderToBuffer(Fn(() => texture(this.meshRenderTexUniform, screenCoordinate))());
     this.meshRenderTarget.depthTexture = new DepthTexture(
       this.renderer.domElement.width,
       this.renderer.domElement.height

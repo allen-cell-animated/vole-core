@@ -10,7 +10,7 @@ import {
   type VaryingNode,
 } from "three/webgpu";
 
-import { Fn, pointUV, positionGeometry, varying, vec2 } from "three/tsl";
+import { Fn, positionGeometry, varying, vec2, vec4 } from "three/tsl";
 
 export enum RenderPassType {
   OPAQUE,
@@ -28,18 +28,13 @@ export default class RenderToBuffer {
   public mesh: Mesh;
   public camera: OrthographicCamera;
 
-  constructor(fragmentFactory: (uv: VaryingNode<"vec2">) => Node, passType: RenderPassType = RenderPassType.OPAQUE) {
+  constructor(fragmentNode: Node, passType: RenderPassType = RenderPassType.OPAQUE) {
     this.scene = new Scene();
     this.geometry = new PlaneGeometry(2, 2);
 
-    const uv = varying(vec2(), "uv");
-
     this.material = new NodeMaterial();
-    this.material.vertexNode = Fn(() => {
-      uv.assign(pointUV);
-      return positionGeometry;
-    })();
-    this.material.fragmentNode = fragmentFactory(uv);
+    this.material.vertexNode = Fn(() => vec4(positionGeometry, 1.0))();
+    this.material.fragmentNode = fragmentNode;
     this.material.transparent = passType === RenderPassType.TRANSPARENT;
     this.material.depthWrite = false;
     this.material.depthTest = false;
