@@ -32,7 +32,7 @@ import {
 } from "./zarr_utils/utils.js";
 import type { PrefetchDirection, SubscriberId, TCZYX, ZarrSource, NumericZarrArray } from "./zarr_utils/types.js";
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
-import wrapArray, { RelaxedFetchStore } from "./zarr_utils/wrappers.js";
+import { relaxedFetch, withVoleInstrumentation } from "./zarr_utils/wrappers.js";
 import { assertMetadataHasMultiscales, toOMEZarrMetaV4, validateOMEZarrMetadata } from "./zarr_utils/validation.js";
 import { remapUri } from "../utils/url_utils.js";
 
@@ -111,6 +111,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     private sources: ZarrSource[],
     /** Handle to a `SubscribableRequestQueue` for smart concurrency management and request cancelling/reissuing. */
     private requestQueue: SubscribableRequestQueue,
+    /** Optional shared cache for decoded chunks. Keyed by `<baseUrl><arrayPath>/<chunk coords>`. */
+    private cache: VolumeCache | undefined,
     /** Options to configure (pre)fetching behavior. */
     private fetchOptions: ZarrLoaderFetchOptions = DEFAULT_FETCH_OPTIONS,
     /** Direction(s) to prioritize when prefetching. Stored separate from `fetchOptions` since it may be mutated. */
@@ -148,7 +150,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // Create one `ZarrSource` per URL
     const sourceProms = urlsArr.map(async (url, i) => {
-      const store = new RelaxedFetchStore(url);
+      const store = new zarr.FetchStore(url, { fetch: relaxedFetch });
       const root = zarr.root(store);
 
       const group = await zarr
@@ -173,21 +175,19 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
       // Open all scale levels of multiscale
       const lvlProms = multiscaleMetadata.datasets.map(({ path }) =>
-        zarr
-          .open(root.resolve(path), { kind: "array" })
-          .then((array) => wrapArray(array, url, cache, queue))
-          .catch(
-            wrapVolumeLoadError(
-              `Failed to open scale level ${path} of OME-Zarr data at ${url}`,
-              VolumeLoadErrorType.NOT_FOUND
-            )
+        zarr.open(root.resolve(path), { kind: "array" }).catch(
+          wrapVolumeLoadError(
+            `Failed to open scale level ${path} of OME-Zarr data at ${url}`,
+            VolumeLoadErrorType.NOT_FOUND
           )
+        )
       );
       const scaleLevels = (await Promise.all(lvlProms)) as NumericZarrArray[];
       const axesTCZYX = remapAxesToTCZYX(multiscaleMetadata.axes);
 
       return {
         scaleLevels,
+        baseUrl: url,
         multiscaleMetadata,
         omeroMetadata: omero,
         axesTCZYX,
@@ -214,7 +214,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     // same in every field we care about, so we only ever use the first source's `multiscaleMetadata` after this point.
     // Should we only store one `OMEMultiscale` record total, rather than one per source?
     const priorityDirs = fetchOptions?.priorityDirections ? fetchOptions.priorityDirections.slice() : undefined;
-    return new OMEZarrLoader(sources, queue, fetchOptions, priorityDirs);
+    return new OMEZarrLoader(sources, queue, cache, fetchOptions, priorityDirs);
   }
 
   private getUnitSymbols(): [string, string] {
@@ -429,17 +429,22 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     return Promise.resolve({ imageInfo: imgdata, loadSpec: fullExtentLoadSpec });
   }
 
-  private prefetchChunk(scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId): void {
+  private prefetchChunk(source: ZarrSource, scaleLevel: NumericZarrArray, coords: TCZYX<number>, subscriber: SubscriberId): void {
+    const instrumented = withVoleInstrumentation(scaleLevel, {
+      baseUrl: source.baseUrl,
+      cache: this.cache,
+      queue: this.requestQueue,
+      subscriber,
+      isPrefetch: true,
+    });
     // Calling `get` and doing nothing with the result still triggers a cache check, fetch, and insertion
-    scaleLevel
-      .getChunk(this.orderByDimension(coords), { subscriber, isPrefetch: true })
-      .catch(
-        wrapVolumeLoadError(
-          `Unable to prefetch chunk with coords ${coords.join(", ")}`,
-          VolumeLoadErrorType.LOAD_DATA_FAILED,
-          CHUNK_REQUEST_CANCEL_REASON
-        )
-      );
+    instrumented.getChunk(this.orderByDimension(coords)).catch(
+      wrapVolumeLoadError(
+        `Unable to prefetch chunk with coords ${coords.join(", ")}`,
+        VolumeLoadErrorType.LOAD_DATA_FAILED,
+        CHUNK_REQUEST_CANCEL_REASON
+      )
+    );
   }
 
   /** Reads a list of chunk keys requested by a `loadVolumeData` call and sets up appropriate prefetch requests. */
@@ -481,9 +486,10 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       }
       // Match absolute channel coordinate back to source index and channel index
       const { sourceIndex, channelIndexInSource } = this.matchChannelToSource(chunk[1]);
-      const sourceScaleLevel = this.sources[sourceIndex].scaleLevels[scaleLevel];
+      const source = this.sources[sourceIndex];
+      const sourceScaleLevel = source.scaleLevels[scaleLevel];
       chunk[1] = channelIndexInSource;
-      this.prefetchChunk(sourceScaleLevel, chunk, subscriber);
+      this.prefetchChunk(source, sourceScaleLevel, chunk, subscriber);
       prefetchCount++;
     }
 
@@ -561,11 +567,19 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       const { sourceIndex: sourceIdx, channelIndexInSource: sourceCh } = this.matchChannelToSource(ch);
       const unorderedSpec = [loadSpec.time, sourceCh, slice(min.z, max.z), slice(min.y, max.y), slice(min.x, max.x)];
 
-      const level = this.sources[sourceIdx].scaleLevels[multiscaleLevel];
+      const source = this.sources[sourceIdx];
+      const level = source.scaleLevels[multiscaleLevel];
       const sliceSpec = this.orderByDimension(unorderedSpec as TCZYX<number | zarr.Slice>, sourceIdx);
       const reportChunk = (coords: number[], sub: SubscriberId) => reportChunkBase(sourceIdx, coords, sub);
+      const instrumented = withVoleInstrumentation(level, {
+        baseUrl: source.baseUrl,
+        cache: this.cache,
+        queue: this.requestQueue,
+        subscriber,
+        reportChunk,
+      });
 
-      const result = await zarr.get(level, sliceSpec, { opts: { subscriber, reportChunk } }).catch((e) => {
+      const result = await zarr.get(instrumented, sliceSpec).catch((e) => {
         if (e === CHUNK_REQUEST_CANCEL_REASON) {
           return e;
         }
