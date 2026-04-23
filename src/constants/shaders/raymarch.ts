@@ -34,7 +34,7 @@ import {
   vec4,
 } from "three/tsl";
 
-type Args<T> = { [K in keyof T]: T[K] extends string ? Node<T[K]> : T[K] };
+import type { Args } from "./tsl_utils.js";
 
 export const raymarchNode = () => {
   const uniforms = {
