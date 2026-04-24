@@ -24,8 +24,8 @@ import VolumeLoaderContext from "./workers/VolumeLoaderContext.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "./loaders/VolumeLoadError.js";
 import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
-import Line3d from "./Line3d.js";
-import VectorArrows3d from "./VectorArrows3d.js";
+import Line3d from "./drawables/lines/Line3d.js";
+import VectorArrows3d from "./drawables/VectorArrows3d.js";
 import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
 
 export type { ImageInfo } from "./ImageInfo.js";

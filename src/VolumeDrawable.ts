@@ -14,19 +14,14 @@ import {
 } from "three";
 import { Pane } from "tweakpane";
 
-import MeshVolume from "./MeshVolume.js";
+import MeshVolume from "./drawables/MeshVolume.js";
 import RayMarchedAtlasVolume from "./RayMarchedAtlasVolume.js";
 import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type {
-  VolumeDisplayOptions,
-  VolumeChannelDisplayOptions,
-  FuseChannel,
-  ColorizeFeature,
-  IDrawableObject,
-} from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
+import type { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";

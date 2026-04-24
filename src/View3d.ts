@@ -24,8 +24,8 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
-  IDrawableObject,
 } from "./types.js";
+import { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";

@@ -1,5 +1,5 @@
 import BaseDrawableMeshObject from "./BaseDrawableMeshObject.js";
-import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel.js";
+import { MESH_NO_PICK_OCCLUSION_LAYER } from "../ThreeJsPanel.js";
 import {
   InstancedMesh,
   CylinderGeometry,
@@ -12,7 +12,7 @@ import {
   Matrix4,
   BufferGeometry,
 } from "three";
-import { IDrawableObject } from "./types.js";
+import { IDrawableObject } from "./IDrawableObject.js";
 
 // Unscaled arrowhead dimensions.
 const SHAFT_BASE_RADIUS = 0.5;
