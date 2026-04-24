@@ -460,7 +460,6 @@ export default class PathTracedVolume implements VolumeRenderImpl {
       if (this.settings.maskChannelIndex !== -1 && this.settings.maskAlpha < 1.0) {
         const maskChannel = this.volume.getChannel(this.settings.maskChannelIndex);
         // const maskMax = maskChannel.getHistogram().dataMax;
-        let maskVal = 1.0;
         const maskAlpha = this.settings.maskAlpha;
         for (let iz = 0; iz < sz; ++iz) {
           for (let iy = 0; iy < sy; ++iy) {
@@ -469,7 +468,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
               // maskVal = maskChannel.getIntensity(ix,iy,iz) * maskAlpha / maskMax;
 
               // binary masking
-              maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
+              const maskVal = maskChannel.getIntensity(ix, iy, iz) > 0 ? 1.0 : maskAlpha;
 
               data[i + ix * 4 + iy * 4 * sx + iz * 4 * sx * sy] *= maskVal;
             }
@@ -478,7 +477,7 @@ export default class PathTracedVolume implements VolumeRenderImpl {
       }
     }
     // defaults to rgba and unsignedbytetype so dont need to supply format this time.
-    this.volumeTexture.image.data.set(data);
+    this.volumeTexture.image.data?.set(data);
     this.volumeTexture.needsUpdate = true;
   }
 
@@ -487,7 +486,11 @@ export default class PathTracedVolume implements VolumeRenderImpl {
       const channel = this.viewChannels[i];
       const combinedLut = channelData[channel].combineLuts(channelColors[channel].rgbColor);
 
-      this.pathTracingUniforms.gLutTexture.value.image.data.set(combinedLut, i * LUT_ARRAY_LENGTH);
+      const { image } = this.pathTracingUniforms.gLutTexture.value;
+      if (image.data === null) {
+        image.data = new Uint8Array(LUT_ARRAY_LENGTH);
+      }
+      image.data.set(combinedLut, i * LUT_ARRAY_LENGTH);
 
       // TODO expand to 16-bpp raw intensities?
       this.pathTracingUniforms.gIntensityMax.value.setComponent(
@@ -513,7 +516,13 @@ export default class PathTracedVolume implements VolumeRenderImpl {
         // diffuse color is actually blended into the LUT now.
         const channelData = this.volume.getChannel(i);
         const combinedLut = channelData.combineLuts(this.settings.diffuse[i]);
-        this.pathTracingUniforms.gLutTexture.value.image.data.set(combinedLut, c * LUT_ARRAY_LENGTH);
+
+        const { image } = this.pathTracingUniforms.gLutTexture.value;
+        if (image.data === null) {
+          image.data = new Uint8Array(LUT_ARRAY_LENGTH);
+        }
+
+        image.data.set(combinedLut, c * LUT_ARRAY_LENGTH);
         this.pathTracingUniforms.gLutTexture.value.needsUpdate = true;
         this.pathTracingUniforms.gDiffuse.value[c] = new Vector3(1.0, 1.0, 1.0);
 

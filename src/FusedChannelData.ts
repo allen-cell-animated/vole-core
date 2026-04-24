@@ -243,7 +243,7 @@ export default class FusedChannelData {
               rawMin: channels[idx].rawMin,
               rawMax: channels[idx].rawMax,
               frame: channels[idx].frame,
-            }
+            },
           });
         }
       }

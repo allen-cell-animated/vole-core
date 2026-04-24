@@ -18,26 +18,28 @@ export type Uint64 = "uint64";
 export type Float32 = "float32";
 export type Float64 = "float64";
 export type NumberType = Int8 | Int16 | Int32 | Uint8 | Uint16 | Uint32 | Float32 | Float64;
-export type TypedArray<D> = D extends Int8
-  ? Int8Array
+// prettier-ignore
+export type TypedArray<D extends NumberType = NumberType, B extends ArrayBufferLike = ArrayBuffer> =
+  D extends Int8
+  ? Int8Array<B>
   : D extends Int16
-  ? Int16Array
+  ? Int16Array<B>
   : D extends Int32
-  ? Int32Array
+  ? Int32Array<B>
   : D extends Int64
-  ? BigInt64Array
+  ? BigInt64Array<B>
   : D extends Uint8
-  ? Uint8Array
+  ? Uint8Array<B>
   : D extends Uint16
-  ? Uint16Array
+  ? Uint16Array<B>
   : D extends Uint32
-  ? Uint32Array
+  ? Uint32Array<B>
   : D extends Uint64
-  ? BigUint64Array
+  ? BigUint64Array<B>
   : D extends Float32
-  ? Float32Array
+  ? Float32Array<B>
   : D extends Float64
-  ? Float64Array
+  ? Float64Array<B>
   : never;
 
 export const ARRAY_CONSTRUCTORS = {
@@ -53,7 +55,9 @@ export const ARRAY_CONSTRUCTORS = {
   float64: Float64Array,
 };
 
-export function isFloatTypeArray(array: TypedArray<NumberType>): array is Float32Array | Float64Array {
+export function isFloatTypeArray<B extends ArrayBufferLike>(
+  array: TypedArray<NumberType, B>
+): array is Float32Array<B> | Float64Array<B> {
   return array instanceof Float32Array || array instanceof Float64Array;
 }
 
