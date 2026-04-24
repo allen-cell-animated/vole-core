@@ -87,7 +87,7 @@ type ZarrChunkFetchInfo = {
 };
 
 const DEFAULT_FETCH_OPTIONS = {
-  maxPrefetchDistance: [10, 5, 5, 5] as [number, number, number, number],
+  maxPrefetchDistance: [12, 5, 5, 5] as [number, number, number, number],
   maxPrefetchChunks: 30,
 };
 
