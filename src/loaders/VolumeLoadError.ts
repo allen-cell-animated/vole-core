@@ -1,5 +1,5 @@
 import { errorConstructors } from "serialize-error";
-import { NodeNotFoundError, KeyError } from "zarrita";
+import { NotFoundError } from "zarrita";
 // geotiff doesn't export its error types...
 
 /** Groups possible load errors into a few broad categories which we can give similar guidance to the user about. */
@@ -24,8 +24,7 @@ export class VolumeLoadError extends Error {
 
 // serialize-error only ever calls an error constructor with zero arguments. The required `ErrorConstructor`
 // type is a bit too restrictive - as long as the constructor can be called with no arguments it's fine.
-errorConstructors.set("NodeNotFoundError", NodeNotFoundError as ErrorConstructor);
-errorConstructors.set("KeyError", KeyError as ErrorConstructor);
+errorConstructors.set("NotFoundError", NotFoundError as unknown as ErrorConstructor);
 errorConstructors.set("VolumeLoadError", VolumeLoadError as unknown as ErrorConstructor);
 
 /** Curried function to re-throw an error wrapped in a `VolumeLoadError` with the given `message` and `type`. */
