@@ -27,6 +27,8 @@ import scaleBarSVG from "./constants/scaleBarSVG.js";
 import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRight } from "./types.js";
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./VolumeRenderSettings.js";
+import type { TripleSliceSource } from "./VolumeRenderImpl.js";
+import TripleSliceControls from "./TripleSliceControls.js";
 import RenderToBuffer from "./RenderToBuffer.js";
 
 import { copyImageFragShader } from "./constants/basicShaders.js";
@@ -42,6 +44,17 @@ const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
 const DEFAULT_PERSPECTIVE_CAMERA_FAR = 20.0;
 
 const DEFAULT_ORTHO_SCALE = 0.5;
+
+export type TripleViewPaneRect = { x: number; y: number; w: number; h: number };
+
+export type TripleViewPanes = {
+  /** XY slice (bottom-left) */
+  xy: TripleViewPaneRect;
+  /** YZ slice (bottom-right) */
+  yz: TripleViewPaneRect;
+  /** XZ slice (top-left) */
+  xz: TripleViewPaneRect;
+};
 
 export type CameraState = {
   position: [number, number, number];
@@ -84,6 +97,7 @@ export class ThreeJsPanel {
   private orthoControlsY: TrackballControls;
   private orthographicCameraZ: OrthographicCamera;
   private orthoControlsZ: TrackballControls;
+  private tripleCamera: OrthographicCamera;
   public camera: PerspectiveCamera | OrthographicCamera;
   private viewMode: Axis;
   public controls: TrackballControls;
@@ -108,6 +122,8 @@ export class ThreeJsPanel {
 
   private dataurlcallback?: (url: string) => void;
   private onRenderCallback?: () => void;
+
+  private tripleSliceControls: TripleSliceControls;
 
   constructor(parentElement: HTMLElement | undefined, _useWebGL2: boolean) {
     this.containerdiv = document.createElement("div");
@@ -248,6 +264,11 @@ export class ThreeJsPanel {
     this.orthoControlsZ.enabled = false;
     this.orthoControlsZ.panSpeed = this.canvas.clientWidth * 0.5;
 
+    this.tripleCamera = new OrthographicCamera(-scale * aspect, scale * aspect, scale, -scale, 0.001, 20);
+    this.resetTripleCamera();
+
+    this.tripleSliceControls = new TripleSliceControls(this);
+
     this.camera = this.perspectiveCamera;
     this.controls = this.perspectiveControls;
     this.viewMode = Axis.NONE;
@@ -312,6 +333,12 @@ export class ThreeJsPanel {
     this.orthographicCameraZ.lookAt(new Vector3(0, 0, 0));
   }
 
+  private resetTripleCamera(): void {
+    this.tripleCamera.position.set(0, 0, 2);
+    this.tripleCamera.up.set(0, 1, 0);
+    this.tripleCamera.lookAt(new Vector3(0, 0, 0));
+  }
+
   requestCapture(dataurlcallback: (name: string) => void): void {
     this.dataurlcallback = dataurlcallback;
     this.redraw();
@@ -346,6 +373,8 @@ export class ThreeJsPanel {
       this.resetOrthographicCameraY();
     } else if (this.camera === this.orthographicCameraZ) {
       this.resetOrthographicCameraZ();
+    } else if (this.camera === this.tripleCamera) {
+      this.resetTripleCamera();
     }
     this.controls.reset();
   }
@@ -390,6 +419,17 @@ export class ThreeJsPanel {
   }
 
   orthoScreenPixelsToPhysicalUnits(pixels: number, physicalUnitsPerWorldUnit: number): number {
+    if (this.viewMode === Axis.TRIPLE && this.tripleSliceControls.source) {
+      // In triple mode, use the XY pane dimensions to compute the conversion.
+      const dpr = this.renderer.getPixelRatio();
+      const panes = this.tripleSliceControls.source.getTripleViewPanesCSS(
+        this.getWidth() / dpr,
+        this.getHeight() / dpr
+      );
+      const phys = this.tripleSliceControls.source.getPhysicalSize();
+      const worldUnitsPerPixel = phys.x / panes.xy.w;
+      return pixels * worldUnitsPerPixel * physicalUnitsPerWorldUnit;
+    }
     const worldUnitsPerPixel = 1 / (this.camera.zoom * this.getHeight());
     // Multiply by devicePixelRatio to convert from scaled CSS pixels to physical pixels
     // (to account for high dpi monitors, e.g.). We didn't do this to height above because
@@ -540,19 +580,17 @@ export class ThreeJsPanel {
   }
 
   replaceControls(newControls: TrackballControls): void {
-    if (this.controls === newControls) {
-      return;
+    if (this.controls !== newControls) {
+      // disable the old, install the new.
+      this.controls.enabled = false;
+      this.removeControlHandlers();
+      this.controls = newControls;
     }
-    // disable the old, install the new.
-    this.controls.enabled = false;
 
-    // detach old control change handlers
-    this.removeControlHandlers();
-
-    this.controls = newControls;
     this.controls.enabled = true;
 
-    // re-install existing control change handlers on new controls
+    // (Re-)install existing control change handlers on the active controls.
+    // Three.js EventDispatcher deduplicates, so this is safe even if already attached.
     if (this.controlStartHandler) {
       this.controls.addEventListener("start", this.controlStartHandler);
     }
@@ -567,7 +605,13 @@ export class ThreeJsPanel {
   }
 
   switchViewMode(mode: string): void {
+    const wasTriple = this.viewMode === Axis.TRIPLE;
     mode = mode.toUpperCase();
+
+    if (wasTriple) {
+      this.tripleSliceControls.detach();
+    }
+
     switch (mode) {
       case "YZ":
       case "X":
@@ -590,6 +634,21 @@ export class ThreeJsPanel {
         this.axisHelperObject.rotation.set(0, 0, 0);
         this.viewMode = Axis.Z;
         break;
+      case "TRIPLE":
+        this.replaceCamera(this.tripleCamera);
+        this.resetTripleCamera();
+        this.controls.enabled = false;
+        this.removeControlHandlers();
+
+        // In triple mode, disable all controls — no rotate/zoom/pan
+        this.perspectiveControls.enabled = false;
+        this.orthoControlsX.enabled = false;
+        this.orthoControlsY.enabled = false;
+        this.orthoControlsZ.enabled = false;
+        this.viewMode = Axis.TRIPLE;
+        // triple mode has its own controller and events
+        this.tripleSliceControls.attach();
+        break;
       default:
         this.replaceCamera(this.perspectiveCamera);
         this.replaceControls(this.perspectiveControls);
@@ -602,6 +661,49 @@ export class ThreeJsPanel {
 
   getMeshDepthTexture(): DepthTexture | null {
     return this.meshRenderTarget.depthTexture;
+  }
+
+  getViewMode(): Axis {
+    return this.viewMode;
+  }
+
+  /**
+   * Sets the triple-slice source. Call this before switching to TRIPLE view mode.
+   * The source provides data and mutation methods for triple-slice interaction.
+   */
+  setTripleSliceSource(source: TripleSliceSource | undefined): void {
+    this.tripleSliceControls.source = source;
+  }
+
+  /**
+   * Sets a callback that fires when triple-slice crosshair indices change
+   * due to user interaction (drag or double-click).
+   */
+  setTripleSliceChangeCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | undefined): void {
+    this.tripleSliceControls.changeCallback = cb;
+  }
+
+  /** Returns pane rects in CSS pixel coordinates (top-left origin) for hit testing. */
+  getTripleViewPanesCSS(): TripleViewPanes | undefined {
+    if (this.viewMode !== Axis.TRIPLE || !this.tripleSliceControls.source) {
+      return undefined;
+    }
+    const dpr = this.renderer.getPixelRatio();
+    const canvasW = this.getWidth() / dpr;
+    const canvasH = this.getHeight() / dpr;
+    const panes = this.tripleSliceControls.source.getTripleViewPanesCSS(canvasW, canvasH);
+    // Flip Y from bottom-left origin to top-left for CSS hit testing
+    const toCSS = (r: TripleViewPaneRect): TripleViewPaneRect => ({
+      x: r.x,
+      y: canvasH - (r.y + r.h),
+      w: r.w,
+      h: r.h,
+    });
+    return {
+      xy: toCSS(panes.xy),
+      yz: toCSS(panes.yz),
+      xz: toCSS(panes.xz),
+    };
   }
 
   resize(comp: HTMLElement | null, w?: number, h?: number, _ow?: number, _oh?: number, _eOpts?: unknown): void {
@@ -703,6 +805,8 @@ export class ThreeJsPanel {
   }
 
   render(): void {
+    const isTriple = this.viewMode === Axis.TRIPLE;
+
     // update the axis helper in case the view was rotated
     if (!isOrthographicCamera(this.camera)) {
       this.axisHelperObject.rotation.setFromRotationMatrix(this.camera.matrixWorldInverse);
@@ -711,35 +815,37 @@ export class ThreeJsPanel {
     // do whatever we have to do before the main render of this.scene
     for (let i = 0; i < this.animateFuncs.length; i++) {
       if (this.animateFuncs[i]) {
-        this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+        this.animateFuncs[i](this.renderer, this.camera, isTriple ? null : this.meshRenderTarget.depthTexture);
       }
     }
 
-    // RENDERING
-    // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
-    // layer 1.) This is necessary to access the depth buffer.
-    this.camera.layers.set(MESH_LAYER);
-    this.renderer.setRenderTarget(this.meshRenderTarget);
-    this.renderer.render(this.scene, this.camera);
+    if (!isTriple) {
+      // RENDERING
+      // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
+      // layer 1.) This is necessary to access the depth buffer.
+      this.camera.layers.set(MESH_LAYER);
+      this.renderer.setRenderTarget(this.meshRenderTarget);
+      this.renderer.render(this.scene, this.camera);
 
-    // Step 2. Render any passes that have to happen after the meshes are
-    // rendered but before volume rendering (e.g. pick buffer).
-    this.postMeshRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-    });
+      // Step 2. Render any passes that have to happen after the meshes are
+      // rendered but before volume rendering (e.g. pick buffer).
+      this.postMeshRenderFuncs.forEach((func) => {
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      });
 
-    // Step 3: Render meshes that do not interact with the pick buffer. This
-    // must happen after the pick buffer is rendered so picking isn't occluded
-    // by them, but before the volume renders so that volumes can still depth
-    // test against the lines.
-    this.renderer.autoClear = false;
-    this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
-    this.renderer.setRenderTarget(this.meshRenderTarget);
-    this.renderer.render(this.scene, this.camera);
+      // Step 3: Render meshes that do not interact with the pick buffer. This
+      // must happen after the pick buffer is rendered so picking isn't occluded
+      // by them, but before the volume renders so that volumes can still depth
+      // test against the lines.
+      this.renderer.autoClear = false;
+      this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
+      this.renderer.setRenderTarget(this.meshRenderTarget);
+      this.renderer.render(this.scene, this.camera);
 
-    // Step 4: Render the mesh render target out to the screen.
-    this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
-    this.meshRenderToBuffer.render(this.renderer);
+      // Step 4: Render the mesh render target out to the screen.
+      this.meshRenderToBuffer.material.uniforms.image.value = this.meshRenderTarget.texture;
+      this.meshRenderToBuffer.render(this.renderer);
+    }
 
     // Step 5: Render volumes, which can now depth test against the meshes.
     this.camera.layers.set(VOLUME_LAYER);
@@ -747,21 +853,26 @@ export class ThreeJsPanel {
     this.renderer.render(this.scene, this.camera);
 
     // Step 6: Render lines and other objects that must render over volumes and meshes.
+    this.renderer.autoClear = false;
     this.camera.layers.set(OVERLAY_LAYER);
     this.renderer.setRenderTarget(null);
     this.renderer.render(this.scene, this.camera);
 
-    // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
-    this.overlayRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
-    });
+    if (!isTriple) {
+      // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
+      this.overlayRenderFuncs.forEach((func) => {
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      });
+    }
     this.renderer.autoClear = true;
 
-    // Step 8: Render axis helper and other overlays.
-    if (this.showAxis) {
-      this.renderer.autoClear = false;
-      this.renderer.render(this.axisHelperScene, this.axisCamera);
-      this.renderer.autoClear = true;
+    if (!isTriple) {
+      // Step 8: Render axis helper and other overlays.
+      if (this.showAxis) {
+        this.renderer.autoClear = false;
+        this.renderer.render(this.axisHelperScene, this.axisCamera);
+        this.renderer.autoClear = true;
+      }
     }
 
     if (this.dataurlcallback) {

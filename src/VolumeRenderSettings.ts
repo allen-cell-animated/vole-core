@@ -13,7 +13,7 @@ export enum SettingsFlags {
   CAMERA = 0b000000010,
   /** parameters: showBoundingBox, boundingBoxColor */
   BOUNDING_BOX = 0b000000100,
-  /** parameters: bounds, zSlice */
+  /** parameters: bounds, zSlice, tripleSliceIndices */
   ROI = 0b000001000,
   /** parameters: maskAlpha */
   MASK_ALPHA = 0b000010000,
@@ -36,6 +36,8 @@ export enum Axis {
   XYZ = "",
   /** No current axis, indicates 3D mode */
   NONE = "",
+  /** Triple orthographic slice view (XY + YZ + XZ) */
+  TRIPLE = "triple",
 }
 
 /**
@@ -75,6 +77,7 @@ export class VolumeRenderSettings {
   // ROI
   public bounds: Bounds;
   public zSlice: number;
+  public tripleSliceIndices: { x: number; y: number; z: number };
 
   // BOUNDING_BOX
   public showBoundingBox: boolean;
@@ -117,9 +120,16 @@ export class VolumeRenderSettings {
     this.useInterpolation = true;
     this.visible = true;
     this.maxProjectMode = false;
+    this.tripleSliceIndices = { x: 0, y: 0, z: 0 };
     // volume-dependent properties
     if (volume) {
       this.zSlice = Math.floor(volume.imageInfo.subregionSize.z / 2);
+      const volSize = volume.imageInfo.volumeSize;
+      this.tripleSliceIndices = {
+        x: Math.floor(volSize.x / 2),
+        y: Math.floor(volSize.y / 2),
+        z: Math.floor(volSize.z / 2),
+      };
       this.diffuse = new Array(volume.imageInfo.numChannels).fill([255, 255, 255]);
       this.specular = new Array(volume.imageInfo.numChannels).fill([0, 0, 0]);
       this.emissive = new Array(volume.imageInfo.numChannels).fill([0, 0, 0]);
@@ -184,6 +194,12 @@ export class VolumeRenderSettings {
         if (!bounds1.bmin.equals(bounds2.bmin) || !bounds1.bmax.equals(bounds2.bmax)) {
           return false;
         }
+      } else if (key === "tripleSliceIndices") {
+        const t1 = v1 as { x: number; y: number; z: number };
+        const t2 = v2 as { x: number; y: number; z: number };
+        if (t1.x !== t2.x || t1.y !== t2.y || t1.z !== t2.z) {
+          return false;
+        }
       } else if (v1 instanceof Vector3 || v1 instanceof Vector2 || v1 instanceof Euler) {
         if (!v1.equals(v2)) {
           return false;
@@ -231,6 +247,8 @@ export class VolumeRenderSettings {
         // must use key string here because Bounds is a type alias and not a class
         dst.bounds.bmax = this.bounds.bmax.clone();
         dst.bounds.bmin = this.bounds.bmin.clone();
+      } else if (key === "tripleSliceIndices") {
+        dst.tripleSliceIndices = { ...this.tripleSliceIndices };
       } else if (val instanceof Vector3 || val instanceof Vector2 || val instanceof Euler) {
         dst[key] = val.clone();
       } else if (val instanceof String) {
