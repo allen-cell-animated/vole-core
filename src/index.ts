@@ -26,6 +26,7 @@ import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Line3d from "./drawables/lines/Line3d.js";
 import VectorArrows3d from "./drawables/VectorArrows3d.js";
+import Points3d from "./drawables/points/Points3D.js";
 import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
@@ -39,6 +40,7 @@ export {
   Lut,
   Line3d,
   VectorArrows3d,
+  Points3d,
   remapControlPoints,
   View3d,
   Volume,

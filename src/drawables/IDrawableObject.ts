@@ -5,6 +5,7 @@ export interface IDrawableObject {
   setVisible(visible: boolean): void;
   doRender(): void;
   get3dObject(): Group;
+  getPick3dObject?(): Group;
   setTranslation(translation: Vector3): void;
   setScale(scale: Vector3): void;
   /**

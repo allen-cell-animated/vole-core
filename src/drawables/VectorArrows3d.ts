@@ -192,7 +192,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
     // translation and rotation are still affected by any parent transforms).
     // This allows arrows meshes to be scaled 1:1 with world space, regardless
     // of parent transforms, and prevents distortion or skewing of the mesh.
-    // Parent scaling is  applied to arrow positions and deltas (see
+    // Parent scaling is applied to arrow positions and deltas (see
     // `updateAllArrowTransforms`), rather than the meshes themselves.
     const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
     this.meshPivot.scale.copy(invertScale);
@@ -294,7 +294,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
       colors.toArray(this.colors);
     } else {
       if (colors.length % 3 !== 0) {
-        throw new Error("VectorArrows.setColors: colors array length must be a multiple of 3.");
+        throw new Error("VectorArrows3D.setColors: colors array length must be a multiple of 3.");
       }
       this.colors = new Float32Array(colors);
     }
