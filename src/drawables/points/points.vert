@@ -20,6 +20,7 @@ void main() {
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
 
     float worldScale = instanceScale * baseScale;
+    //   float px = worldSize * (0.5 * viewportHeight) * projectionMatrix[1][1] / abs(gl_Position.w);
     float sizePx = worldScale / gl_Position.w;
     gl_PointSize = worldScale;
 

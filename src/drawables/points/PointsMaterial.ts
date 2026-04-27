@@ -10,11 +10,10 @@ export const enum PointMaterialInstanceAttributes {
   COLOR = "instanceColor",
 }
 
-export class PointMaterial extends ShaderMaterial {
+export class PointPickMaterial extends ShaderMaterial {
   constructor(params: Partial<ShaderMaterialParameters> = {}) {
     super({
-      vertexShader,
-      fragmentShader,
+      fragmentShader: pickFragmentShader,
       glslVersion: GLSL3,
       ...params,
     });
@@ -25,22 +24,5 @@ export class PointMaterial extends ShaderMaterial {
         baseScale: { value: 1 },
       },
     ]);
-  }
-
-  /**
-   * Base scale for the points in world space, multiplied against the
-   * instance position's `w` component.
-   */
-  set baseScale(value: number) {
-    this.uniforms.baseScale.value = value;
-  }
-}
-
-export class PointPickMaterial extends PointMaterial {
-  constructor() {
-    super({
-      // Override fragment shader
-      fragmentShader: pickFragmentShader,
-    });
   }
 }

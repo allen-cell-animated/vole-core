@@ -1,24 +1,26 @@
 import {
   BufferAttribute,
-  BufferGeometry,
   Color,
   InstancedBufferAttribute,
   InstancedBufferGeometry,
+  InstancedMesh,
+  Matrix4,
+  MeshBasicMaterial,
   Points,
+  Quaternion,
+  Sphere,
+  SphereGeometry,
   Vector3,
 } from "three";
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject";
 import { IDrawableObject } from "../IDrawableObject";
 import { MESH_LAYER } from "../../ThreeJsPanel";
-import { PointMaterial, PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
+import { PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
-function getPointBufferGeometry(): BufferGeometry {
-  const geometry = new BufferGeometry();
-  const vertices = new Float32Array([0, 0, 0]);
-  geometry.setAttribute("position", new BufferAttribute(vertices, 3));
-  return geometry;
+function getSphereGeometry(): SphereGeometry {
+  return new SphereGeometry(1, 32, 32);
 }
 
 export default class Points3d extends BaseDrawableMeshObject implements IDrawableObject {
@@ -29,16 +31,15 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
   private scales: Float32Array | null;
   private ids: Uint32Array | null;
   private colors: Float32Array | null;
-  private positionAttribute: InstancedBufferAttribute;
-  private scaleAttribute: InstancedBufferAttribute;
-  private colorAttribute: InstancedBufferAttribute;
+
   private idAttribute: InstancedBufferAttribute;
 
-  private instancedGeometry: InstancedBufferGeometry;
-  private pointMaterial: PointMaterial;
+  private geometry: SphereGeometry;
+  private pointMaterial: MeshBasicMaterial;
   private pointPickMaterial: PointPickMaterial;
-  private points: Points<InstancedBufferGeometry, PointMaterial>;
-  private pointsPick: Points<InstancedBufferGeometry, PointPickMaterial>;
+
+  private points: InstancedMesh<SphereGeometry, MeshBasicMaterial>;
+  private pointsPick: InstancedMesh<SphereGeometry, PointPickMaterial>;
 
   constructor() {
     super();
@@ -47,62 +48,99 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.meshPivot.layers.set(MESH_LAYER);
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
-    const pointGeometry = getPointBufferGeometry() as InstancedBufferGeometry;
-    this.instancedGeometry = new InstancedBufferGeometry().copy(pointGeometry);
-    this.pointMaterial = new PointMaterial();
+    this.geometry = getSphereGeometry();
+    this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
     this.pointPickMaterial = new PointPickMaterial();
+    this.pointMaterial.depthWrite = true;
 
-    this.points = new Points(this.instancedGeometry, this.pointMaterial);
-    this.pointsPick = new Points(this.instancedGeometry, this.pointPickMaterial);
+    this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
+    this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
+    this.points.layers.set(MESH_LAYER);
+    this.pointsPick.layers.set(MESH_LAYER);
+    this.points.frustumCulled = false;
+    this.pointsPick.frustumCulled = false;
 
     this.positions = null;
     this.scales = null;
     this.ids = null;
     this.colors = null;
 
-    this.positionAttribute = new InstancedBufferAttribute(new Float32Array(this.maxInstanceCount * 3), 3, false);
-    this.scaleAttribute = new InstancedBufferAttribute(new Float32Array(this.maxInstanceCount), 1, false);
-    this.colorAttribute = new InstancedBufferAttribute(new Float32Array(this.maxInstanceCount * 3), 3, false);
     this.idAttribute = new InstancedBufferAttribute(new Uint32Array(this.maxInstanceCount), 1, false);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.POSITION, this.positionAttribute);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.SCALE, this.scaleAttribute);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.COLOR, this.colorAttribute);
+    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
-  }
-
-  private increaseInstanceCountMax(instanceCount: number): void {
-    let newInstanceCount = this.maxInstanceCount;
-    while (newInstanceCount < instanceCount) {
-      newInstanceCount *= 2;
-    }
-
-    this.instancedGeometry.dispose();
-    const pointGeometry = getPointBufferGeometry() as InstancedBufferGeometry;
-    this.instancedGeometry = new InstancedBufferGeometry().copy(pointGeometry);
-    this.points.geometry = this.instancedGeometry;
-    this.pointsPick.geometry = this.instancedGeometry;
-
-    // Create and set new attributes with the new instance count
-    const newPos = new Float32Array(this.maxInstanceCount * 4);
-    const newIds = new Uint32Array(this.maxInstanceCount);
-    const newColors = new Float32Array(this.maxInstanceCount * 3);
-    this.positionAttribute = new InstancedBufferAttribute(newPos, 4, false);
-    this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
-    this.colorAttribute = new InstancedBufferAttribute(newColors, 3, false);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.POSITION, this.positionAttribute);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
-    this.instancedGeometry.setAttribute(PointMaterialInstanceAttributes.COLOR, this.colorAttribute);
-
-    this.maxInstanceCount = newInstanceCount;
   }
 
   public cleanup(): void {
     super.cleanup();
     this.pointMaterial.dispose();
     this.pointPickMaterial.dispose();
-    this.instancedGeometry.dispose();
+    this.geometry.dispose();
+  }
+
+  private increaseInstanceCountMax(instanceCount: number): void {
+    this.cleanup();
+
+    let newInstanceCount = this.maxInstanceCount;
+    while (newInstanceCount < instanceCount) {
+      newInstanceCount *= 2;
+    }
+
+    this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
+    this.pointPickMaterial = new PointPickMaterial();
+    this.pointMaterial.depthWrite = true;
+    this.geometry = getSphereGeometry();
+    this.points.geometry = this.geometry;
+    this.pointsPick.geometry = this.geometry;
+
+    // Create and set new attributes with the new instance count
+    const newIds = new Uint32Array(this.maxInstanceCount);
+    this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
+    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
+
+    // Recreate InstancedMesh objects with the new instance count
+    this.removeChildMesh(this.points);
+    this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
+    this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
+    this.points.layers.set(MESH_LAYER);
+    this.points.frustumCulled = false;
+    this.pointsPick.frustumCulled = false;
+    this.addChildMesh(this.points);
+
+    this.maxInstanceCount = newInstanceCount;
+  }
+
+  public setScale(scale: Vector3): void {
+    if (scale !== this.scale) {
+      this.onParentTransformUpdated();
+      this.scale.copy(scale);
+      this.updatePointAttributes();
+    }
+  }
+
+  /**
+   * Called when scaling of parent transforms has been updated or whenever
+   * vector data is updated.
+   */
+  public onParentTransformUpdated(): void {
+    // Measure world scale by temporarily resetting mesh pivot scale
+    this.meshPivot.scale.set(1, 1, 1);
+    let newWorldScale = new Vector3();
+    newWorldScale = this.meshPivot.getWorldScale(newWorldScale);
+
+    // Scale is inverted on mesh pivot to cancel out parent transforms (though
+    // translation and rotation are still affected by any parent transforms).
+    // This allows arrows meshes to be scaled 1:1 with world space, regardless
+    // of parent transforms, and prevents distortion or skewing of the mesh.
+    // Parent scaling is applied to arrow positions and deltas (see
+    // `updateAllArrowTransforms`), rather than the meshes themselves.
+    const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
+    this.meshPivot.scale.copy(invertScale);
+
+    if (!newWorldScale.equals(this.worldScale)) {
+      this.worldScale.copy(newWorldScale);
+      this.updatePointAttributes();
+    }
   }
 
   private applyPointColors(): void {
@@ -112,12 +150,14 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     const colorCount = Math.round(this.colors.length / 3);
     const color = new Color();
     for (let i = 0; i < this.maxInstanceCount; i++) {
-      // Wrap colors if there are fewer colors than arrows
+      // Wrap colors if there are fewer colors than instances.
       const colorIndex = i % colorCount;
       color.fromArray(this.colors, colorIndex * 3);
-      this.colorAttribute.setXYZ(i, color.r, color.g, color.b);
+      this.points.setColorAt(i, color);
     }
-    this.colorAttribute.needsUpdate = true;
+    if (this.points.instanceColor) {
+      this.points.instanceColor.needsUpdate = true;
+    }
   }
 
   public setColors(colors: Float32Array | Color): void {
@@ -137,32 +177,37 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     if (!this.positions || !this.scales) {
       return;
     }
-    for (let i = 0; i < this.maxInstanceCount; i++) {
+    const count = this.positions.length / 3;
+
+    const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.worldScale);
+    const position = new Vector3();
+    for (let i = 0; i < count; i++) {
       const posIndex = (i * 3) % this.positions.length;
       const scaleIndex = i % (this.scales ? this.scales.length : 1);
       const idIndex = i % (this.ids ? this.ids.length : 1);
-      const x = this.positions[posIndex];
-      const y = this.positions[posIndex + 1];
-      const z = this.positions[posIndex + 2];
+
+      position.fromArray(this.positions, posIndex).multiply(combinedScale);
       const scale = this.scales[scaleIndex];
+
+      // Set per-instance matrix
+      this.points.setMatrixAt(i, new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale)));
+
+      // Set per-instance id
       const id = this.ids ? this.ids[idIndex] : 0;
-      this.positionAttribute.setXYZ(i, x, y, z);
-      this.scaleAttribute.setX(i, scale);
       this.idAttribute.setX(i, id);
     }
-    this.positionAttribute.needsUpdate = true;
-    this.scaleAttribute.needsUpdate = true;
     this.idAttribute.needsUpdate = true;
   }
 
   public setPointData(positions: Float32Array, scales: Float32Array, ids: Uint32Array | null = null): void {
     // Update instance count, add more instances as needed.
-    const count = positions.length / 4;
+    const count = positions.length / 3;
     let didInstanceCountIncrease = this.maxInstanceCount < count;
     if (didInstanceCountIncrease) {
       this.increaseInstanceCountMax(count);
     }
-    this.instancedGeometry.instanceCount = count;
+    this.points.count = count;
+    this.pointsPick.count = count;
 
     this.positions = positions;
     this.scales = scales;
