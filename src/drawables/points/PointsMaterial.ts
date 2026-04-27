@@ -1,7 +1,6 @@
-import fragmentShader from "./points.frag";
-import vertexShader from "./points.vert";
 import pickFragmentShader from "./pointsPick.frag";
-import { GLSL3, ShaderMaterial, ShaderMaterialParameters, UniformsUtils } from "three";
+import vertexShader from "./points.vert";
+import { ShaderMaterial, ShaderMaterialParameters, UniformsUtils } from "three";
 
 export const enum PointMaterialInstanceAttributes {
   POSITION = "instancePosition",
@@ -13,8 +12,8 @@ export const enum PointMaterialInstanceAttributes {
 export class PointPickMaterial extends ShaderMaterial {
   constructor(params: Partial<ShaderMaterialParameters> = {}) {
     super({
+      vertexShader,
       fragmentShader: pickFragmentShader,
-      glslVersion: GLSL3,
       ...params,
     });
 

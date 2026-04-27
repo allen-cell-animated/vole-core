@@ -1,38 +1,20 @@
 /**
- * Draws a circular point for each instance, using the RGB color to encode the 
- * instance ID.
- * 
- * The alpha channel is reserved for smooth rendering and encoding the distance
- * from the edge of the shape for outlining effects.
+ * Encodes instance ID into RGB for pick buffer rendering.
  */
-precision highp int;
-
-layout (location = 0) out uvec4 gOutputColor;
-
-float THRESHOLD = 0.5;
+precision highp float;
 
 // Per-instance attributes
 flat in uint IN_instanceId;
-flat in float IN_radius;
 
 /** Encodes instance ID as an RGB value. */
-uvec3 getInstanceColor(uint value) {
-    uint b = (value >> 16) & 0xFFu;
+vec3 getInstanceColor(uint value) {
+    uint r = value & 0xFFu;
     uint g = (value >> 8) & 0xFFu;
-    uint r = (value >> 0) & 0xFFu;
-    return uvec3(r, g, b);
+    uint b = (value >> 16) & 0xFFu;
+    return vec3(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0);
 }
 
 void main() {
-    vec2 uv = gl_PointCoord;
-    float dist = distance(uv, vec2(0.5));
-
-  // Cull pixels outside of the circle to create round points
-    if (dist > THRESHOLD) {
-        discard;
-    }
-
-    uvec3 color = getInstanceColor(IN_instanceId);
-    gOutputColor = uvec4(color, 255u);
-    depth = 0;
+    vec3 color = getInstanceColor(IN_instanceId);
+    gl_FragColor = vec4(color, 1.0);
 }
