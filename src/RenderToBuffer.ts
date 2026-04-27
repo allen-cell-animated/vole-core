@@ -33,7 +33,7 @@ export default class RenderToBuffer {
     this.geometry = new PlaneGeometry(2, 2);
 
     this.material = new NodeMaterial();
-    this.material.vertexNode = Fn(() => vec4(positionGeometry, 1.0))();
+    this.material.vertexNode = vec4(positionGeometry, 1.0);
     this.material.fragmentNode = fragmentNode;
     this.material.transparent = passType === RenderPassType.TRANSPARENT;
     this.material.depthWrite = false;
