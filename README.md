@@ -46,12 +46,8 @@ For a production-style local run that uses the packaged CLI and built assets:
 - Area of interest cropping
 - OME-Zarr scale level selection
 
-![Landing](https://github.com/qim-center/vole-core/blob/mvp/docs/screenshots/qim-ve-landing.png)
-![High def](https://github.com/qim-center/vole-core/blob/mvp/docs/screenshots/qim-ve-high-def.png)
+![Demo](https://github.com/qim-center/vole-core/blob/main/docs/gifs/demo.gif)
 
 ### Advanced
 
 There are two hidden menus for advanced users, accessible by pressing `Ctrl + Alt + 1` and `Ctrl + Alt + 2`.
-
-Advanced menus
-![Advanced menus](https://github.com/qim-center/vole-core/blob/mvp/docs/screenshots/qim-ve-advanced-menus.png)
