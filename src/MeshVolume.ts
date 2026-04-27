@@ -104,7 +104,7 @@ export default class MeshVolume implements IDrawableObject {
 
   setRotation(eulerXYZ: Euler): void {
     this.meshPivot.rotation.copy(eulerXYZ);
-    this.updateClipFromBounds();
+    this.updateVisibleRegionFromBounds();
   }
 
   setResolution(_x: number, _y: number): void {
@@ -115,10 +115,10 @@ export default class MeshVolume implements IDrawableObject {
     // no op
   }
 
-  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void {
+  setAxisVisibleRegion(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void {
     this.bounds.bmax[axis] = maxval;
     this.bounds.bmin[axis] = minval;
-    this.updateClipFromBounds();
+    this.updateVisibleRegionFromBounds();
   }
 
   //////////////////////////////
@@ -217,21 +217,21 @@ export default class MeshVolume implements IDrawableObject {
     return opacity;
   }
 
-  updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void {
+  updateVisibleRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void {
     // incoming values expected to be between 0 and 1.
     // I shift them here to be between -0.5 and 0.5
     this.bounds = {
       bmin: new Vector3(xmin - 0.5, ymin - 0.5, zmin - 0.5),
       bmax: new Vector3(xmax - 0.5, ymax - 0.5, zmax - 0.5),
     };
-    this.updateClipFromBounds();
+    this.updateVisibleRegionFromBounds();
   }
 
-  updateCropRegion(cropXmin: number, cropXmax: number, cropYmin: number, cropYmax: number, cropZmin: number, cropZmax: number): void {
+  updateLoadedRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void {
     // TODO implement cropping for the mesh
   }
 
-  updateClipFromBounds(): void {
+  updateVisibleRegionFromBounds(): void {
     const xmin = this.bounds.bmin.x;
     const ymin = this.bounds.bmin.y;
     const zmin = this.bounds.bmin.z;

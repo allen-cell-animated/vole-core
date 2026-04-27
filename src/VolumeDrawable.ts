@@ -186,15 +186,15 @@ export default class VolumeDrawable {
     if (options.maskAlpha !== undefined) {
       this.setMaskAlpha(options.maskAlpha);
     }
-    if (options.clipBounds !== undefined) {
+    if (options.visibleRegion !== undefined) {
       this.settings.bounds = {
-        bmin: new Vector3(options.clipBounds[0], options.clipBounds[2], options.clipBounds[4]),
-        bmax: new Vector3(options.clipBounds[1], options.clipBounds[3], options.clipBounds[5]),
+        bmin: new Vector3(options.visibleRegion[0], options.visibleRegion[2], options.visibleRegion[4]),
+        bmax: new Vector3(options.visibleRegion[1], options.visibleRegion[3], options.visibleRegion[5]),
       };
       // note: dropping isOrthoAxis argument
-      this.setAxisClip(Axis.X, options.clipBounds[0], options.clipBounds[1]);
-      this.setAxisClip(Axis.Y, options.clipBounds[2], options.clipBounds[3]);
-      this.setAxisClip(Axis.Z, options.clipBounds[4], options.clipBounds[5]);
+      this.setAxisVisibleRegion(Axis.X, options.visibleRegion[0], options.visibleRegion[1]);
+      this.setAxisVisibleRegion(Axis.Y, options.visibleRegion[2], options.visibleRegion[3]);
+      this.setAxisVisibleRegion(Axis.Z, options.visibleRegion[4], options.visibleRegion[5]);
     }
     if (options.translation !== undefined) {
       this.setTranslation(new Vector3().fromArray(options.translation));
@@ -313,13 +313,13 @@ export default class VolumeDrawable {
     }
   }
 
-  // Set clipping range (between -0.5 and 0.5) for a given axis.
+  // Set visible range (between -0.5 and 0.5) for a given axis.
   // Calling this allows the rendering to compensate for changes in thickness in orthographic views that affect how bright the volume is.
   // @param {number} axis 0, 1, or 2 for x, y, or z axis
   // @param {number} minval -0.5..0.5, should be less than maxval
   // @param {number} maxval -0.5..0.5, should be greater than minval
-  // @param {boolean} isOrthoAxis is this an orthographic projection or just a clipping of the range for perspective view
-  setAxisClip(axis: Axis, minval: number, maxval: number, isOrthoAxis?: boolean): void {
+  // @param {boolean} isOrthoAxis is this an orthographic projection or just a visible-range change for perspective view
+  setAxisVisibleRegion(axis: Axis, minval: number, maxval: number, isOrthoAxis?: boolean): void {
     // Skip settings update if nothing has changed
     if (
       this.settings.bounds.bmax[axis] === maxval &&
@@ -337,7 +337,7 @@ export default class VolumeDrawable {
     // Configure mesh volume when in an orthographic axis alignment
     if (axis !== Axis.NONE && this.renderMode !== RenderMode.PATHTRACE) {
       for (const object of this.childObjects) {
-        object.setAxisClip(axis, minval, maxval, !!isOrthoAxis);
+        object.setAxisVisibleRegion(axis, minval, maxval, !!isOrthoAxis);
       }
     }
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI | SettingsFlags.VIEW);
@@ -795,37 +795,37 @@ export default class VolumeDrawable {
   }
 
   // values are in 0..1 range
-  updateClipRegion(
+  updateVisibleRegion(
     xmin: number,
     xmax: number,
     ymin: number,
     ymax: number,
     zmin: number,
-    zmax: number,
-    toCrop: boolean
-  ): Promise<void> {
+    zmax: number
+  ): void {
     this.settings.bounds.bmin = new Vector3(xmin - 0.5, ymin - 0.5, zmin - 0.5);
     this.settings.bounds.bmax = new Vector3(xmax - 0.5, ymax - 0.5, zmax - 0.5);
     for (const object of this.childObjects) {
-      object.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax);
-    }
-
-    // console.log("Requested atlas edge:", this.volume.loadSpecRequired.maxAtlasEdge);
-    // console.log("Subregion:", xmin, xmax, ymin, ymax, zmin, zmax);
-
-    let loadPromise = Promise.resolve();
-    if (toCrop === true) {
-      loadPromise = this.volume.updateRequiredData({
-        subregion: new Box3(
-          new Vector3(xmin, ymin, zmin),
-          new Vector3(xmax, ymax, zmax)
-        )
-      });
+      object.updateVisibleRegion(xmin, xmax, ymin, ymax, zmin, zmax);
     }
 
     this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
-    return loadPromise;
+  }
+
+  // values are in 0..1 range
+  updateLoadedRegion(
+    xmin: number,
+    xmax: number,
+    ymin: number,
+    ymax: number,
+    zmin: number,
+    zmax: number
+  ): Promise<void> {
+    this.updateVisibleRegion(xmin, xmax, ymin, ymax, zmin, zmax);
+    return this.volume.updateRequiredData({
+      subregion: new Box3(new Vector3(xmin, ymin, zmin), new Vector3(xmax, ymax, zmax)),
+    });
   }
 
   updateLights(state: Light[]): void {

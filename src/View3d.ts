@@ -765,7 +765,7 @@ export class View3d {
   }
 
   /**
-   * Set clipping range (between 0 and 1, relative to bounds) for the current volume.
+   * Set visible region (between 0 and 1, relative to bounds) for the current volume.
    * @param {Object} volume
    * @param {number} xmin 0..1, should be less than xmax
    * @param {number} xmax 0..1, should be greater than xmin
@@ -774,7 +774,7 @@ export class View3d {
    * @param {number} zmin 0..1, should be less than zmax
    * @param {number} zmax 0..1, should be greater than zmin
    */
-  updateClipRegion(
+  updateVisibleRegion(
     volume: Volume,
     xmin: number,
     xmax: number,
@@ -783,11 +783,11 @@ export class View3d {
     zmin: number,
     zmax: number
   ): void {
-    this.image?.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax, false);
+    this.image?.updateVisibleRegion(xmin, xmax, ymin, ymax, zmin, zmax);
     this.redraw();
   }
 
-  updateCropRegion(
+  updateLoadedRegion(
     volume: Volume,
     xmin: number,
     xmax: number,
@@ -796,22 +796,22 @@ export class View3d {
     zmin: number,
     zmax: number
   ): Promise<void> {
-    const loadPromise = this.image?.updateClipRegion(xmin, xmax, ymin, ymax, zmin, zmax, true);
+    const loadPromise = this.image?.updateLoadedRegion(xmin, xmax, ymin, ymax, zmin, zmax);
     this.redraw();
     return loadPromise ?? Promise.resolve();
   }
 
   /**
-   * Set clipping range (between 0 and 1) for a given axis.
+   * Set visible region range (between 0 and 1) for a given axis.
    * Calling this allows the rendering to compensate for changes in thickness in orthographic views that affect how bright the volume is.
    * @param {Object} volume
    * @param {string} axis x, y, or z axis
    * @param {number} minval 0..1, should be less than maxval
    * @param {number} maxval 0..1, should be greater than minval
-   * @param {boolean} isOrthoAxis is this an orthographic projection or just a clipping of the range for perspective view
+   * @param {boolean} isOrthoAxis is this an orthographic projection or just a visible-range change for perspective view
    */
-  setAxisClip(volume: Volume, axis: "x" | "y" | "z", minval: number, maxval: number, isOrthoAxis: boolean): void {
-    this.image?.setAxisClip(axis as Axis, minval, maxval, isOrthoAxis);
+  setAxisVisibleRegion(volume: Volume, axis: "x" | "y" | "z", minval: number, maxval: number, isOrthoAxis: boolean): void {
+    this.image?.setAxisVisibleRegion(axis as Axis, minval, maxval, isOrthoAxis);
     this.redraw();
   }
 

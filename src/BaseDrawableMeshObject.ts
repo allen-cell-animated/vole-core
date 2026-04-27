@@ -82,15 +82,15 @@ export default abstract class BaseDrawableMeshObject implements IDrawableObject 
     // no op
   }
 
-  setAxisClip(_axis: "x" | "y" | "z", _minval: number, _maxval: number, _isOrthoAxis: boolean): void {
-    // no op  
-  }
-
-  updateClipRegion(_xmin: number, _xmax: number, _ymin: number, _ymax: number, _zmin: number, _zmax: number): void {
+  setAxisVisibleRegion(_axis: "x" | "y" | "z", _minval: number, _maxval: number, _isOrthoAxis: boolean): void {
     // no op
   }
 
-  updateCropRegion(_cropXmin: number, _cropXmax: number, _cropYmin: number, _cropYmax: number, _cropZmin: number, _cropZmax: number): void {
+  updateVisibleRegion(_xmin: number, _xmax: number, _ymin: number, _ymax: number, _zmin: number, _zmax: number): void {
+    // no op
+  }
+
+  updateLoadedRegion(_xmin: number, _xmax: number, _ymin: number, _ymax: number, _zmin: number, _zmax: number): void {
     // no op
   }
 }

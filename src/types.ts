@@ -115,9 +115,9 @@ export interface IDrawableObject {
   setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
   setOrthoThickness(thickness: number): void;
   setResolution(x: number, y: number): void;
-  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void;
-  updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void;
-  updateCropRegion(cropXmin: number, cropXmax: number, cropYmin: number, cropYmax: number, cropZmin: number, cropZmax: number): void;
+  setAxisVisibleRegion(axis: "x" | "y" | "z", minval: number, maxval: number, isOrthoAxis: boolean): void;
+  updateVisibleRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void;
+  updateLoadedRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void;
 }
 
 export interface FuseChannel {
@@ -172,7 +172,7 @@ export enum RenderMode {
  * @property {Array.<number>} rotation xyz angles in radians
  * @property {number} maskChannelIndex
  * @property {number} maskAlpha
- * @property {Array.<number>} clipBounds [xmin, xmax, ymin, ymax, zmin, zmax] all range from 0 to 1 as a percentage of the volume on that axis
+ * @property {Array.<number>} visibleRegion [xmin, xmax, ymin, ymax, zmin, zmax] all range from 0 to 1 as a percentage of the volume on that axis
  * @property {Array.<number>} scale xyz voxel size scaling
  * @property {boolean} maxProjection true or false (ray marching)
  * @property {number} renderMode 0 for raymarch, 1 for pathtrace
@@ -192,7 +192,7 @@ export interface VolumeDisplayOptions {
   rotation?: [number, number, number];
   maskChannelIndex?: number;
   maskAlpha?: number;
-  clipBounds?: [number, number, number, number, number, number];
+  visibleRegion?: [number, number, number, number, number, number];
   maxProjection?: boolean;
   renderMode?: RenderMode;
   shadingMethod?: number;
