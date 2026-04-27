@@ -88,7 +88,9 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     while (newInstanceCount < instanceCount) {
       newInstanceCount *= 2;
     }
+    this.maxInstanceCount = newInstanceCount;
 
+    this.removeChildMesh(this.points);
     this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
     this.pointPickMaterial = new PointPickMaterial();
     this.pointMaterial.depthWrite = true;
@@ -96,21 +98,19 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.points.geometry = this.geometry;
     this.pointsPick.geometry = this.geometry;
 
-    // Create and set new attributes with the new instance count
-    const newIds = new Uint32Array(this.maxInstanceCount);
-    this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
-    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
-
     // Recreate InstancedMesh objects with the new instance count
-    this.removeChildMesh(this.points);
     this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
     this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
     this.points.layers.set(MESH_LAYER);
     this.points.frustumCulled = false;
     this.pointsPick.frustumCulled = false;
-    this.addChildMesh(this.points);
 
-    this.maxInstanceCount = newInstanceCount;
+    // Create and set new attributes with the new instance count
+    const newIds = new Uint32Array(this.maxInstanceCount);
+    this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
+    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
+
+    this.addChildMesh(this.points);
   }
 
   public setScale(scale: Vector3): void {
