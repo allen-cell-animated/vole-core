@@ -60,6 +60,9 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.points.frustumCulled = false;
     this.pointsPick.frustumCulled = false;
 
+    this.points.count = 0;
+    this.pointsPick.count = 0;
+
     this.positions = null;
     this.scales = null;
     this.ids = null;
@@ -114,7 +117,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     if (scale !== this.scale) {
       this.onParentTransformUpdated();
       this.scale.copy(scale);
-      this.updatePointAttributes();
+      this.applyPointAttributes();
     }
   }
 
@@ -139,7 +142,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
 
     if (!newWorldScale.equals(this.worldScale)) {
       this.worldScale.copy(newWorldScale);
-      this.updatePointAttributes();
+      this.applyPointAttributes();
     }
   }
 
@@ -173,7 +176,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.applyPointColors();
   }
 
-  private updatePointAttributes(): void {
+  private applyPointAttributes(): void {
     if (!this.positions || !this.scales) {
       return;
     }
@@ -191,11 +194,11 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
 
       // Set per-instance matrix
       this.points.setMatrixAt(i, new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale)));
-
       // Set per-instance id
       const id = this.ids ? this.ids[idIndex] : 0;
       this.idAttribute.setX(i, id);
     }
+    this.points.instanceMatrix.needsUpdate = true;
     this.idAttribute.needsUpdate = true;
   }
 
@@ -213,7 +216,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.scales = scales;
     this.ids = ids;
 
-    this.updatePointAttributes();
+    this.applyPointAttributes();
     if (didInstanceCountIncrease) {
       this.applyPointColors();
     }
