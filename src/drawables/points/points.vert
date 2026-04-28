@@ -3,6 +3,7 @@ in uint instanceId;
 flat out uint IN_instanceId;
 
 void main() {
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    vec4 mvPosition = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mvPosition;
     IN_instanceId = instanceId;
 }

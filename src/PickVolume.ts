@@ -267,9 +267,9 @@ export default class PickVolume implements VolumeRenderImpl {
     // if (!this.geometryMesh.visible) {
     //   return;
     // }
-    if (!this.needRedraw) {
-      return;
-    }
+    // if (!this.needRedraw) {
+    //   return;
+    // }
     this.needRedraw = false;
 
     this.setUniform("iResolution", this.settings.resolution);
@@ -311,10 +311,8 @@ export default class PickVolume implements VolumeRenderImpl {
     renderer.clear();
 
     // Render other pickable meshes into the pick buffer first.
-    console.log("PickVolume.doRender: scene", scene);
     if (scene) {
       camera.layers.set(MESH_PICK_LAYER);
-      console.log("rendering pickable meshes");
       renderer.render(scene, camera);
     }
 
