@@ -6,6 +6,7 @@ import {
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
+  MeshStandardMaterial,
   Quaternion,
   SphereGeometry,
   Vector3,
@@ -93,14 +94,9 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.geometry.dispose();
   }
 
-  private increaseInstanceCountMax(instanceCount: number): void {
-    this.cleanup();
-
-    let newInstanceCount = this.maxInstanceCount;
-    while (newInstanceCount < instanceCount) {
-      newInstanceCount *= 2;
-    }
-    this.maxInstanceCount = newInstanceCount;
+  private reinitializeInstancedMeshes(): void {
+    this.removeChildMesh(this.points);
+    this.removeChildMesh(this.pointsPick);
 
     this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
     this.pointPickMaterial = new PointPickMaterial();
@@ -122,6 +118,14 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
 
     this.addChildMesh(this.points);
     this.addChildMesh(this.pointsPick);
+  }
+
+  private increaseInstanceCountMax(instanceCount: number): void {
+    this.cleanup();
+    while (this.maxInstanceCount < instanceCount) {
+      this.maxInstanceCount *= 2;
+    }
+    this.reinitializeInstancedMeshes();
   }
 
   /**
