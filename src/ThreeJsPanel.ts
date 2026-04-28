@@ -32,10 +32,17 @@ import RenderToBuffer from "./RenderToBuffer.js";
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
+/** Opaque meshes that interact with the volume layer and block picking. */
 export const MESH_LAYER = 1;
-/** Meshes that do not occlude picking/contour behavior. */
+/**
+ * Opaque meshes that interact with the volume layer but do not occlude
+ * picking/contour behavior.
+ */
 export const MESH_NO_PICK_OCCLUSION_LAYER = 2;
+/** Meshes that are rendered as overlays above all other layers. */
 export const OVERLAY_LAYER = 3;
+/** Meshes that are "invisible" and write only to the pick buffer. */
+export const MESH_PICK_LAYER = 4;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -716,8 +723,9 @@ export class ThreeJsPanel {
     }
 
     // RENDERING
-    // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
-    // layer 1.) This is necessary to access the depth buffer.
+    // Step 1: Render meshes, e.g. isosurfaces, separately to a render
+    // target. (Meshes are all on layer 1.) This is necessary to access the
+    // depth buffer.
     this.camera.layers.set(MESH_LAYER);
     this.renderer.setRenderTarget(this.meshRenderTarget);
     this.renderer.render(this.scene, this.camera);
@@ -731,7 +739,7 @@ export class ThreeJsPanel {
     // Step 3: Render meshes that do not interact with the pick buffer. This
     // must happen after the pick buffer is rendered so picking isn't occluded
     // by them, but before the volume renders so that volumes can still depth
-    // test against the lines.
+    // test against the meshes.
     this.renderer.autoClear = false;
     this.camera.layers.set(MESH_NO_PICK_OCCLUSION_LAYER);
     this.renderer.setRenderTarget(this.meshRenderTarget);

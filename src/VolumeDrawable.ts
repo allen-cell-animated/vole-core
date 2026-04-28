@@ -899,6 +899,9 @@ export default class VolumeDrawable {
   addDrawableObject(object: IDrawableObject): void {
     if (!this.childObjects.has(object)) {
       this.childObjectsGroup.add(object.get3dObject());
+      if (object.getPick3dObject) {
+        this.pickRendering?.addPickObject(object.getPick3dObject());
+      }
       this.childObjects.add(object);
       this.updateScale();
     }
@@ -915,6 +918,9 @@ export default class VolumeDrawable {
   removeDrawableObject(object: IDrawableObject): void {
     if (this.childObjects.has(object)) {
       this.childObjects.delete(object);
+      if (object.getPick3dObject) {
+        this.pickRendering?.removePickObject(object.getPick3dObject());
+      }
       this.childObjectsGroup.remove(object.get3dObject());
     }
   }

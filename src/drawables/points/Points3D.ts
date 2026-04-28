@@ -1,20 +1,18 @@
 import {
-  BufferAttribute,
   Color,
+  Euler,
+  Group,
   InstancedBufferAttribute,
-  InstancedBufferGeometry,
   InstancedMesh,
   Matrix4,
   MeshBasicMaterial,
-  Points,
   Quaternion,
-  Sphere,
   SphereGeometry,
   Vector3,
 } from "three";
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject";
 import { IDrawableObject } from "../IDrawableObject";
-import { MESH_LAYER } from "../../ThreeJsPanel";
+import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel";
 import { PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
 
 const DEFAULT_INSTANCE_COUNT = 256;
@@ -26,6 +24,8 @@ function getSphereGeometry(): SphereGeometry {
 export default class Points3d extends BaseDrawableMeshObject implements IDrawableObject {
   protected worldScale: Vector3;
   private maxInstanceCount: number;
+
+  private pickMeshPivot: Group;
 
   private positions: Float32Array | null;
   private scales: Float32Array | null;
@@ -45,6 +45,8 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     super();
 
     this.worldScale = new Vector3(1, 1, 1);
+    this.pickMeshPivot = new Group();
+    this.pickMeshPivot.layers.set(MESH_PICK_LAYER);
     this.meshPivot.layers.set(MESH_LAYER);
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
@@ -56,7 +58,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
     this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
     this.points.layers.set(MESH_LAYER);
-    this.pointsPick.layers.set(MESH_LAYER);
+    this.pointsPick.layers.set(MESH_PICK_LAYER);
     this.points.frustumCulled = false;
     this.pointsPick.frustumCulled = false;
 
@@ -72,10 +74,54 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
+    this.pickMeshPivot.add(this.pointsPick);
+  }
+
+  // TODO: Should pick objects be handled by the BaseDrawableMeshObject class?
+  // Will other 3D objects need to be pickable?
+  getPick3dObject(): Group {
+    return this.pickMeshPivot;
+  }
+
+  private syncPickTransform(): void {
+    this.pickMeshPivot.position.copy(this.meshPivot.position);
+    this.pickMeshPivot.rotation.copy(this.meshPivot.rotation);
+    this.pickMeshPivot.scale.copy(this.meshPivot.scale);
+    this.pickMeshPivot.visible = this.meshPivot.visible;
+  }
+
+  public setVisible(visible: boolean): void {
+    super.setVisible(visible);
+    this.pickMeshPivot.visible = visible;
+  }
+
+  public setTranslation(translation: Vector3): void {
+    super.setTranslation(translation);
+    this.syncPickTransform();
+  }
+
+  public setScale(scale: Vector3): void {
+    if (scale !== this.scale) {
+      this.onParentTransformUpdated();
+      this.scale.copy(scale);
+      this.applyPointAttributes();
+      this.syncPickTransform();
+    }
+  }
+
+  public setRotation(eulerXYZ: Euler): void {
+    super.setRotation(eulerXYZ);
+    this.syncPickTransform();
+  }
+
+  public setFlipAxes(flipX: number, flipY: number, flipZ: number): void {
+    super.setFlipAxes(flipX, flipY, flipZ);
+    this.syncPickTransform();
   }
 
   public cleanup(): void {
     super.cleanup();
+    this.pickMeshPivot.clear();
     this.pointMaterial.dispose();
     this.pointPickMaterial.dispose();
     this.geometry.dispose();
@@ -90,18 +136,16 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     }
     this.maxInstanceCount = newInstanceCount;
 
-    this.removeChildMesh(this.points);
     this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
     this.pointPickMaterial = new PointPickMaterial();
     this.pointMaterial.depthWrite = true;
     this.geometry = getSphereGeometry();
-    this.points.geometry = this.geometry;
-    this.pointsPick.geometry = this.geometry;
 
     // Recreate InstancedMesh objects with the new instance count
     this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
     this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
     this.points.layers.set(MESH_LAYER);
+    this.pointsPick.layers.set(MESH_PICK_LAYER);
     this.points.frustumCulled = false;
     this.pointsPick.frustumCulled = false;
 
@@ -111,14 +155,8 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
-  }
-
-  public setScale(scale: Vector3): void {
-    if (scale !== this.scale) {
-      this.onParentTransformUpdated();
-      this.scale.copy(scale);
-      this.applyPointAttributes();
-    }
+    this.pickMeshPivot.add(this.pointsPick);
+    this.syncPickTransform();
   }
 
   /**
@@ -139,6 +177,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     // `updateAllArrowTransforms`), rather than the meshes themselves.
     const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
     this.meshPivot.scale.copy(invertScale);
+    this.pickMeshPivot.scale.copy(invertScale);
 
     if (!newWorldScale.equals(this.worldScale)) {
       this.worldScale.copy(newWorldScale);
@@ -193,12 +232,15 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
       const scale = this.scales[scaleIndex];
 
       // Set per-instance matrix
-      this.points.setMatrixAt(i, new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale)));
+      const matrix = new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale));
+      this.points.setMatrixAt(i, matrix);
+      this.pointsPick.setMatrixAt(i, matrix);
       // Set per-instance id
       const id = this.ids ? this.ids[idIndex] : 0;
       this.idAttribute.setX(i, id);
     }
     this.points.instanceMatrix.needsUpdate = true;
+    this.pointsPick.instanceMatrix.needsUpdate = true;
     this.idAttribute.needsUpdate = true;
   }
 

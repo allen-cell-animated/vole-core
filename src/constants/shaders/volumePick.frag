@@ -222,8 +222,10 @@ void main() {
   if (!hit) {
     // return background color if ray misses the cube
     // is this safe to do when there is other geometry / gObjects drawn?
-    gl_FragColor = vec4(0.0); //C1;//vec4(0.0);
+    discard;
     return;
+    // gl_FragColor = vec4(0.0); //C1;//vec4(0.0);
+    // return;
   }
 
   float clipNear = 0.0;//-(dot(eyeRay_o.xyz, eyeNorm) + dNear) / dot(eyeRay_d.xyz, eyeNorm);
@@ -260,6 +262,11 @@ void main() {
 
   // tnear and tfar are intersections of box
   vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar, textureAtlas);
+
+  if (C.r == 0.0) {
+    discard;
+    return;
+  }
 
   gl_FragColor = C;
   return;

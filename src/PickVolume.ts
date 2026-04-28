@@ -10,12 +10,15 @@ import {
   Matrix4,
   Mesh,
   NearestFilter,
+  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
   RGBAFormat,
+  RedIntegerFormat,
   Scene,
   ShaderMaterial,
   Texture,
+  UnsignedByteType,
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
@@ -32,7 +35,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
-import { VOLUME_LAYER } from "./ThreeJsPanel.js";
+import { MESH_PICK_LAYER, VOLUME_LAYER } from "./ThreeJsPanel.js";
 
 export default class PickVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -41,9 +44,11 @@ export default class PickVolume implements VolumeRenderImpl {
   private geometry: BoxGeometry;
   private geometryMesh: Mesh<BufferGeometry, Material>;
   private geometryTransformNode: Group;
+  private pickObjectsGroup: Group;
   private scene: Scene;
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
+  private emptyLabelTex: DataTexture;
   public needRedraw = false;
   private pickBuffer: WebGLRenderTarget;
   private channelToPick = 0;
@@ -62,13 +67,20 @@ export default class PickVolume implements VolumeRenderImpl {
 
     this.geometryTransformNode = new Group();
     this.geometryTransformNode.name = "PickVolumeContainerNode";
+    this.pickObjectsGroup = new Group();
     this.geometryTransformNode.add(this.geometryMesh);
+    this.geometryTransformNode.add(this.pickObjectsGroup);
 
     this.scene = new Scene();
     this.scene.name = "PickVolumeScene";
     this.scene.add(this.geometryTransformNode);
 
     this.emptyPositionTex = new DataTexture(new Uint8Array(Array(16).fill(0)), 2, 2);
+    this.emptyLabelTex = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
+    this.emptyLabelTex.minFilter = NearestFilter;
+    this.emptyLabelTex.magFilter = NearestFilter;
+    this.emptyLabelTex.internalFormat = "R8UI";
+    this.emptyLabelTex.needsUpdate = true;
 
     // buffers:
     this.pickBuffer = new WebGLRenderTarget(2, 2, {
@@ -108,6 +120,8 @@ export default class PickVolume implements VolumeRenderImpl {
     // Set scale
     const fullRegionScale = normPhysicalSize.clone().multiply(this.settings.scale);
     this.geometryMesh.scale.copy(fullRegionScale).multiply(normRegionSize);
+    this.pickObjectsGroup.scale.copy(fullRegionScale).multiply(normRegionSize);
+    this.pickObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
     this.setUniform("volumeScale", normPhysicalSize);
     this.settings && this.updateSettings(this.settings, SettingsFlags.ROI);
 
@@ -173,7 +187,7 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.CAMERA) {
-      // nothing
+      // this.needRedraw = true;
     }
 
     if (dirtyFlags & SettingsFlags.ROI) {
@@ -240,6 +254,8 @@ export default class PickVolume implements VolumeRenderImpl {
 
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
+    this.emptyPositionTex.dispose();
+    this.emptyLabelTex.dispose();
   }
 
   public doRender(
@@ -247,9 +263,9 @@ export default class PickVolume implements VolumeRenderImpl {
     camera: PerspectiveCamera | OrthographicCamera,
     depthTexture?: DepthTexture | Texture | null
   ): void {
-    if (!this.geometryMesh.visible) {
-      return;
-    }
+    // if (!this.geometryMesh.visible) {
+    //   return;
+    // }
     if (!this.needRedraw) {
       return;
     }
@@ -265,9 +281,12 @@ export default class PickVolume implements VolumeRenderImpl {
 
     // this.channelData.gpuFuse(renderer);
 
-    const channelTex = this.volume.getChannel(this.channelToPick).dataTexture;
-    this.setUniform("textureAtlas", channelTex);
-    this.setUniform("textureRes", new Vector2(channelTex.image.width, channelTex.image.height));
+    const channel = this.volume.getChannel(this.channelToPick);
+    const usesUnsignedIntegerAtlas =
+      channel.dtype === "uint8" || channel.dtype === "uint16" || channel.dtype === "uint32";
+    const atlasTexture = usesUnsignedIntegerAtlas ? channel.dataTexture : this.emptyLabelTex;
+    this.setUniform("textureAtlas", atlasTexture);
+    this.setUniform("textureRes", new Vector2(atlasTexture.image.width, atlasTexture.image.height));
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -278,25 +297,41 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("inverseModelViewMatrix", mvm);
     this.setUniform("inverseProjMatrix", camera.projectionMatrixInverse);
 
-    // draw into pick buffer...
-    camera.layers.set(VOLUME_LAYER);
-    renderer.setRenderTarget(this.pickBuffer);
-    renderer.autoClear = true;
-
     const prevClearColor = new Color();
-    renderer.getClearColor(prevClearColor);
     const prevClearAlpha = renderer.getClearAlpha();
-    renderer.setClearColor(0x000000, 0);
+    const previousRenderAutoClear = renderer.autoClear;
+    const prevRenderTarget = renderer.getRenderTarget();
 
+    renderer.getClearColor(prevClearColor);
+    renderer.setClearColor(0x000000, 0);
+    renderer.setRenderTarget(this.pickBuffer);
+    renderer.autoClear = false;
+
+    renderer.clear();
+
+    // Render other pickable meshes into the pick buffer first.
+    camera.layers.set(MESH_PICK_LAYER);
     renderer.render(this.scene, camera);
 
-    renderer.autoClear = true;
+    // Render volume into pick buffer.
+    camera.layers.set(VOLUME_LAYER);
+    renderer.render(this.scene, camera);
+
+    renderer.autoClear = previousRenderAutoClear;
     renderer.setClearColor(prevClearColor, prevClearAlpha);
-    renderer.setRenderTarget(null);
+    renderer.setRenderTarget(prevRenderTarget);
   }
 
   public get3dObject(): Group {
     return this.geometryTransformNode;
+  }
+
+  public addPickObject(object: Object3D): void {
+    this.pickObjectsGroup.add(object);
+  }
+
+  public removePickObject(object: Object3D): void {
+    this.pickObjectsGroup.remove(object);
   }
 
   //////////////////////////////////////////
@@ -316,6 +351,7 @@ export default class PickVolume implements VolumeRenderImpl {
   public updateActiveChannels(_channelcolors: FuseChannel[], _channeldata: Channel[]): void {
     // TODO consider if we can use this as a way to assing this.channelToPick?
     // (e.g. put some kind of flag in FuseChannel)
+    this.needRedraw = true;
   }
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {

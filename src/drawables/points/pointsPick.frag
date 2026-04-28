@@ -15,6 +15,7 @@ vec3 getInstanceColor(uint value) {
 }
 
 void main() {
-    vec3 color = getInstanceColor(IN_instanceId);
-    gl_FragColor = vec4(color, 1.0);
+    // vec3 color = getInstanceColor(IN_instanceId);
+    // gl_FragColor = vec4(color, 1.0);
+    gl_FragColor = vec4(float(IN_instanceId));
 }
