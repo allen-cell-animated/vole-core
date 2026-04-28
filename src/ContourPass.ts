@@ -17,7 +17,7 @@ export default class ContourPass {
   constructor() {
     const { fragment, uniforms } = contourNode();
     this.uniforms = uniforms;
-    this.pass = new RenderToBuffer(fragment(), RenderPassType.TRANSPARENT);
+    this.pass = new RenderToBuffer(fragment, RenderPassType.TRANSPARENT);
     this.frameToGlobalIdLookup = null;
     this.frame = 0;
   }

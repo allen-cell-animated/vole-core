@@ -129,6 +129,7 @@ export class ThreeJsPanel {
 
     this.containerdiv = document.createElement("div");
     this.containerdiv.style.position = "relative";
+    this.containerdiv.appendChild(this.renderer.domElement);
 
     if (parentElement) {
       this.renderer.domElement.height = parentElement.offsetHeight;

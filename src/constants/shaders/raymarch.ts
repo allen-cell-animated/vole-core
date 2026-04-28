@@ -1,4 +1,4 @@
-import { Matrix4, type Node, Texture, Vector2, Vector3 } from "three/webgpu";
+import { Matrix4, Texture, Vector2, Vector3 } from "three/webgpu";
 import {
   Break,
   cameraProjectionMatrix,
@@ -28,7 +28,6 @@ import {
   sub,
   texture,
   uniform,
-  varying,
   vec2,
   vec3,
   vec4,
@@ -68,25 +67,17 @@ export const raymarchNode = () => {
     textureDepth: texture(new Texture()),
   };
 
-  const pObj = varying(vec3(), "pObj");
-
-  const vertex = Fn(
-    () => {
-      pObj.assign(positionGeometry);
-      return cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(positionGeometry, 1.0));
-    },
-    { return: "vec4" }
-  );
+  const vertex = cameraProjectionMatrix.mul(modelViewMatrix).mul(vec4(positionGeometry, 1.0));
 
   const rand = Fn(
-    ([co]: Args<["vec2"]>) => {
-      const threadId = screenCoordinate.x.div(screenCoordinate.y.oneMinus().add(1.0));
+    ([co, fragCoord]: Args<["vec2", "vec2"]>) => {
+      const threadId = fragCoord.x.div(fragCoord.y.oneMinus().add(1.0)).toVar("threadId");
       const bigVal = threadId.mul(1299721.0).div(911.0);
       const smallVal = vec2(threadId.mul(7927.0).div(577.0), threadId.mul(104743.0).div(1039.0));
 
       return fract(sin(dot(co, smallVal)).mul(bigVal));
     },
-    { co: "vec2", return: "float" }
+    { co: "vec2", fragCoord: "vec2", return: "float" }
   );
 
   const luma2Alpha = Fn(
@@ -97,9 +88,8 @@ export const raymarchNode = () => {
       xi.assign(clamp(xi, 0.0, 1.0));
       const y = pow(xi, c);
       y.assign(clamp(y, 0.0, 1.0));
-      color[3].assign(y);
 
-      return color;
+      return vec4(color.rgb, y);
     },
     { color: "vec4", vmin: "float", vmax: "float", c: "float", return: "vec4" }
   );
@@ -275,7 +265,9 @@ export const raymarchNode = () => {
   );
 
   const integrateVolume = Fn(
-    ([eyeO, eyeD, tnear, tfar, clipNear, clipFar]: Args<["vec4", "vec4", "float", "float", "float", "float"]>) => {
+    ([eyeO, eyeD, tnear, tfar, clipNear, clipFar, fragCoord]: Args<
+      ["vec4", "vec4", "float", "float", "float", "float", "vec2"]
+    >) => {
       const C = vec4(0.0);
 
       // march along ray from front to back, accumulating color
@@ -292,7 +284,7 @@ export const raymarchNode = () => {
       // special-casing the single slice to remove the random ray dither.
       // this removes a Moire pattern visible in single slice images, which we want to view as 2D images as best we can.
 
-      const r = select(uniforms.SLICES.equal(1.0), 0.0, rand(eyeD.xy));
+      const r = select(uniforms.SLICES.equal(1.0), 0.0, rand(eyeD.xy, fragCoord));
 
       // if ortho and clipped, make step size smaller so we still get same number of steps
 
@@ -358,13 +350,22 @@ export const raymarchNode = () => {
 
       return C;
     },
-    { eyeO: "vec4", eyeD: "vec4", tnear: "float", tfar: "float", clipNear: "float", clipFar: "float", return: "vec4" }
+    {
+      eyeO: "vec4",
+      eyeD: "vec4",
+      tnear: "float",
+      tfar: "float",
+      clipNear: "float",
+      clipFar: "float",
+      fragCoord: "vec2",
+      return: "vec4",
+    }
   );
 
-  const fragment = Fn(
-    () => {
+  const fragmentMain = Fn(
+    ([fragCoord, objCoord]: Args<["vec2", "vec3"]>) => {
       const result = vec4(0.0).toVar();
-      const vUv = vec2(screenCoordinate.x, screenCoordinate.y.oneMinus()).div(uniforms.iResolution.xy);
+      const vUv = vec2(fragCoord.x, fragCoord.y.oneMinus()).div(uniforms.iResolution.xy);
       const eyeRayO = property("vec3"),
         eyeRayD = property("vec3");
 
@@ -374,7 +375,7 @@ export const raymarchNode = () => {
         // transform to object space
 
         eyeRayO.assign(uniforms.inverseModelViewMatrix.mul(vec4(0.0, 0.0, 0.0, 1.0)).xyz);
-        eyeRayD.assign(normalize(pObj.sub(eyeRayO)));
+        eyeRayD.assign(normalize(objCoord.sub(eyeRayO)));
       }).Else(() => {
         // for ortho rays:
 
@@ -446,13 +447,15 @@ export const raymarchNode = () => {
 
         //tnear and tfar are intersections of box
 
-        const C = integrateVolume(vec4(eyeRayO, 1.0), vec4(eyeRayD, 0.0), tnear, tfar, clipNear, clipFar);
+        const C = integrateVolume(vec4(eyeRayO, 1.0), vec4(eyeRayD, 0.0), tnear, tfar, clipNear, clipFar, fragCoord);
         result.assign(clamp(C, 0.0, 1.0));
       });
       return result;
     },
-    { return: "vec4" }
+    { fragCoord: "vec2", objCoord: "vec3", return: "vec4" }
   );
+
+  const fragment = fragmentMain(screenCoordinate, positionGeometry);
 
   return { vertex, fragment, uniforms };
 };

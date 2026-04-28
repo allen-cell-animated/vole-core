@@ -42,7 +42,7 @@ export type ContourUniforms = {
   devicePixelRatio: UniformNode<"float", number>;
 };
 
-export const contourNode = (): { fragment: FnNode<[], Node<"vec4">>; uniforms: ContourUniforms } => {
+export const contourNode = (): { fragment: Node<"vec4">; uniforms: ContourUniforms } => {
   // RGBA float texture for pick buffer
   const pickBufferTex = new DataTexture(new Float32Array([0, 0, 0, 0]), 1, 1, RGBAFormat, FloatType);
   pickBufferTex.internalFormat = "RGBA32F";
@@ -154,12 +154,12 @@ export const contourNode = (): { fragment: FnNode<[], Node<"vec4">>; uniforms: C
     { uv: "ivec2", labelId: "uint", thickness: "int", return: "bool" }
   );
 
-  const fragment = Fn(
-    () => {
+  const fragmentMain = Fn(
+    ([fragCoord]: Args<["vec2"]>) => {
       const result = vec4(0.0, 0.0, 0.0, 0.0).toVar();
       const vUv = ivec2(
-        int(screenCoordinate.x.div(uniforms.devicePixelRatio)),
-        int(screenCoordinate.y.oneMinus().div(uniforms.devicePixelRatio))
+        int(fragCoord.x.div(uniforms.devicePixelRatio)),
+        int(fragCoord.y.oneMinus().div(uniforms.devicePixelRatio))
       );
 
       const labelId = getLabelId(vUv);
@@ -185,8 +185,10 @@ export const contourNode = (): { fragment: FnNode<[], Node<"vec4">>; uniforms: C
 
       return result;
     },
-    { return: "vec4" }
+    { fragCoord: "vec2", return: "vec4" }
   );
+
+  const fragment = fragmentMain(screenCoordinate);
 
   return { fragment, uniforms };
 };

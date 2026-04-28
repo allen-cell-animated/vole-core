@@ -62,8 +62,8 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     // shader,vtx and frag.
 
     const material = new NodeMaterial();
-    material.vertexNode = vertex();
-    material.fragmentNode = fragment();
+    // material.vertexNode = vertex;
+    material.fragmentNode = fragment;
     material.transparent = true;
     material.depthTest = true;
     material.depthWrite = false;
