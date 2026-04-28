@@ -11,6 +11,7 @@ import {
   WebGLRenderTarget,
   Texture,
   Group,
+  Scene,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -478,9 +479,10 @@ export default class VolumeDrawable {
   fillPickBuffer(
     renderer: WebGLRenderer,
     camera: PerspectiveCamera | OrthographicCamera,
-    depthTexture?: DepthTexture | Texture | null
+    depthTexture?: DepthTexture | Texture | null,
+    scene?: Scene
   ): void {
-    this.pickRendering?.doRender(renderer, camera, depthTexture);
+    this.pickRendering?.doRender(renderer, camera, depthTexture, scene);
   }
 
   drawContours(renderer: WebGLRenderer): void {

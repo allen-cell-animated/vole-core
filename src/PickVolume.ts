@@ -261,7 +261,8 @@ export default class PickVolume implements VolumeRenderImpl {
   public doRender(
     renderer: WebGLRenderer,
     camera: PerspectiveCamera | OrthographicCamera,
-    depthTexture?: DepthTexture | Texture | null
+    depthTexture?: DepthTexture | Texture | null,
+    scene?: Scene
   ): void {
     // if (!this.geometryMesh.visible) {
     //   return;
@@ -310,8 +311,12 @@ export default class PickVolume implements VolumeRenderImpl {
     renderer.clear();
 
     // Render other pickable meshes into the pick buffer first.
-    camera.layers.set(MESH_PICK_LAYER);
-    renderer.render(this.scene, camera);
+    console.log("PickVolume.doRender: scene", scene);
+    if (scene) {
+      camera.layers.set(MESH_PICK_LAYER);
+      console.log("rendering pickable meshes");
+      renderer.render(scene, camera);
+    }
 
     // Render volume into pick buffer.
     camera.layers.set(VOLUME_LAYER);

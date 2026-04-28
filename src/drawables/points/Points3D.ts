@@ -74,30 +74,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
-    this.pickMeshPivot.add(this.pointsPick);
-  }
-
-  // TODO: Should pick objects be handled by the BaseDrawableMeshObject class?
-  // Will other 3D objects need to be pickable?
-  getPick3dObject(): Group {
-    return this.pickMeshPivot;
-  }
-
-  private syncPickTransform(): void {
-    this.pickMeshPivot.position.copy(this.meshPivot.position);
-    this.pickMeshPivot.rotation.copy(this.meshPivot.rotation);
-    this.pickMeshPivot.scale.copy(this.meshPivot.scale);
-    this.pickMeshPivot.visible = this.meshPivot.visible;
-  }
-
-  public setVisible(visible: boolean): void {
-    super.setVisible(visible);
-    this.pickMeshPivot.visible = visible;
-  }
-
-  public setTranslation(translation: Vector3): void {
-    super.setTranslation(translation);
-    this.syncPickTransform();
+    this.addChildMesh(this.pointsPick);
   }
 
   public setScale(scale: Vector3): void {
@@ -105,18 +82,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
       this.onParentTransformUpdated();
       this.scale.copy(scale);
       this.applyPointAttributes();
-      this.syncPickTransform();
     }
-  }
-
-  public setRotation(eulerXYZ: Euler): void {
-    super.setRotation(eulerXYZ);
-    this.syncPickTransform();
-  }
-
-  public setFlipAxes(flipX: number, flipY: number, flipZ: number): void {
-    super.setFlipAxes(flipX, flipY, flipZ);
-    this.syncPickTransform();
   }
 
   public cleanup(): void {
@@ -155,8 +121,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
-    this.pickMeshPivot.add(this.pointsPick);
-    this.syncPickTransform();
+    this.addChildMesh(this.pointsPick);
   }
 
   /**

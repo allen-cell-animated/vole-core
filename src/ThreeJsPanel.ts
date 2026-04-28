@@ -63,7 +63,8 @@ export type CameraState = {
 type AnimateFunction = (
   renderer: WebGLRenderer,
   camera: PerspectiveCamera | OrthographicCamera,
-  depthTexture?: DepthTexture | null
+  depthTexture?: DepthTexture | null,
+  scene?: Scene
 ) => void;
 
 export class ThreeJsPanel {
@@ -718,7 +719,7 @@ export class ThreeJsPanel {
     // do whatever we have to do before the main render of this.scene
     for (let i = 0; i < this.animateFuncs.length; i++) {
       if (this.animateFuncs[i]) {
-        this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+        this.animateFuncs[i](this.renderer, this.camera, this.meshRenderTarget.depthTexture, this.scene);
       }
     }
 
@@ -733,7 +734,7 @@ export class ThreeJsPanel {
     // Step 2. Render any passes that have to happen after the meshes are
     // rendered but before volume rendering (e.g. pick buffer).
     this.postMeshRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture, this.scene);
     });
 
     // Step 3: Render meshes that do not interact with the pick buffer. This
