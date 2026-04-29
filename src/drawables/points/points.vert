@@ -9,6 +9,7 @@ void main() {
 
     IN_instanceId = instanceId;
 
+    IN_instanceColor = vec3(1.0); // Default color (white)
     #ifdef USE_INSTANCING_COLOR
     IN_instanceColor = instanceColor;
     #endif
