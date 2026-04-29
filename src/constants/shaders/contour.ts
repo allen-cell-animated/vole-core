@@ -1,6 +1,5 @@
 import { DataTexture, RGBAFormat, FloatType, RedIntegerFormat, UnsignedIntType, UnsignedByteType } from "three/webgpu";
 import type { TextureNode, Node, UniformNode, Color } from "three/webgpu";
-import type { FnNode } from "three/src/nodes/TSL.js";
 import {
   add,
   color,
