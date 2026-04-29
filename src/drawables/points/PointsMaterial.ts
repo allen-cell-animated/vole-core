@@ -1,4 +1,5 @@
 import pickFragmentShader from "./pointsPick.frag";
+import depthFragmentShader from "./points.frag";
 import vertexShader from "./points.vert";
 import { ShaderMaterial, ShaderMaterialParameters, UniformsUtils } from "three";
 
@@ -9,6 +10,16 @@ export const enum PointMaterialInstanceAttributes {
   COLOR = "instanceColor",
 }
 
+export class PointMaterial extends ShaderMaterial {
+  constructor(params: Partial<ShaderMaterialParameters> = {}) {
+    super({
+      vertexShader,
+      fragmentShader: depthFragmentShader,
+      ...params,
+    });
+  }
+}
+
 export class PointPickMaterial extends ShaderMaterial {
   constructor(params: Partial<ShaderMaterialParameters> = {}) {
     super({
@@ -16,12 +27,5 @@ export class PointPickMaterial extends ShaderMaterial {
       fragmentShader: pickFragmentShader,
       ...params,
     });
-
-    this.uniforms = UniformsUtils.merge([
-      this.uniforms,
-      {
-        baseScale: { value: 1 },
-      },
-    ]);
   }
 }

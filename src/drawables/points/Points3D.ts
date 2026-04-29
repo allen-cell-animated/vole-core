@@ -14,7 +14,7 @@ import {
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject";
 import { IDrawableObject } from "../IDrawableObject";
 import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel";
-import { PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
+import { PointMaterial, PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
@@ -36,10 +36,10 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
   private idAttribute: InstancedBufferAttribute;
 
   private geometry: SphereGeometry;
-  private pointMaterial: MeshBasicMaterial;
+  private pointMaterial: PointMaterial;
   private pointPickMaterial: PointPickMaterial;
 
-  private points: InstancedMesh<SphereGeometry, MeshBasicMaterial>;
+  private points: InstancedMesh<SphereGeometry, PointMaterial>;
   private pointsPick: InstancedMesh<SphereGeometry, PointPickMaterial>;
 
   constructor() {
@@ -52,7 +52,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
     this.geometry = getSphereGeometry();
-    this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
+    this.pointMaterial = new PointMaterial();
     this.pointPickMaterial = new PointPickMaterial();
     this.pointMaterial.depthWrite = true;
 
@@ -98,7 +98,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.removeChildMesh(this.points);
     this.removeChildMesh(this.pointsPick);
 
-    this.pointMaterial = new MeshBasicMaterial({ color: "#fff" });
+    this.pointMaterial = new PointMaterial();
     this.pointPickMaterial = new PointPickMaterial();
     this.pointMaterial.depthWrite = true;
     this.geometry = getSphereGeometry();
