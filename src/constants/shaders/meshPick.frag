@@ -1,6 +1,8 @@
 /**
- * Encodes instance ID into RGB for pick buffer rendering.
- */
+ * Simple fragment shader that writes an instance ID as an RGB value for
+ * picking.
+*/
+
 precision highp float;
 
 // Per-instance attributes
@@ -15,7 +17,5 @@ vec3 getInstanceColor(uint value) {
 }
 
 void main() {
-    // vec3 color = getInstanceColor(IN_instanceId);
-    // gl_FragColor = vec4(color, 1.0);
     gl_FragColor = vec4(float(IN_instanceId));
 }

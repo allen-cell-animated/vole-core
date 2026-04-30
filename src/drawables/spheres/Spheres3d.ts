@@ -1,20 +1,17 @@
 import {
   Color,
-  Euler,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
   Matrix4,
-  MeshBasicMaterial,
-  MeshStandardMaterial,
   Quaternion,
   SphereGeometry,
   Vector3,
 } from "three";
-import BaseDrawableMeshObject from "../BaseDrawableMeshObject";
-import { IDrawableObject } from "../IDrawableObject";
-import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel";
-import { PointMaterial, PointMaterialInstanceAttributes, PointPickMaterial } from "./PointsMaterial";
+import BaseDrawableMeshObject from "../BaseDrawableMeshObject.js";
+import { IDrawableObject } from "../IDrawableObject.js";
+import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel.js";
+import { SphereMaterial, SphereMaterialInstanceAttributes, SpherePickMaterial } from "./SphereMaterial.js";
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
@@ -22,7 +19,7 @@ function getSphereGeometry(): SphereGeometry {
   return new SphereGeometry(1, 32, 32);
 }
 
-export default class Points3d extends BaseDrawableMeshObject implements IDrawableObject {
+export default class Spheres3d extends BaseDrawableMeshObject implements IDrawableObject {
   protected worldScale: Vector3;
   private maxInstanceCount: number;
 
@@ -36,11 +33,11 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
   private idAttribute: InstancedBufferAttribute;
 
   private geometry: SphereGeometry;
-  private pointMaterial: PointMaterial;
-  private pointPickMaterial: PointPickMaterial;
+  private pointMaterial: SphereMaterial;
+  private pointPickMaterial: SpherePickMaterial;
 
-  private points: InstancedMesh<SphereGeometry, PointMaterial>;
-  private pointsPick: InstancedMesh<SphereGeometry, PointPickMaterial>;
+  private points: InstancedMesh<SphereGeometry, SphereMaterial>;
+  private pointsPick: InstancedMesh<SphereGeometry, SpherePickMaterial>;
 
   constructor() {
     super();
@@ -52,8 +49,8 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
     this.geometry = getSphereGeometry();
-    this.pointMaterial = new PointMaterial();
-    this.pointPickMaterial = new PointPickMaterial();
+    this.pointMaterial = new SphereMaterial();
+    this.pointPickMaterial = new SpherePickMaterial();
     this.pointMaterial.depthWrite = true;
 
     this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
@@ -72,7 +69,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.colors = null;
 
     this.idAttribute = new InstancedBufferAttribute(new Uint32Array(this.maxInstanceCount), 1, false);
-    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
+    this.geometry.setAttribute(SphereMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
     this.addChildMesh(this.pointsPick);
@@ -98,8 +95,8 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     this.removeChildMesh(this.points);
     this.removeChildMesh(this.pointsPick);
 
-    this.pointMaterial = new PointMaterial();
-    this.pointPickMaterial = new PointPickMaterial();
+    this.pointMaterial = new SphereMaterial();
+    this.pointPickMaterial = new SpherePickMaterial();
     this.pointMaterial.depthWrite = true;
     this.geometry = getSphereGeometry();
 
@@ -114,7 +111,7 @@ export default class Points3d extends BaseDrawableMeshObject implements IDrawabl
     // Create and set new attributes with the new instance count
     const newIds = new Uint32Array(this.maxInstanceCount);
     this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
-    this.geometry.setAttribute(PointMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
+    this.geometry.setAttribute(SphereMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
     this.addChildMesh(this.points);
     this.addChildMesh(this.pointsPick);
