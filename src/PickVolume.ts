@@ -264,15 +264,7 @@ export default class PickVolume implements VolumeRenderImpl {
     depthTexture?: DepthTexture | Texture | null,
     scene?: Scene
   ): void {
-    // if (!this.geometryMesh.visible) {
-    //   return;
-    // }
-    // if (!this.needRedraw) {
-    //   return;
-    // }
     this.needRedraw = false;
-
-    this.setUniform("iResolution", this.settings.resolution);
 
     const depthTex = depthTexture ?? this.emptyPositionTex;
     this.setUniform("textureDepth", depthTex);
