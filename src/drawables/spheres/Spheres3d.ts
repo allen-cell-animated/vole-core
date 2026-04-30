@@ -19,6 +19,10 @@ function getSphereGeometry(): SphereGeometry {
   return new SphereGeometry(1, 32, 32);
 }
 
+/**
+ * Drawable object for instanced rendering of spheres. Spheres can also be configured to
+ * be pickable for mouse interaction.
+ */
 export default class Spheres3d extends BaseDrawableMeshObject implements IDrawableObject {
   protected worldScale: Vector3;
   private maxInstanceCount: number;
@@ -33,11 +37,11 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   private idAttribute: InstancedBufferAttribute;
 
   private geometry: SphereGeometry;
-  private pointMaterial: SphereMaterial;
-  private pointPickMaterial: SpherePickMaterial;
+  private material: SphereMaterial;
+  private pickMaterial: SpherePickMaterial;
 
-  private points: InstancedMesh<SphereGeometry, SphereMaterial>;
-  private pointsPick: InstancedMesh<SphereGeometry, SpherePickMaterial>;
+  private mesh: InstancedMesh<SphereGeometry, SphereMaterial>;
+  private pickMesh: InstancedMesh<SphereGeometry, SpherePickMaterial>;
 
   constructor() {
     super();
@@ -49,19 +53,19 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
     this.geometry = getSphereGeometry();
-    this.pointMaterial = new SphereMaterial();
-    this.pointPickMaterial = new SpherePickMaterial();
-    this.pointMaterial.depthWrite = true;
+    this.material = new SphereMaterial();
+    this.pickMaterial = new SpherePickMaterial();
+    this.material.depthWrite = true;
 
-    this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
-    this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
-    this.points.layers.set(MESH_LAYER);
-    this.pointsPick.layers.set(MESH_PICK_LAYER);
-    this.points.frustumCulled = false;
-    this.pointsPick.frustumCulled = false;
+    this.mesh = new InstancedMesh(this.geometry, this.material, this.maxInstanceCount);
+    this.pickMesh = new InstancedMesh(this.geometry, this.pickMaterial, this.maxInstanceCount);
+    this.mesh.layers.set(MESH_LAYER);
+    this.pickMesh.layers.set(MESH_PICK_LAYER);
+    this.mesh.frustumCulled = false;
+    this.pickMesh.frustumCulled = false;
 
-    this.points.count = 0;
-    this.pointsPick.count = 0;
+    this.mesh.count = 0;
+    this.pickMesh.count = 0;
 
     this.positions = null;
     this.scales = null;
@@ -71,50 +75,50 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.idAttribute = new InstancedBufferAttribute(new Uint32Array(this.maxInstanceCount), 1, false);
     this.geometry.setAttribute(SphereMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
-    this.addChildMesh(this.points);
-    this.addChildMesh(this.pointsPick);
+    this.addChildMesh(this.mesh);
+    this.addChildMesh(this.pickMesh);
   }
 
   public setScale(scale: Vector3): void {
     if (scale !== this.scale) {
       this.onParentTransformUpdated();
       this.scale.copy(scale);
-      this.applyPointAttributes();
+      this.applyAttributes();
     }
   }
 
   public cleanup(): void {
     super.cleanup();
     this.pickMeshPivot.clear();
-    this.pointMaterial.dispose();
-    this.pointPickMaterial.dispose();
+    this.material.dispose();
+    this.pickMaterial.dispose();
     this.geometry.dispose();
   }
 
   private reinitializeInstancedMeshes(): void {
-    this.removeChildMesh(this.points);
-    this.removeChildMesh(this.pointsPick);
+    this.removeChildMesh(this.mesh);
+    this.removeChildMesh(this.pickMesh);
 
-    this.pointMaterial = new SphereMaterial();
-    this.pointPickMaterial = new SpherePickMaterial();
-    this.pointMaterial.depthWrite = true;
+    this.material = new SphereMaterial();
+    this.pickMaterial = new SpherePickMaterial();
+    this.material.depthWrite = true;
     this.geometry = getSphereGeometry();
 
     // Recreate InstancedMesh objects with the new instance count
-    this.points = new InstancedMesh(this.geometry, this.pointMaterial, this.maxInstanceCount);
-    this.pointsPick = new InstancedMesh(this.geometry, this.pointPickMaterial, this.maxInstanceCount);
-    this.points.layers.set(MESH_LAYER);
-    this.pointsPick.layers.set(MESH_PICK_LAYER);
-    this.points.frustumCulled = false;
-    this.pointsPick.frustumCulled = false;
+    this.mesh = new InstancedMesh(this.geometry, this.material, this.maxInstanceCount);
+    this.pickMesh = new InstancedMesh(this.geometry, this.pickMaterial, this.maxInstanceCount);
+    this.mesh.layers.set(MESH_LAYER);
+    this.pickMesh.layers.set(MESH_PICK_LAYER);
+    this.mesh.frustumCulled = false;
+    this.pickMesh.frustumCulled = false;
 
     // Create and set new attributes with the new instance count
     const newIds = new Uint32Array(this.maxInstanceCount);
     this.idAttribute = new InstancedBufferAttribute(newIds, 1, false);
     this.geometry.setAttribute(SphereMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
 
-    this.addChildMesh(this.points);
-    this.addChildMesh(this.pointsPick);
+    this.addChildMesh(this.mesh);
+    this.addChildMesh(this.pickMesh);
   }
 
   private increaseInstanceCountMax(instanceCount: number): void {
@@ -147,11 +151,11 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
 
     if (!newWorldScale.equals(this.worldScale)) {
       this.worldScale.copy(newWorldScale);
-      this.applyPointAttributes();
+      this.applyAttributes();
     }
   }
 
-  private applyPointColors(): void {
+  private applyColors(): void {
     if (!this.colors) {
       return;
     }
@@ -161,10 +165,10 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
       // Wrap colors if there are fewer colors than instances.
       const colorIndex = i % colorCount;
       color.fromArray(this.colors, colorIndex * 3);
-      this.points.setColorAt(i, color);
+      this.mesh.setColorAt(i, color);
     }
-    if (this.points.instanceColor) {
-      this.points.instanceColor.needsUpdate = true;
+    if (this.mesh.instanceColor) {
+      this.mesh.instanceColor.needsUpdate = true;
     }
   }
 
@@ -174,14 +178,14 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
       colors.toArray(this.colors);
     } else {
       if (colors.length % 3 !== 0) {
-        throw new Error("Points3D.setColors: colors array length must be a multiple of 3.");
+        throw new Error("Spheres3D.setColors: colors array length must be a multiple of 3.");
       }
       this.colors = new Float32Array(colors);
     }
-    this.applyPointColors();
+    this.applyColors();
   }
 
-  private applyPointAttributes(): void {
+  private applyAttributes(): void {
     if (!this.positions || !this.scales) {
       return;
     }
@@ -199,34 +203,34 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
 
       // Set per-instance matrix
       const matrix = new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale));
-      this.points.setMatrixAt(i, matrix);
-      this.pointsPick.setMatrixAt(i, matrix);
+      this.mesh.setMatrixAt(i, matrix);
+      this.pickMesh.setMatrixAt(i, matrix);
       // Set per-instance id
       const id = this.ids ? this.ids[idIndex] : 0;
       this.idAttribute.setX(i, id);
     }
-    this.points.instanceMatrix.needsUpdate = true;
-    this.pointsPick.instanceMatrix.needsUpdate = true;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    this.pickMesh.instanceMatrix.needsUpdate = true;
     this.idAttribute.needsUpdate = true;
   }
 
-  public setPointData(positions: Float32Array, scales: Float32Array, ids: Uint32Array | null = null): void {
+  public setSphereData(positions: Float32Array, scales: Float32Array, ids: Uint32Array | null = null): void {
     // Update instance count, add more instances as needed.
     const count = positions.length / 3;
     let didInstanceCountIncrease = this.maxInstanceCount < count;
     if (didInstanceCountIncrease) {
       this.increaseInstanceCountMax(count);
     }
-    this.points.count = count;
-    this.pointsPick.count = count;
+    this.mesh.count = count;
+    this.pickMesh.count = count;
 
     this.positions = positions;
     this.scales = scales;
     this.ids = ids;
 
-    this.applyPointAttributes();
+    this.applyAttributes();
     if (didInstanceCountIncrease) {
-      this.applyPointColors();
+      this.applyColors();
     }
   }
 }
