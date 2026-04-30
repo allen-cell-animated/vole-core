@@ -1,13 +1,4 @@
-import {
-  Color,
-  Group,
-  InstancedBufferAttribute,
-  InstancedMesh,
-  Matrix4,
-  Quaternion,
-  SphereGeometry,
-  Vector3,
-} from "three";
+import { Color, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, SphereGeometry, Vector3 } from "three";
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject.js";
 import { IDrawableObject } from "../IDrawableObject.js";
 import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel.js";
@@ -20,8 +11,8 @@ function getSphereGeometry(): SphereGeometry {
 }
 
 /**
- * Drawable object for instanced rendering of spheres. Spheres can also be configured to
- * be pickable for mouse interaction.
+ * Drawable object for instanced rendering of spheres. Spheres can also be
+ * configured to be pickable for mouse interaction.
  */
 export default class Spheres3d extends BaseDrawableMeshObject implements IDrawableObject {
   protected worldScale: Vector3;
@@ -38,6 +29,10 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   private material: SphereMaterial;
   private pickMaterial: SpherePickMaterial;
 
+  // There are two copies of the mesh, one which is rendered normally in the
+  // mesh layer (meaning it is visible and interacts with the volume) and
+  // another which is purely for picking. It will be rendered to the pick buffer
+  // for mouse interaction.
   private mesh: InstancedMesh<SphereGeometry, SphereMaterial>;
   private pickMesh: InstancedMesh<SphereGeometry, SpherePickMaterial>;
 
@@ -218,8 +213,8 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   public setSphereData(positions: Float32Array, scales: Float32Array, ids: Uint32Array | null = null): void {
     // Update instance count, add more instances as needed.
     const count = positions.length / 3;
-    let didInstanceCountIncrease = this.maxInstanceCount < count;
-    if (didInstanceCountIncrease) {
+    const didInstanceCountIncrease = this.maxInstanceCount < count;
+    if (this.maxInstanceCount < count) {
       this.increaseInstanceCountMax(count);
     }
     this.mesh.count = count;
@@ -228,6 +223,9 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.positions = positions;
     this.scales = scales;
     this.ids = ids;
+
+    // Disable picking if no IDs are provided.
+    this.pickMesh.visible = ids !== null;
 
     this.applyAttributes();
     if (didInstanceCountIncrease) {

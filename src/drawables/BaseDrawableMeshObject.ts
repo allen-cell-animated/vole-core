@@ -1,4 +1,4 @@
-import { Euler, Group, Material, Mesh, Object3D, Vector3 } from "three";
+import { Euler, Group, Material, Mesh, Vector3 } from "three";
 
 import { IDrawableObject } from "./IDrawableObject.js";
 
@@ -26,11 +26,11 @@ export default abstract class BaseDrawableMeshObject implements IDrawableObject 
     this.flipAxes = new Vector3(1, 1, 1);
   }
 
-  protected addChildMesh(mesh: Object3D): void {
+  protected addChildMesh(mesh: Mesh): void {
     this.meshPivot.add(mesh);
   }
 
-  protected removeChildMesh(mesh: Object3D): void {
+  protected removeChildMesh(mesh: Mesh): void {
     this.meshPivot.remove(mesh);
   }
 
