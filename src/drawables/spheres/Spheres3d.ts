@@ -27,8 +27,6 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   protected worldScale: Vector3;
   private maxInstanceCount: number;
 
-  private pickMeshPivot: Group;
-
   private positions: Float32Array | null;
   private scales: Float32Array | null;
   private ids: Uint32Array | null;
@@ -47,22 +45,17 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     super();
 
     this.worldScale = new Vector3(1, 1, 1);
-    this.pickMeshPivot = new Group();
-    this.pickMeshPivot.layers.set(MESH_PICK_LAYER);
     this.meshPivot.layers.set(MESH_LAYER);
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
-    this.geometry = getSphereGeometry();
-    this.material = new SphereMaterial();
-    this.pickMaterial = new SpherePickMaterial();
-    this.material.depthWrite = true;
+    const { mesh, pickMesh, material, pickMaterial, geometry, idAttribute } = this.reinitializeInstancedMeshes();
 
-    this.mesh = new InstancedMesh(this.geometry, this.material, this.maxInstanceCount);
-    this.pickMesh = new InstancedMesh(this.geometry, this.pickMaterial, this.maxInstanceCount);
-    this.mesh.layers.set(MESH_LAYER);
-    this.pickMesh.layers.set(MESH_PICK_LAYER);
-    this.mesh.frustumCulled = false;
-    this.pickMesh.frustumCulled = false;
+    this.mesh = mesh;
+    this.pickMesh = pickMesh;
+    this.geometry = geometry;
+    this.material = material;
+    this.idAttribute = idAttribute;
+    this.pickMaterial = pickMaterial;
 
     this.mesh.count = 0;
     this.pickMesh.count = 0;
@@ -71,31 +64,16 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.scales = null;
     this.ids = null;
     this.colors = null;
-
-    this.idAttribute = new InstancedBufferAttribute(new Uint32Array(this.maxInstanceCount), 1, false);
-    this.geometry.setAttribute(SphereMaterialInstanceAttributes.LABEL_ID, this.idAttribute);
-
-    this.addChildMesh(this.mesh);
-    this.addChildMesh(this.pickMesh);
   }
 
-  public setScale(scale: Vector3): void {
-    if (scale !== this.scale) {
-      this.onParentTransformUpdated();
-      this.scale.copy(scale);
-      this.applyAttributes();
-    }
-  }
-
-  public cleanup(): void {
-    super.cleanup();
-    this.pickMeshPivot.clear();
-    this.material.dispose();
-    this.pickMaterial.dispose();
-    this.geometry.dispose();
-  }
-
-  private reinitializeInstancedMeshes(): void {
+  private reinitializeInstancedMeshes(): {
+    mesh: InstancedMesh<SphereGeometry, SphereMaterial>;
+    pickMesh: InstancedMesh<SphereGeometry, SpherePickMaterial>;
+    material: SphereMaterial;
+    pickMaterial: SpherePickMaterial;
+    geometry: SphereGeometry;
+    idAttribute: InstancedBufferAttribute;
+  } {
     this.removeChildMesh(this.mesh);
     this.removeChildMesh(this.pickMesh);
 
@@ -119,6 +97,30 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
 
     this.addChildMesh(this.mesh);
     this.addChildMesh(this.pickMesh);
+
+    return {
+      mesh: this.mesh,
+      pickMesh: this.pickMesh,
+      material: this.material,
+      pickMaterial: this.pickMaterial,
+      geometry: this.geometry,
+      idAttribute: this.idAttribute,
+    };
+  }
+
+  public cleanup(): void {
+    super.cleanup();
+    this.material.dispose();
+    this.pickMaterial.dispose();
+    this.geometry.dispose();
+  }
+
+  public setScale(scale: Vector3): void {
+    if (scale !== this.scale) {
+      this.onParentTransformUpdated();
+      this.scale.copy(scale);
+      this.applyAttributes();
+    }
   }
 
   private increaseInstanceCountMax(instanceCount: number): void {
@@ -147,7 +149,6 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     // `updateAllArrowTransforms`), rather than the meshes themselves.
     const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
     this.meshPivot.scale.copy(invertScale);
-    this.pickMeshPivot.scale.copy(invertScale);
 
     if (!newWorldScale.equals(this.worldScale)) {
       this.worldScale.copy(newWorldScale);
