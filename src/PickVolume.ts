@@ -44,11 +44,9 @@ export default class PickVolume implements VolumeRenderImpl {
   private geometry: BoxGeometry;
   private geometryMesh: Mesh<BufferGeometry, Material>;
   private geometryTransformNode: Group;
-  private pickObjectsGroup: Group;
   private scene: Scene;
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
-  private emptyLabelTex: DataTexture;
   private pickBuffer: WebGLRenderTarget;
   private channelToPick = 0;
 
@@ -66,20 +64,13 @@ export default class PickVolume implements VolumeRenderImpl {
 
     this.geometryTransformNode = new Group();
     this.geometryTransformNode.name = "PickVolumeContainerNode";
-    this.pickObjectsGroup = new Group();
     this.geometryTransformNode.add(this.geometryMesh);
-    this.geometryTransformNode.add(this.pickObjectsGroup);
 
     this.scene = new Scene();
     this.scene.name = "PickVolumeScene";
     this.scene.add(this.geometryTransformNode);
 
     this.emptyPositionTex = new DataTexture(new Uint8Array(Array(16).fill(0)), 2, 2);
-    this.emptyLabelTex = new DataTexture(new Uint8Array([0]), 1, 1, RedIntegerFormat, UnsignedByteType);
-    this.emptyLabelTex.minFilter = NearestFilter;
-    this.emptyLabelTex.magFilter = NearestFilter;
-    this.emptyLabelTex.internalFormat = "R8UI";
-    this.emptyLabelTex.needsUpdate = true;
 
     // buffers:
     this.pickBuffer = new WebGLRenderTarget(2, 2, {
@@ -119,8 +110,6 @@ export default class PickVolume implements VolumeRenderImpl {
     // Set scale
     const fullRegionScale = normPhysicalSize.clone().multiply(this.settings.scale);
     this.geometryMesh.scale.copy(fullRegionScale).multiply(normRegionSize);
-    this.pickObjectsGroup.scale.copy(fullRegionScale).multiply(normRegionSize);
-    this.pickObjectsGroup.position.copy(this.volume.getContentCenter().multiply(this.settings.scale));
     this.setUniform("volumeScale", normPhysicalSize);
     this.settings && this.updateSettings(this.settings, SettingsFlags.ROI);
 
@@ -248,7 +237,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
     this.emptyPositionTex.dispose();
-    this.emptyLabelTex.dispose();
   }
 
   public doRender(
@@ -265,12 +253,9 @@ export default class PickVolume implements VolumeRenderImpl {
 
     // this.channelData.gpuFuse(renderer);
 
-    const channel = this.volume.getChannel(this.channelToPick);
-    const usesUnsignedIntegerAtlas =
-      channel.dtype === "uint8" || channel.dtype === "uint16" || channel.dtype === "uint32";
-    const atlasTexture = usesUnsignedIntegerAtlas ? channel.dataTexture : this.emptyLabelTex;
-    this.setUniform("textureAtlas", atlasTexture);
-    this.setUniform("textureRes", new Vector2(atlasTexture.image.width, atlasTexture.image.height));
+    const channelTex = this.volume.getChannel(this.channelToPick).dataTexture;
+    this.setUniform("textureAtlas", channelTex);
+    this.setUniform("textureRes", new Vector2(channelTex.image.width, channelTex.image.height));
 
     this.geometryTransformNode.updateMatrixWorld(true);
 
@@ -288,8 +273,8 @@ export default class PickVolume implements VolumeRenderImpl {
 
     renderer.getClearColor(prevClearColor);
     renderer.setClearColor(0x000000, 0);
-    renderer.setRenderTarget(this.pickBuffer);
     renderer.autoClear = false;
+    renderer.setRenderTarget(this.pickBuffer);
 
     renderer.clear();
 
@@ -303,8 +288,8 @@ export default class PickVolume implements VolumeRenderImpl {
     camera.layers.set(VOLUME_LAYER);
     renderer.render(this.scene, camera);
 
-    renderer.autoClear = previousRenderAutoClear;
     renderer.setClearColor(prevClearColor, prevClearAlpha);
+    renderer.autoClear = previousRenderAutoClear;
     renderer.setRenderTarget(prevRenderTarget);
   }
 

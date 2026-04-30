@@ -63,8 +63,8 @@ export type CameraState = {
 type AnimateFunction = (
   renderer: WebGLRenderer,
   camera: PerspectiveCamera | OrthographicCamera,
-  depthTexture?: DepthTexture | null,
-  scene?: Scene
+  depthTexture: DepthTexture | null,
+  scene: Scene
 ) => void;
 
 export class ThreeJsPanel {
@@ -762,7 +762,7 @@ export class ThreeJsPanel {
 
     // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
     this.overlayRenderFuncs.forEach((func) => {
-      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+      func(this.renderer, this.camera, this.meshRenderTarget.depthTexture, this.scene);
     });
     this.renderer.autoClear = true;
 
