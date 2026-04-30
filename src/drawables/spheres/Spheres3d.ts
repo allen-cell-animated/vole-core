@@ -6,10 +6,6 @@ import { SphereMaterial, SphereMaterialInstanceAttributes, SpherePickMaterial } 
 
 const DEFAULT_INSTANCE_COUNT = 256;
 
-function getSphereGeometry(): SphereGeometry {
-  return new SphereGeometry(1, 32, 32);
-}
-
 /**
  * Drawable object for instanced rendering of spheres. Spheres can also be
  * configured to be pickable for mouse interaction.
@@ -43,7 +39,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.meshPivot.layers.set(MESH_LAYER);
     this.maxInstanceCount = DEFAULT_INSTANCE_COUNT;
 
-    const { mesh, pickMesh, material, pickMaterial, geometry, idAttribute } = this.reinitializeInstancedMeshes();
+    const { mesh, pickMesh, material, pickMaterial, geometry, idAttribute } = this.initializeInstancedMeshes();
 
     this.mesh = mesh;
     this.pickMesh = pickMesh;
@@ -61,7 +57,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.colors = null;
   }
 
-  private reinitializeInstancedMeshes(): {
+  private initializeInstancedMeshes(): {
     mesh: InstancedMesh<SphereGeometry, SphereMaterial>;
     pickMesh: InstancedMesh<SphereGeometry, SpherePickMaterial>;
     material: SphereMaterial;
@@ -75,7 +71,8 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.material = new SphereMaterial();
     this.pickMaterial = new SpherePickMaterial();
     this.material.depthWrite = true;
-    this.geometry = getSphereGeometry();
+    // Sphere has radius of 1, 32 width and height segments
+    this.geometry = new SphereGeometry(1, 32, 16);
 
     // Recreate InstancedMesh objects with the new instance count
     this.mesh = new InstancedMesh(this.geometry, this.material, this.maxInstanceCount);
@@ -123,7 +120,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     while (this.maxInstanceCount < instanceCount) {
       this.maxInstanceCount *= 2;
     }
-    this.reinitializeInstancedMeshes();
+    this.initializeInstancedMeshes();
   }
 
   /**
@@ -131,6 +128,9 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
    * vector data is updated.
    */
   public onParentTransformUpdated(): void {
+    // TODO: This code is similar to code in `VectorArrows3d`, and could be
+    // refactored into a shared abstract class in the future.
+
     // Measure world scale by temporarily resetting mesh pivot scale
     this.meshPivot.scale.set(1, 1, 1);
     let newWorldScale = new Vector3();
@@ -138,10 +138,9 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
 
     // Scale is inverted on mesh pivot to cancel out parent transforms (though
     // translation and rotation are still affected by any parent transforms).
-    // This allows arrows meshes to be scaled 1:1 with world space, regardless
-    // of parent transforms, and prevents distortion or skewing of the mesh.
-    // Parent scaling is applied to arrow positions and deltas (see
-    // `updateAllArrowTransforms`), rather than the meshes themselves.
+    // This allows meshes to be scaled 1:1 with world space, regardless of
+    // parent transforms, and prevents distortion or skewing of the mesh. Parent
+    // scaling is applied per instance in `applyAttributes`.
     const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
     this.meshPivot.scale.copy(invertScale);
 
@@ -189,6 +188,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
 
     const combinedScale = new Vector3().copy(this.scale).multiply(this.flipAxes).multiply(this.worldScale);
     const position = new Vector3();
+    const matrix = new Matrix4();
     for (let i = 0; i < count; i++) {
       const posIndex = (i * 3) % this.positions.length;
       const scaleIndex = i % (this.scales ? this.scales.length : 1);
@@ -198,7 +198,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
       const scale = this.scales[scaleIndex];
 
       // Set per-instance matrix
-      const matrix = new Matrix4().compose(position, new Quaternion(), new Vector3(scale, scale, scale));
+      matrix.compose(position, new Quaternion(), new Vector3(scale, scale, scale));
       this.mesh.setMatrixAt(i, matrix);
       this.pickMesh.setMatrixAt(i, matrix);
       // Set per-instance id

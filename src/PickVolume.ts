@@ -49,7 +49,6 @@ export default class PickVolume implements VolumeRenderImpl {
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
   private emptyLabelTex: DataTexture;
-  public needRedraw = false;
   private pickBuffer: WebGLRenderTarget;
   private channelToPick = 0;
 
@@ -137,9 +136,7 @@ export default class PickVolume implements VolumeRenderImpl {
     // (re)create channel data
   }
 
-  public viewpointMoved(): void {
-    this.needRedraw = true;
-  }
+  public viewpointMoved(): void {}
 
   public updateSettings(newSettings: VolumeRenderSettings, dirtyFlags?: number | SettingsFlags) {
     if (dirtyFlags === undefined) {
@@ -149,7 +146,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.settings = newSettings;
 
     if (dirtyFlags & SettingsFlags.VIEW) {
-      this.needRedraw = true;
       this.geometryMesh.visible = this.settings.visible;
       // Configure ortho
       this.setUniform("orthoScale", this.settings.orthoScale);
@@ -173,7 +169,6 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.TRANSFORM) {
-      this.needRedraw = true;
       // Set rotation and translation
       this.geometryTransformNode.position.copy(this.settings.translation);
       this.geometryTransformNode.rotation.copy(this.settings.rotation);
@@ -187,11 +182,10 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.CAMERA) {
-      // this.needRedraw = true;
+      // nothing
     }
 
     if (dirtyFlags & SettingsFlags.ROI) {
-      this.needRedraw = true;
       // Normalize and set bounds
       const bounds = this.settings.bounds;
       const { normRegionSize, normRegionOffset } = this.volume;
@@ -204,7 +198,6 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.needRedraw = true;
       const resolution = this.settings.resolution.clone();
       const dpr = window.devicePixelRatio ? window.devicePixelRatio : 1.0;
       const nx = Math.floor(resolution.x / dpr);
@@ -264,8 +257,6 @@ export default class PickVolume implements VolumeRenderImpl {
     depthTexture?: DepthTexture | Texture | null,
     scene?: Scene
   ): void {
-    this.needRedraw = false;
-
     const depthTex = depthTexture ?? this.emptyPositionTex;
     this.setUniform("textureDepth", depthTex);
     this.setUniform("usingPositionTexture", (depthTex as DepthTexture).isDepthTexture ? 0 : 1);
@@ -321,14 +312,6 @@ export default class PickVolume implements VolumeRenderImpl {
     return this.geometryTransformNode;
   }
 
-  public addPickObject(object: Object3D): void {
-    this.pickObjectsGroup.add(object);
-  }
-
-  public removePickObject(object: Object3D): void {
-    this.pickObjectsGroup.remove(object);
-  }
-
   //////////////////////////////////////////
   //////////////////////////////////////////
 
@@ -346,7 +329,6 @@ export default class PickVolume implements VolumeRenderImpl {
   public updateActiveChannels(_channelcolors: FuseChannel[], _channeldata: Channel[]): void {
     // TODO consider if we can use this as a way to assing this.channelToPick?
     // (e.g. put some kind of flag in FuseChannel)
-    this.needRedraw = true;
   }
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {

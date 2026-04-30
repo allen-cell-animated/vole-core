@@ -294,7 +294,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
       colors.toArray(this.colors);
     } else {
       if (colors.length % 3 !== 0) {
-        throw new Error("VectorArrows3D.setColors: colors array length must be a multiple of 3.");
+        throw new Error("VectorArrows3d.setColors: colors array length must be a multiple of 3.");
       }
       this.colors = new Float32Array(colors);
     }
@@ -327,10 +327,10 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
    */
   public setArrowData(positions: Float32Array, deltas: Float32Array, diameters?: Float32Array): void {
     if (positions.length !== deltas.length) {
-      throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
+      throw new Error("VectorArrows3d.setArrowData: positions and deltas arrays must have the same length");
     }
     if (positions.length % 3 !== 0) {
-      throw new Error("VectorArrows.setArrowData: positions and deltas arrays length must be a multiple of 3");
+      throw new Error("VectorArrows3d.setArrowData: positions and deltas arrays length must be a multiple of 3");
     }
     this.positions = positions;
     this.deltas = deltas;
