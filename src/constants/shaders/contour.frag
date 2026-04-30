@@ -100,8 +100,9 @@ int getGlobalId(uint labelId) {
 }
 
 bool isEdge(ivec2 uv, uint labelId, int thickness) {
-  float wStep = 1.0;
-  float hStep = 1.0;
+  // Sample pixels in pick buffer
+  float wStep = 1.0 / devicePixelRatio;
+  float hStep = 1.0 / devicePixelRatio;
   float thicknessFloat = float(thickness);
   // sample around the pixel to see if we are on an edge
   uint R = (getLabelId(uv + ivec2(thicknessFloat * wStep, 0)));
