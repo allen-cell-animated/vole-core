@@ -2,12 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "emitDeclarationOnly": true,
-    "outDir": "es",
+    "rootDir": "src",
+    "outDir": "es"
   },
   "files": ["src/index.ts"],
   "include": ["src/**/*"],
-  "exclude": [
-    "src/workers/**/*",
-    "**/*.test.ts",
-  ],
+  "exclude": ["src/workers/**/*", "**/*.test.ts"]
 }

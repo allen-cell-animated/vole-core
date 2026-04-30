@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-import { remapUri } from "../utils/url_utils";
+import { remapUri } from "../utils/url_utils.js";
 
 describe("remapUrl", () => {
   it("does not map HTTP URLs", () => {

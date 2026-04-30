@@ -3,18 +3,8 @@ import { serializeError } from "serialize-error";
 
 import type { TiffLoadResult, TiffWorkerParams } from "../loaders/TiffLoader.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "../loaders/VolumeLoadError.js";
-import { NumberType } from "../types.js";
+import type { NumberType, TypedArray } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
-
-type TypedArray =
-  | Uint8Array
-  | Int8Array
-  | Uint16Array
-  | Int16Array
-  | Uint32Array
-  | Int32Array
-  | Float32Array
-  | Float64Array;
 
 // from TIFF
 const SAMPLEFORMAT_UINT = 1;
@@ -117,7 +107,7 @@ async function loadTiffChannel(e: MessageEvent<TiffWorkerParams>): Promise<TiffL
     const image = await tiff.getImage(imageIndex);
     // download and downsample on client
     const result = await image.readRasters({ width: tilesizex, height: tilesizey });
-    const arrayresult: TypedArray = Array.isArray(result) ? result[0] : result;
+    const arrayresult = (Array.isArray(result) ? result[0] : result) as TypedArray;
     // deposit in full channel array in the right place
     const offset = zslice * tilesizex * tilesizey;
     if (arrayresult.BYTES_PER_ELEMENT > 4) {

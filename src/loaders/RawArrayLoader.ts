@@ -20,7 +20,7 @@ export type RawArrayData = {
   // [c,z,y,x]
   shape: [number, number, number, number];
   // the bits
-  buffer: DataView;
+  buffer: DataView<ArrayBuffer>;
 };
 
 // minimal metadata for visualization

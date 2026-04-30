@@ -1,4 +1,4 @@
-import SubscribableRequestQueue from "../utils/SubscribableRequestQueue";
+import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
 
 const TIMEOUT = 10;
 const LONG_TIMEOUT = 20;

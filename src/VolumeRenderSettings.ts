@@ -35,6 +35,7 @@ export enum Axis {
   /** Alias for NONE, indicates 3D mode */
   XYZ = "",
   /** No current axis, indicates 3D mode */
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   NONE = "",
 }
 

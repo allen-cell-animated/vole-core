@@ -1,7 +1,7 @@
-import { Volume, Light } from "../src";
-import { VolumeFileFormat } from "../src/loaders";
-import { IVolumeLoader } from "../src/loaders/IVolumeLoader";
-import { type NumberType } from "../src/types";
+import { Volume, Light } from "../src/index.js";
+import { VolumeFileFormat } from "../src/loaders/index.js";
+import { IVolumeLoader } from "../src/loaders/IVolumeLoader.js";
+import type { NumberType } from "../src/types.js";
 
 export interface TestDataSpec {
   type: VolumeFileFormat | "opencell";
