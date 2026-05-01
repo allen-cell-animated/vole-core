@@ -100,7 +100,10 @@ int getGlobalId(uint labelId) {
 }
 
 bool isEdge(ivec2 uv, uint labelId, int thickness) {
-  // Sample pixels in pick buffer
+  // TODO: This has some visual artifacts at really high/low zoom levels,
+  // possibly due to coords being cast to an `ivec2` for texture sampling.
+
+  // Keep thickness constant in screen space
   float wStep = 1.0 / devicePixelRatio;
   float hStep = 1.0 / devicePixelRatio;
   float thicknessFloat = float(thickness);
