@@ -10,15 +10,12 @@ import {
   Matrix4,
   Mesh,
   NearestFilter,
-  Object3D,
   OrthographicCamera,
   PerspectiveCamera,
   RGBAFormat,
-  RedIntegerFormat,
   Scene,
   ShaderMaterial,
   Texture,
-  UnsignedByteType,
   Vector2,
   WebGLRenderer,
   WebGLRenderTarget,
@@ -125,7 +122,9 @@ export default class PickVolume implements VolumeRenderImpl {
     // (re)create channel data
   }
 
-  public viewpointMoved(): void {}
+  public viewpointMoved(): void {
+    // Do nothing
+  }
 
   public updateSettings(newSettings: VolumeRenderSettings, dirtyFlags?: number | SettingsFlags) {
     if (dirtyFlags === undefined) {
