@@ -284,9 +284,11 @@ export default class PickVolume implements VolumeRenderImpl {
       renderer.render(scene, camera);
     }
 
-    // Render volume into pick buffer.
-    camera.layers.set(VOLUME_LAYER);
-    renderer.render(this.scene, camera);
+    // Render volume into pick buffer, if volume is visible.
+    if (this.geometryMesh.visible) {
+      camera.layers.set(VOLUME_LAYER);
+      renderer.render(this.scene, camera);
+    }
 
     renderer.setClearColor(prevClearColor, prevClearAlpha);
     renderer.autoClear = previousRenderAutoClear;

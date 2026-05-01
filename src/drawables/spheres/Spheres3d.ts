@@ -65,13 +65,17 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     geometry: SphereGeometry;
     idAttribute: InstancedBufferAttribute;
   } {
-    this.removeChildMesh(this.mesh);
-    this.removeChildMesh(this.pickMesh);
+    if (this.mesh) {
+      this.removeChildMesh(this.mesh);
+    }
+    if (this.pickMesh) {
+      this.removeChildMesh(this.pickMesh);
+    }
 
     this.material = new SphereMaterial();
     this.pickMaterial = new SpherePickMaterial();
     this.material.depthWrite = true;
-    // Sphere has radius of 1, 32 width and height segments
+    // Sphere has radius of 1, 32 width and 16 height segments
     this.geometry = new SphereGeometry(1, 32, 16);
 
     // Recreate InstancedMesh objects with the new instance count
@@ -98,13 +102,6 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
       geometry: this.geometry,
       idAttribute: this.idAttribute,
     };
-  }
-
-  public cleanup(): void {
-    super.cleanup();
-    this.material.dispose();
-    this.pickMaterial.dispose();
-    this.geometry.dispose();
   }
 
   public setScale(scale: Vector3): void {
@@ -156,7 +153,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     }
     const colorCount = Math.round(this.colors.length / 3);
     const color = new Color();
-    for (let i = 0; i < this.maxInstanceCount; i++) {
+    for (let i = 0; i < this.mesh.count; i++) {
       // Wrap colors if there are fewer colors than instances.
       const colorIndex = i % colorCount;
       color.fromArray(this.colors, colorIndex * 3);
@@ -167,6 +164,11 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     }
   }
 
+  /**
+   * Sets colors for the spheres. Colors can be provided as a single Color
+   * (applied to all spheres) or as a Float32Array of RGB values. If the array
+   * has fewer colors than the number of spheres, colors will be repeated.
+   */
   public setColors(colors: Float32Array | Color): void {
     if (colors instanceof Color) {
       this.colors = new Float32Array(3);
@@ -211,9 +213,19 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   }
 
   public setSphereData(positions: Float32Array, scales: Float32Array, ids: Uint32Array | null = null): void {
+    // Data validation
+    if (positions.length % 3 !== 0) {
+      throw new Error("Spheres3D.setSphereData: positions array length must be a multiple of 3");
+    }
+    if (positions.length / 3 !== scales.length) {
+      throw new Error("Spheres3D.setSphereData: scales array length must be the same as positions length / 3");
+    }
+    if (ids && positions.length / 3 !== ids.length) {
+      throw new Error("Spheres3D.setSphereData: ids array must have the same length as positions length / 3");
+    }
     // Update instance count, add more instances as needed.
     const count = positions.length / 3;
-    const didInstanceCountIncrease = this.maxInstanceCount < count;
+    const didCountChange = this.mesh.count !== count;
     if (this.maxInstanceCount < count) {
       this.increaseInstanceCountMax(count);
     }
@@ -228,7 +240,7 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
     this.pickMesh.visible = ids !== null;
 
     this.applyAttributes();
-    if (didInstanceCountIncrease) {
+    if (didCountChange) {
       this.applyColors();
     }
   }
