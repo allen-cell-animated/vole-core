@@ -1,6 +1,5 @@
 import { Color, InstancedBufferAttribute, InstancedMesh, Matrix4, Quaternion, SphereGeometry, Vector3 } from "three";
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject.js";
-import { IDrawableObject } from "../IDrawableObject.js";
 import { MESH_LAYER, MESH_PICK_LAYER } from "../../ThreeJsPanel.js";
 import { SphereMaterial, SphereMaterialInstanceAttributes, SpherePickMaterial } from "./SphereMaterial.js";
 
@@ -10,7 +9,7 @@ const DEFAULT_INSTANCE_COUNT = 256;
  * Drawable object for instanced rendering of spheres. Spheres can also be
  * configured to be pickable for mouse interaction.
  */
-export default class Spheres3d extends BaseDrawableMeshObject implements IDrawableObject {
+export default class Spheres3d extends BaseDrawableMeshObject {
   protected worldScale: Vector3;
   private maxInstanceCount: number;
 
@@ -25,10 +24,8 @@ export default class Spheres3d extends BaseDrawableMeshObject implements IDrawab
   private material: SphereMaterial;
   private pickMaterial: SpherePickMaterial;
 
-  // There are two copies of the mesh, one which is rendered normally in the
-  // mesh layer (meaning it is visible and interacts with the volume) and
-  // another which is purely for picking. It will be rendered to the pick buffer
-  // for mouse interaction.
+  // mesh and pickMesh represent the same geometry, for visible rendering and
+  // rendering into the pick buffer respectively.
   private mesh: InstancedMesh<SphereGeometry, SphereMaterial>;
   private pickMesh: InstancedMesh<SphereGeometry, SpherePickMaterial>;
 

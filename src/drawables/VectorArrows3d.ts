@@ -12,7 +12,6 @@ import {
   Matrix4,
   BufferGeometry,
 } from "three";
-import { IDrawableObject } from "./IDrawableObject.js";
 
 // Unscaled arrowhead dimensions.
 const SHAFT_BASE_RADIUS = 0.5;
@@ -27,7 +26,7 @@ const DEFAULT_INSTANCE_COUNT = 256;
 /**
  * A drawable vector arrow field, which uses instanced meshes for performance.
  */
-export default class VectorArrows3d extends BaseDrawableMeshObject implements IDrawableObject {
+export default class VectorArrows3d extends BaseDrawableMeshObject {
   /**
    * Scale of this object in world coordinates, when unscaled. Used to
    * compensate for parent transforms in order to keep arrow meshes from being

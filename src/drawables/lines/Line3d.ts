@@ -2,7 +2,6 @@ import { Color, DataTexture, FloatType, LinearFilter, RGBAFormat, Texture } from
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 
-import { IDrawableObject } from "../IDrawableObject.js";
 import { MESH_NO_PICK_OCCLUSION_LAYER, OVERLAY_LAYER } from "../../ThreeJsPanel.js";
 import BaseDrawableMeshObject from "../BaseDrawableMeshObject.js";
 import SubrangeLineMaterial from "./SubrangeLineMaterial.js";
@@ -13,7 +12,7 @@ const DEFAULT_VERTEX_BUFFER_SIZE = 1020;
  * Simple wrapper for a 3D line segments object, with controls for vertex data,
  * color, width, and segments visible.
  */
-export default class Line3d extends BaseDrawableMeshObject implements IDrawableObject {
+export default class Line3d extends BaseDrawableMeshObject {
   private lineMesh: LineSegments2;
   private bufferSize: number;
   private lineMaterial: SubrangeLineMaterial;
