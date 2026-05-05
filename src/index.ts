@@ -27,6 +27,7 @@ import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Line3d from "./Line3d.js";
 import VectorArrows3d from "./VectorArrows3d.js";
 import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
+import type { VolumeDims } from "./VolumeDims.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -55,6 +56,7 @@ export {
   type RawArrayData,
   type RawArrayInfo,
   type RawArrayLoaderOptions,
+  type VolumeDims,
   TiffLoader,
   VolumeLoaderContext,
   VolumeLoadError,
