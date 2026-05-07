@@ -1,4 +1,4 @@
-import { Camera, Color, DataTexture, Euler, Group, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
+import { Camera, Color, DataTexture, OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 
 export interface Bounds {
   bmin: Vector3;
@@ -106,25 +106,6 @@ export interface ColorizeFeature {
   outlierDrawMode: number;
   outOfRangeDrawMode: number;
   hideOutOfRange: boolean;
-}
-
-export interface IDrawableObject {
-  cleanup(): void;
-  setVisible(visible: boolean): void;
-  doRender(): void;
-  get3dObject(): Group;
-  setTranslation(translation: Vector3): void;
-  setScale(scale: Vector3): void;
-  /**
-   * Optional. Should be called when parent transforms are updated.
-   */
-  onParentTransformUpdated?(): void;
-  setRotation(eulerXYZ: Euler): void;
-  setFlipAxes(flipX: number, flipY: number, flipZ: number): void;
-  setOrthoThickness(thickness: number): void;
-  setResolution(x: number, y: number): void;
-  setAxisClip(axis: "x" | "y" | "z", minval: number, maxval: number, _isOrthoAxis: boolean): void;
-  updateClipRegion(xmin: number, xmax: number, ymin: number, ymax: number, zmin: number, zmax: number): void;
 }
 
 export interface FuseChannel {

@@ -1,5 +1,5 @@
 import BaseDrawableMeshObject from "./BaseDrawableMeshObject.js";
-import { MESH_NO_PICK_OCCLUSION_LAYER } from "./ThreeJsPanel.js";
+import { MESH_NO_PICK_OCCLUSION_LAYER } from "../ThreeJsPanel.js";
 import {
   InstancedMesh,
   CylinderGeometry,
@@ -12,7 +12,6 @@ import {
   Matrix4,
   BufferGeometry,
 } from "three";
-import { IDrawableObject } from "./types.js";
 
 // Unscaled arrowhead dimensions.
 const SHAFT_BASE_RADIUS = 0.5;
@@ -27,7 +26,7 @@ const DEFAULT_INSTANCE_COUNT = 256;
 /**
  * A drawable vector arrow field, which uses instanced meshes for performance.
  */
-export default class VectorArrows3d extends BaseDrawableMeshObject implements IDrawableObject {
+export default class VectorArrows3d extends BaseDrawableMeshObject {
   /**
    * Scale of this object in world coordinates, when unscaled. Used to
    * compensate for parent transforms in order to keep arrow meshes from being
@@ -192,7 +191,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
     // translation and rotation are still affected by any parent transforms).
     // This allows arrows meshes to be scaled 1:1 with world space, regardless
     // of parent transforms, and prevents distortion or skewing of the mesh.
-    // Parent scaling is  applied to arrow positions and deltas (see
+    // Parent scaling is applied to arrow positions and deltas (see
     // `updateAllArrowTransforms`), rather than the meshes themselves.
     const invertScale = new Vector3(1, 1, 1).divide(newWorldScale);
     this.meshPivot.scale.copy(invertScale);
@@ -294,7 +293,7 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
       colors.toArray(this.colors);
     } else {
       if (colors.length % 3 !== 0) {
-        throw new Error("VectorArrows.setColors: colors array length must be a multiple of 3.");
+        throw new Error("VectorArrows3d.setColors: colors array length must be a multiple of 3.");
       }
       this.colors = new Float32Array(colors);
     }
@@ -327,10 +326,10 @@ export default class VectorArrows3d extends BaseDrawableMeshObject implements ID
    */
   public setArrowData(positions: Float32Array, deltas: Float32Array, diameters?: Float32Array): void {
     if (positions.length !== deltas.length) {
-      throw new Error("VectorArrows.setArrowData: positions and deltas arrays must have the same length");
+      throw new Error("VectorArrows3d.setArrowData: positions and deltas arrays must have the same length");
     }
     if (positions.length % 3 !== 0) {
-      throw new Error("VectorArrows.setArrowData: positions and deltas arrays length must be a multiple of 3");
+      throw new Error("VectorArrows3d.setArrowData: positions and deltas arrays length must be a multiple of 3");
     }
     this.positions = positions;
     this.deltas = deltas;

@@ -220,9 +220,8 @@ void main() {
   bool hit = intersectBox(eyeRay_o, eyeRay_d, boxMin, boxMax, tnear, tfar);
 
   if (!hit) {
-    // return background color if ray misses the cube
-    // is this safe to do when there is other geometry / gObjects drawn?
-    gl_FragColor = vec4(0.0); //C1;//vec4(0.0);
+    // Discard pixel if ray misses the cube.
+    discard;
     return;
   }
 
@@ -260,6 +259,12 @@ void main() {
 
   // tnear and tfar are intersections of box
   vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar, textureAtlas);
+
+  if (C.r == 0.0) {
+    // If no non-zero intensity was found, discard the pixel.
+    discard;
+    return;
+  }
 
   gl_FragColor = C;
   return;

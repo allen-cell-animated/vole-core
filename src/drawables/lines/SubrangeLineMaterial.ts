@@ -1,7 +1,7 @@
 import { DataTexture, FloatType, LinearFilter, RGBAFormat, type Texture, UniformsUtils } from "three";
 import { LineMaterial, type LineMaterialParameters } from "three/addons/lines/LineMaterial.js";
 
-import vertexShader from "./constants/shaders/track.vert";
+import vertexShader from "./track.vert";
 
 type SubrangeLineMaterialParameters = LineMaterialParameters & {
   minInstance?: number;
