@@ -37,11 +37,13 @@
     "type": "git",
     "url": "git+https://github.com/allen-cell-animated/vole-core.git"
   },
+  "peerDependencies": {
+    "three": "^0.184.0"
+  },
   "dependencies": {
     "@babel/runtime": "^7.25.6",
     "geotiff": "^2.0.5",
     "serialize-error": "^11.0.3",
-    "three": "^0.184.0",
     "throttled-queue": "^3.0.0",
     "tweakpane": "^3.1.9",
     "zarrita": "^0.5.1"
