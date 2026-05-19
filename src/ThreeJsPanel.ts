@@ -34,10 +34,17 @@ import RenderToBuffer from "./RenderToBuffer.js";
 import { copyImageFragShader } from "./constants/basicShaders.js";
 
 export const VOLUME_LAYER = 0;
+/** Opaque meshes that interact with the volume layer and block picking. */
 export const MESH_LAYER = 1;
-/** Meshes that do not occlude picking/contour behavior. */
+/**
+ * Opaque meshes that interact with the volume layer but do not occlude
+ * picking/contour behavior.
+ */
 export const MESH_NO_PICK_OCCLUSION_LAYER = 2;
+/** Meshes that are rendered as overlays above all other layers. */
 export const OVERLAY_LAYER = 3;
+/** Meshes that are "invisible" and write only to the pick buffer. */
+export const MESH_PICK_LAYER = 4;
 
 const DEFAULT_PERSPECTIVE_CAMERA_DISTANCE = 5.0;
 const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
@@ -69,7 +76,8 @@ export type CameraState = {
 type AnimateFunction = (
   renderer: WebGLRenderer,
   camera: PerspectiveCamera | OrthographicCamera,
-  depthTexture?: DepthTexture | null
+  depthTexture: DepthTexture | null,
+  scene: Scene
 ) => void;
 
 export class ThreeJsPanel {
@@ -815,14 +823,15 @@ export class ThreeJsPanel {
     // do whatever we have to do before the main render of this.scene
     for (let i = 0; i < this.animateFuncs.length; i++) {
       if (this.animateFuncs[i]) {
-        this.animateFuncs[i](this.renderer, this.camera, isTriple ? null : this.meshRenderTarget.depthTexture);
+        this.animateFuncs[i](this.renderer, this.camera, isTriple ? null : this.meshRenderTarget.depthTexture, this.scene);
       }
     }
 
     if (!isTriple) {
       // RENDERING
-      // Step 1: Render meshes, e.g. isosurfaces, separately to a render target. (Meshes are all on
-      // layer 1.) This is necessary to access the depth buffer.
+      // Step 1: Render meshes, e.g. isosurfaces, separately to a render
+      // target. (Meshes are all on layer 1.) This is necessary to access the
+      // depth buffer.
       this.camera.layers.set(MESH_LAYER);
       this.renderer.setRenderTarget(this.meshRenderTarget);
       this.renderer.render(this.scene, this.camera);
@@ -830,7 +839,7 @@ export class ThreeJsPanel {
       // Step 2. Render any passes that have to happen after the meshes are
       // rendered but before volume rendering (e.g. pick buffer).
       this.postMeshRenderFuncs.forEach((func) => {
-        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture, this.scene);
       });
 
       // Step 3: Render meshes that do not interact with the pick buffer. This
@@ -861,7 +870,7 @@ export class ThreeJsPanel {
     if (!isTriple) {
       // Step 7: Render overlay passes (e.g. contours) and update the pick buffer.
       this.overlayRenderFuncs.forEach((func) => {
-        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture);
+        func(this.renderer, this.camera, this.meshRenderTarget.depthTexture, this.scene);
       });
     }
     this.renderer.autoClear = true;

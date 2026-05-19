@@ -35,14 +35,15 @@ import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./Vol
 import wrapArray, { RelaxedFetchStore } from "./zarr_utils/wrappers.js";
 import { assertMetadataHasMultiscales, toOMEZarrMetaV4, validateOMEZarrMetadata } from "./zarr_utils/validation.js";
 import { remapUri } from "../utils/url_utils.js";
+import type { TypedArray } from "../types.js";
 
 const CHUNK_REQUEST_CANCEL_REASON = "chunk request cancelled";
 
 // returns the converted data and the original min and max values
 function convertChannel(
-  channelData: zarr.TypedArray<zarr.NumberDataType>,
+  channelData: TypedArray<zarr.NumberDataType>,
   dtype: zarr.NumberDataType
-): { data: zarr.TypedArray<zarr.NumberDataType>; dtype: zarr.NumberDataType; min: number; max: number } {
+): { data: TypedArray<zarr.NumberDataType>; dtype: zarr.NumberDataType; min: number; max: number } {
   // get min and max
   const [min, max] = getDataRange(channelData);
 
@@ -87,7 +88,7 @@ type ZarrChunkFetchInfo = {
 };
 
 const DEFAULT_FETCH_OPTIONS = {
-  maxPrefetchDistance: [5, 5, 5, 5] as [number, number, number, number],
+  maxPrefetchDistance: [12, 5, 5, 5] as [number, number, number, number],
   maxPrefetchChunks: 30,
 };
 
@@ -336,9 +337,8 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
     // we need to make sure that the corresponding matched shapes
     // use the min size of T
-    let times = 1;
     if (hasT) {
-      times = shapeLv[t];
+      let times = shapeLv[t];
       for (let i = 0; i < this.sources.length; i++) {
         const shape = this.sources[i].scaleLevels[levelToLoad].shape;
         const tindex = this.sources[i].axesTCZYX[0];
@@ -550,7 +550,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     };
 
     const resultChannelIndices: number[] = [];
-    const resultChannelData: zarr.TypedArray<zarr.NumberDataType>[] = [];
+    const resultChannelData: TypedArray<zarr.NumberDataType>[] = [];
     const resultChannelDtype: zarr.NumberDataType[] = [];
     const resultChannelRanges: [number, number][] = [];
 
@@ -567,19 +567,26 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
 
       const result = await zarr
         .get(level, sliceSpec, { opts: { subscriber, reportChunk } })
-        .catch(
-          wrapVolumeLoadError(
-            "Could not load OME-Zarr volume data",
-            VolumeLoadErrorType.LOAD_DATA_FAILED,
-            CHUNK_REQUEST_CANCEL_REASON
-          )
-        );
+        .catch<zarr.Chunk<zarr.NumberDataType>>((e) => {
+          if (e === CHUNK_REQUEST_CANCEL_REASON) {
+            return e;
+          }
+          if (e instanceof VolumeLoadError) {
+            throw e;
+          }
+          const msg =
+            e instanceof RangeError
+              ? "Could not allocate enough memory for the requested OME-Zarr data"
+              : "Could not load OME-Zarr volume data";
+          const type = e instanceof RangeError ? VolumeLoadErrorType.TOO_LARGE : VolumeLoadErrorType.LOAD_DATA_FAILED;
+          throw new VolumeLoadError(msg, { type, cause: e });
+        });
 
       if (result?.data === undefined) {
         return;
       }
 
-      const converted = convertChannel(result.data, level.dtype);
+      const converted = convertChannel(result.data as TypedArray, level.dtype);
       if (syncChannels) {
         resultChannelDtype.push(converted.dtype);
         resultChannelData.push(converted.data);

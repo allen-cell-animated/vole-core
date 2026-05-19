@@ -24,12 +24,12 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
-  IDrawableObject,
 } from "./types.js";
+import { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
-import Line3d from "./Line3d.js";
+import Line3d from "./drawables/lines/Line3d.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;

@@ -29,7 +29,7 @@ function getOME(xml: string | undefined): Element | undefined {
   try {
     const xmlDoc = parser.parseFromString(xml, "text/xml");
     return xmlDoc.getElementsByTagName("OME")[0];
-  } catch (e) {
+  } catch {
     return undefined;
   }
 }
@@ -168,7 +168,7 @@ class TiffLoader extends ThreadableVolumeLoader {
               shape = description.shape;
             }
             // eslint-disable-next-line no-empty
-          } catch (_e) {}
+          } catch {}
         }
 
         // if `ImageDescription` is valid JSON with a `shape` field, we expect it to be an array of [t?, c?, z?, y, x].

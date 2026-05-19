@@ -24,9 +24,11 @@ import VolumeLoaderContext from "./workers/VolumeLoaderContext.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "./loaders/VolumeLoadError.js";
 import { type CameraState, type TripleViewPanes } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
-import Line3d from "./Line3d.js";
-import VectorArrows3d from "./VectorArrows3d.js";
+import Line3d from "./drawables/lines/Line3d.js";
+import VectorArrows3d from "./drawables/VectorArrows3d.js";
+import Spheres3d from "./drawables/spheres/Spheres3d.js";
 import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
+import type { VolumeDims } from "./VolumeDims.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -39,6 +41,7 @@ export {
   Lut,
   Line3d,
   VectorArrows3d,
+  Spheres3d,
   remapControlPoints,
   View3d,
   Volume,
@@ -55,6 +58,7 @@ export {
   type RawArrayData,
   type RawArrayInfo,
   type RawArrayLoaderOptions,
+  type VolumeDims,
   TiffLoader,
   VolumeLoaderContext,
   VolumeLoadError,

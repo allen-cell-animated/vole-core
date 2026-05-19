@@ -167,15 +167,14 @@ export default class Histogram {
   findBinOfPercentile(pct: number): number {
     const limit = this.pixelCount * pct;
 
-    let i = 0;
     let count = 0;
-    for (i = 0; i < this.bins.length; ++i) {
+    for (let i = 0; i < this.bins.length; ++i) {
       count += this.bins[i];
       if (count > limit) {
-        break;
+        return i;
       }
     }
-    return i;
+    return this.bins.length;
   }
 
   // Find bins at 10th / 90th percentile
@@ -184,7 +183,7 @@ export default class Histogram {
     //const pixcount = this.imgData.data.length;
     const limit = pixcount / 10;
 
-    let i = 0;
+    let i: number;
     let count = 0;
     for (i = 1; i < this.bins.length; ++i) {
       count += this.bins[i];

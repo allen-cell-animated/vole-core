@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import Volume from "../Volume";
-import VolumeMaker from "../VolumeMaker";
-import { LUT_ARRAY_LENGTH } from "../Lut";
-import Channel from "../Channel";
-import { CImageInfo, ImageInfo } from "../ImageInfo";
-import { getDataRange } from "../utils/num_utils";
+import Volume from "../Volume.js";
+import VolumeMaker from "../VolumeMaker.js";
+import { LUT_ARRAY_LENGTH } from "../Lut.js";
+import Channel from "../Channel.js";
+import { CImageInfo, ImageInfo } from "../ImageInfo.js";
+import { getDataRange } from "../utils/num_utils.js";
 
 // PREPARE SOME TEST DATA TO TRY TO DISPLAY A VOLUME.
 const testimgdata: ImageInfo = {

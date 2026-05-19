@@ -32,7 +32,7 @@ import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import type { FuseChannel } from "./types.js";
 
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
-import { VOLUME_LAYER } from "./ThreeJsPanel.js";
+import { MESH_PICK_LAYER, VOLUME_LAYER } from "./ThreeJsPanel.js";
 
 export default class PickVolume implements VolumeRenderImpl {
   private settings: VolumeRenderSettings;
@@ -44,7 +44,6 @@ export default class PickVolume implements VolumeRenderImpl {
   private scene: Scene;
   private uniforms: ReturnType<typeof pickShaderUniforms>;
   private emptyPositionTex: DataTexture;
-  public needRedraw = false;
   private pickBuffer: WebGLRenderTarget;
   private channelToPick = 0;
 
@@ -124,7 +123,7 @@ export default class PickVolume implements VolumeRenderImpl {
   }
 
   public viewpointMoved(): void {
-    this.needRedraw = true;
+    // Do nothing
   }
 
   public updateSettings(newSettings: VolumeRenderSettings, dirtyFlags?: number | SettingsFlags) {
@@ -135,7 +134,6 @@ export default class PickVolume implements VolumeRenderImpl {
     this.settings = newSettings;
 
     if (dirtyFlags & SettingsFlags.VIEW) {
-      this.needRedraw = true;
       this.geometryMesh.visible = this.settings.visible;
       // Configure ortho
       this.setUniform("orthoScale", this.settings.orthoScale);
@@ -159,7 +157,6 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.TRANSFORM) {
-      this.needRedraw = true;
       // Set rotation and translation
       this.geometryTransformNode.position.copy(this.settings.translation);
       this.geometryTransformNode.rotation.copy(this.settings.rotation);
@@ -177,7 +174,6 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.ROI) {
-      this.needRedraw = true;
       // Normalize and set bounds
       const bounds = this.settings.bounds;
       const { normRegionSize, normRegionOffset } = this.volume;
@@ -190,7 +186,6 @@ export default class PickVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.needRedraw = true;
       const resolution = this.settings.resolution.clone();
       const dpr = window.devicePixelRatio ? window.devicePixelRatio : 1.0;
       const nx = Math.floor(resolution.x / dpr);
@@ -240,23 +235,15 @@ export default class PickVolume implements VolumeRenderImpl {
 
     this.geometry.dispose();
     this.geometryMesh.material.dispose();
+    this.emptyPositionTex.dispose();
   }
 
   public doRender(
     renderer: WebGLRenderer,
     camera: PerspectiveCamera | OrthographicCamera,
-    depthTexture?: DepthTexture | Texture | null
+    depthTexture?: DepthTexture | Texture | null,
+    scene?: Scene
   ): void {
-    if (!this.geometryMesh.visible) {
-      return;
-    }
-    if (!this.needRedraw) {
-      return;
-    }
-    this.needRedraw = false;
-
-    this.setUniform("iResolution", this.settings.resolution);
-
     const depthTex = depthTexture ?? this.emptyPositionTex;
     this.setUniform("textureDepth", depthTex);
     this.setUniform("usingPositionTexture", (depthTex as DepthTexture).isDepthTexture ? 0 : 1);
@@ -278,21 +265,33 @@ export default class PickVolume implements VolumeRenderImpl {
     this.setUniform("inverseModelViewMatrix", mvm);
     this.setUniform("inverseProjMatrix", camera.projectionMatrixInverse);
 
-    // draw into pick buffer...
-    camera.layers.set(VOLUME_LAYER);
-    renderer.setRenderTarget(this.pickBuffer);
-    renderer.autoClear = true;
-
     const prevClearColor = new Color();
-    renderer.getClearColor(prevClearColor);
     const prevClearAlpha = renderer.getClearAlpha();
+    const previousRenderAutoClear = renderer.autoClear;
+    const prevRenderTarget = renderer.getRenderTarget();
+
+    renderer.getClearColor(prevClearColor);
     renderer.setClearColor(0x000000, 0);
+    renderer.autoClear = false;
+    renderer.setRenderTarget(this.pickBuffer);
 
-    renderer.render(this.scene, camera);
+    renderer.clear();
 
-    renderer.autoClear = true;
+    // Render other pickable meshes into the pick buffer first.
+    if (scene) {
+      camera.layers.set(MESH_PICK_LAYER);
+      renderer.render(scene, camera);
+    }
+
+    // Render volume into pick buffer, if volume is visible.
+    if (this.geometryMesh.visible) {
+      camera.layers.set(VOLUME_LAYER);
+      renderer.render(this.scene, camera);
+    }
+
     renderer.setClearColor(prevClearColor, prevClearAlpha);
-    renderer.setRenderTarget(null);
+    renderer.autoClear = previousRenderAutoClear;
+    renderer.setRenderTarget(prevRenderTarget);
   }
 
   public get3dObject(): Group {

@@ -14,14 +14,15 @@ import {
 import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 
-import { defaultMaterialSettings } from "./constants/materials.js";
+import { defaultMaterialSettings } from "../constants/materials.js";
 
-import FileSaver from "./FileSaver.js";
-import NaiveSurfaceNets from "./NaiveSurfaceNets.js";
-import MarchingCubes from "./MarchingCubes.js";
-import Volume from "./Volume.js";
-import type { Bounds, IDrawableObject } from "./types.js";
-import { MESH_LAYER } from "./ThreeJsPanel.js";
+import FileSaver from "../FileSaver.js";
+import NaiveSurfaceNets from "../NaiveSurfaceNets.js";
+import MarchingCubes from "../MarchingCubes.js";
+import Volume from "../Volume.js";
+import type { Bounds } from "../types.js";
+import type { IDrawableObject } from "./IDrawableObject.js";
+import { MESH_LAYER } from "../ThreeJsPanel.js";
 
 /**
  * this cutoff is chosen to have a small buffer of values before the object is treated
@@ -358,7 +359,7 @@ export default class MeshVolume implements IDrawableObject {
     const output = ex.parse(input, { binary: true });
     // STLExporter's typing shows that it returns string
     // but this is not the case when binary=true.
-    FileSaver.saveBinary((output as unknown as DataView).buffer, fname + ".stl");
+    FileSaver.saveBinary(output.buffer, fname + ".stl");
   }
 
   // takes a scene or object or array of scenes or objects or both!

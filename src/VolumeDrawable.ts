@@ -11,22 +11,18 @@ import {
   WebGLRenderTarget,
   Texture,
   Group,
+  Scene,
 } from "three";
 import { Pane } from "tweakpane";
 
-import MeshVolume from "./MeshVolume.js";
+import MeshVolume from "./drawables/MeshVolume.js";
 import RayMarchedAtlasVolume from "./RayMarchedAtlasVolume.js";
 import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type {
-  VolumeDisplayOptions,
-  VolumeChannelDisplayOptions,
-  FuseChannel,
-  ColorizeFeature,
-  IDrawableObject,
-} from "./types.js";
+import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
+import type { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
@@ -517,9 +513,10 @@ export default class VolumeDrawable {
   fillPickBuffer(
     renderer: WebGLRenderer,
     camera: PerspectiveCamera | OrthographicCamera,
-    depthTexture?: DepthTexture | Texture | null
+    depthTexture?: DepthTexture | Texture | null,
+    scene?: Scene
   ): void {
-    this.pickRendering?.doRender(renderer, camera, depthTexture);
+    this.pickRendering?.doRender(renderer, camera, depthTexture, scene);
   }
 
   drawContours(renderer: WebGLRenderer): void {
