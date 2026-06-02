@@ -1,6 +1,7 @@
-import { Matrix4, Texture, Uniform, UniformsGroup, Vector2, Vector3 } from "three";
+import { Matrix4, Vector2, Vector3 } from "three";
 import rayMarchVertexShader from "./shaders/raymarch.vert";
 import rayMarchFragmentShader from "./shaders/raymarch.frag";
+import { ShaderUniformResources } from "./ShaderUniformResources.js";
 
 export const rayMarchingVertexShaderSrc = rayMarchVertexShader;
 export const rayMarchingFragmentShaderSrc = rayMarchFragmentShader;
@@ -48,78 +49,19 @@ const RAY_MARCH_UNIFORM_DEFAULTS = {
   usingPositionTexture: 0,
   maxProject: 0,
   interpolationEnabled: 1,
-} as const;
+};
+
+const RAY_MARCH_SAMPLER_NAMES = ["textureAtlas", "textureAtlasMask", "textureDepth"] as const;
 
 export type RayMarchUniformName = keyof typeof RAY_MARCH_UNIFORM_DEFAULTS;
-export type RayMarchUniformValueMap = { [K in RayMarchUniformName]: (typeof RAY_MARCH_UNIFORM_DEFAULTS)[K] };
-
-const RAY_MARCH_UNIFORM_ORDER = Object.keys(RAY_MARCH_UNIFORM_DEFAULTS) as RayMarchUniformName[];
-
-/** Samplers cannot live in a UBO; they remain standalone shader uniforms. */
-export type RayMarchSamplerName = "textureAtlas" | "textureAtlasMask" | "textureDepth";
-
-export type RayMarchSamplerUniforms = { [K in RayMarchSamplerName]: { value: Texture } };
-
-export interface RayMarchShaderResources {
-  /** The std140 uniform block, ready to pass to `ShaderMaterial.uniformsGroups`. */
-  uniformsGroup: UniformsGroup;
-  /** Standalone sampler uniforms, ready to pass to `ShaderMaterial.uniforms`. */
-  samplerUniforms: RayMarchSamplerUniforms;
-  /** Update a uniform inside the UBO by name. */
-  setBlockUniform: <K extends RayMarchUniformName>(name: K, value: RayMarchUniformValueMap[K] | number) => void;
-  /** Update a sampler uniform by name. */
-  setSamplerUniform: (name: RayMarchSamplerName, value: Texture) => void;
-}
+export type RayMarchUniformValueMap = typeof RAY_MARCH_UNIFORM_DEFAULTS;
+export type RayMarchSamplerName = (typeof RAY_MARCH_SAMPLER_NAMES)[number];
+export type RayMarchShaderResources = ShaderUniformResources<RayMarchUniformValueMap, RayMarchSamplerName>;
 
 /**
  * Create the uniform resources used by the ray-march shader: a single
  * std140 uniform block for all non-sampler uniforms, plus standalone sampler
  * uniforms for the textures.
  */
-export const createRayMarchShaderResources = (): RayMarchShaderResources => {
-  const group = new UniformsGroup();
-  group.setName(RAY_MARCH_UNIFORM_BLOCK_NAME);
-
-  const indexByName = new Map<RayMarchUniformName, number>();
-  RAY_MARCH_UNIFORM_ORDER.forEach((name, i) => {
-    // Clone reference values so each instance gets its own mutable defaults.
-    const def = RAY_MARCH_UNIFORM_DEFAULTS[name];
-    const value: Matrix4 | Vector2 | Vector3 | number =
-      typeof def === "number" ? def : (def as Matrix4 | Vector2 | Vector3).clone();
-    group.add(new Uniform(value));
-    indexByName.set(name, i);
-  });
-
-  const samplerUniforms: RayMarchSamplerUniforms = {
-    textureAtlas: { value: new Texture() },
-    textureAtlasMask: { value: new Texture() },
-    textureDepth: { value: new Texture() },
-  };
-
-  const setBlockUniform: RayMarchShaderResources["setBlockUniform"] = (name, value) => {
-    const idx = indexByName.get(name);
-    if (idx === undefined) {
-      return;
-    }
-    const uniform = group.uniforms[idx] as Uniform;
-    const current = uniform.value;
-    if (typeof value === "number") {
-      uniform.value = value;
-    } else if (
-      current !== null &&
-      typeof current === "object" &&
-      typeof (current as { copy?: unknown }).copy === "function"
-    ) {
-      // Mutate in place so three.js's per-uniform cache notices the change.
-      (current as { copy: (v: unknown) => void }).copy(value);
-    } else {
-      uniform.value = value;
-    }
-  };
-
-  const setSamplerUniform: RayMarchShaderResources["setSamplerUniform"] = (name, value) => {
-    samplerUniforms[name].value = value;
-  };
-
-  return { uniformsGroup: group, samplerUniforms, setBlockUniform, setSamplerUniform };
-};
+export const createRayMarchShaderResources = (): RayMarchShaderResources =>
+  new ShaderUniformResources(RAY_MARCH_UNIFORM_BLOCK_NAME, RAY_MARCH_UNIFORM_DEFAULTS, RAY_MARCH_SAMPLER_NAMES);
