@@ -3,21 +3,30 @@ import {
   Box3Helper,
   BufferGeometry,
   Color,
+  GLSL3,
   Group,
   LineBasicMaterial,
   Material,
-  Matrix4,
   Mesh,
   OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
   ShaderMaterial,
+  Texture,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from "three";
 import { Channel, Volume } from "./index.js";
-import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
+import {
+  createSliceShaderResources,
+  SliceSamplerName,
+  SliceShaderResources,
+  SliceUniformName,
+  SliceUniformValueMap,
+  sliceFragmentShaderSrc,
+  sliceVertexShaderSrc,
+} from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import FusedChannelData from "./FusedChannelData.js";
@@ -35,7 +44,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   protected geometryMesh: Mesh<BufferGeometry, Material>;
   private geometryTransformNode: Group;
   private boxHelper: Box3Helper;
-  private uniforms: ReturnType<typeof sliceShaderUniforms>;
+  private shaderResources: SliceShaderResources;
   private channelData!: FusedChannelData;
   private sliceUpdateWaiting = false;
 
@@ -47,8 +56,8 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
    */
   constructor(volume: Volume, settings: VolumeRenderSettings = new VolumeRenderSettings(volume)) {
     this.volume = volume;
-    this.uniforms = sliceShaderUniforms();
-    [this.geometry, this.geometryMesh] = this.createGeometry(this.uniforms);
+    this.shaderResources = createSliceShaderResources();
+    [this.geometry, this.geometryMesh] = this.createGeometry(this.shaderResources);
 
     this.boxHelper = new Box3Helper(
       new Box3(new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5)),
@@ -99,7 +108,6 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.geometryMesh.position.copy(volumeOffset);
     // set scale
     this.geometryMesh.scale.copy(regionScale);
-    this.setUniform("volumeScale", regionScale);
     this.boxHelper.box.set(volumeScale.clone().multiplyScalar(-0.5), volumeScale.clone().multiplyScalar(0.5));
 
     const { atlasTileDims, subregionSize, volumeSize } = this.volume.imageInfo;
@@ -129,19 +137,6 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
     if (dirtyFlags & SettingsFlags.VIEW) {
       this.geometryMesh.visible = this.settings.visible;
-      // Configure ortho
-      this.setUniform("orthoScale", this.settings.orthoScale);
-      this.setUniform("isOrtho", this.settings.isOrtho ? 1.0 : 0.0);
-      // Ortho line thickness
-      const axis = this.settings.viewAxis;
-      if (this.settings.isOrtho && axis !== null) {
-        const maxVal = this.settings.bounds.bmax[axis];
-        const minVal = this.settings.bounds.bmin[axis];
-        const thicknessPct = maxVal - minVal;
-        this.setUniform("orthoThickness", thicknessPct);
-      } else {
-        this.setUniform("orthoThickness", 1.0);
-      }
     }
 
     if (dirtyFlags & SettingsFlags.BOUNDING_BOX) {
@@ -157,10 +152,6 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
       this.geometryTransformNode.position.copy(this.settings.translation);
       this.geometryTransformNode.rotation.copy(this.settings.rotation);
       this.setUniform("flipVolume", this.settings.flipAxes);
-    }
-
-    if (dirtyFlags & SettingsFlags.MATERIAL) {
-      this.setUniform("DENSITY", this.settings.density);
     }
 
     if (dirtyFlags & SettingsFlags.CAMERA) {
@@ -193,8 +184,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.setUniform("interpolationEnabled", this.settings.useInterpolation);
-      this.setUniform("iResolution", this.settings.resolution);
+      this.setUniform("interpolationEnabled", this.settings.useInterpolation ? 1 : 0);
     }
 
     if (dirtyFlags & SettingsFlags.MASK_ALPHA) {
@@ -208,9 +198,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     }
   }
 
-  private createGeometry(
-    uniforms: ReturnType<typeof sliceShaderUniforms>
-  ): [PlaneGeometry, Mesh<BufferGeometry, Material>] {
+  private createGeometry(shaderResources: SliceShaderResources): [PlaneGeometry, Mesh<BufferGeometry, Material>] {
     const geom = new PlaneGeometry(1.0, 1.0);
     const mesh: Mesh<BufferGeometry, Material> = new Mesh(geom);
     mesh.name = "Plane";
@@ -220,7 +208,9 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     const fgmtsrc = sliceFragmentShaderSrc;
 
     const threeMaterial = new ShaderMaterial({
-      uniforms: uniforms,
+      glslVersion: GLSL3,
+      uniforms: shaderResources.samplerUniforms,
+      uniformsGroups: [shaderResources.uniformsGroup],
       vertexShader: vtxsrc,
       fragmentShader: fgmtsrc,
       transparent: true,
@@ -243,7 +233,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     return;
   }
 
-  public doRender(renderer: WebGLRenderer, camera: PerspectiveCamera | OrthographicCamera): void {
+  public doRender(renderer: WebGLRenderer, _camera: PerspectiveCamera | OrthographicCamera): void {
     if (!this.geometryMesh.visible) {
       return;
     }
@@ -253,13 +243,6 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.setUniform("textureAtlasMask", this.channelData.maskTexture);
 
     this.geometryTransformNode.updateMatrixWorld(true);
-
-    const mvm = new Matrix4();
-    mvm.multiplyMatrices(camera.matrixWorldInverse, this.geometryMesh.matrixWorld);
-    const mi = new Matrix4();
-    mi.copy(mvm).invert();
-
-    this.setUniform("inverseModelViewMatrix", mi);
   }
 
   public get3dObject(): Group {
@@ -275,14 +258,15 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
     this.setUniform("textureAtlasMask", this.channelData.maskTexture);
   }
 
-  private setUniform<U extends keyof ReturnType<typeof sliceShaderUniforms>>(
+  private setUniform<U extends SliceUniformName | SliceSamplerName>(
     name: U,
-    value: ReturnType<typeof sliceShaderUniforms>[U]["value"]
+    value: U extends SliceSamplerName ? Texture : SliceUniformValueMap[Extract<U, SliceUniformName>] | number
   ) {
-    if (!this.uniforms[name]) {
-      return;
+    if (name in this.shaderResources.samplerUniforms) {
+      this.shaderResources.setSamplerUniform(name as SliceSamplerName, value as Texture);
+    } else {
+      this.shaderResources.setBlockUniform(name as SliceUniformName, value as SliceUniformValueMap[SliceUniformName]);
     }
-    this.uniforms[name].value = value;
   }
 
   public setRenderUpdateListener(_listener?: ((iteration: number) => void) | undefined) {
