@@ -1,9 +1,6 @@
-// switch on high precision floats
-#ifdef GL_ES
 precision highp float;
-#endif
 
-varying vec3 pObj;
+out vec3 pObj;
 
 void main() {
   pObj = position;

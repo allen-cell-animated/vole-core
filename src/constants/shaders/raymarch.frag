@@ -1,42 +1,53 @@
-
-#ifdef GL_ES
 precision highp float;
-#endif
+precision highp int;
+precision highp sampler2D;
 
 #define M_PI 3.14159265358979323846
 
-uniform vec2 iResolution;
-uniform vec2 textureRes;
-uniform float GAMMA_MIN;
-uniform float GAMMA_MAX;
-uniform float GAMMA_SCALE;
-uniform float BRIGHTNESS;
-uniform float DENSITY;
-uniform float maskAlpha;
-uniform vec2 ATLAS_DIMS;
-uniform vec3 AABB_CLIP_MIN;
-uniform float CLIP_NEAR;
-uniform vec3 AABB_CLIP_MAX;
-uniform float CLIP_FAR;
+// All non-sampler uniforms are packed into a single std140 uniform block
+// so they can be uploaded as one UBO via three.js's UniformsGroup.
+// IMPORTANT: the order of declarations here MUST match the order of the
+// Uniform entries added to the UniformsGroup on the JS side
+// (see createRayMarchUniformsGroup in volumeRayMarchShader.ts).
+// Note: three.js's UniformsGroup writes every scalar as Float32, so what
+// would naturally be `int` or `bool` uniforms are declared as `float` and
+// compared against numeric thresholds in the shader logic below.
+layout(std140) uniform RayMarchUniforms {
+  mat4 inverseModelViewMatrix;
+  mat4 inverseProjMatrix;
+  vec3 AABB_CLIP_MIN;
+  float CLIP_NEAR;
+  vec3 AABB_CLIP_MAX;
+  float CLIP_FAR;
+  vec3 flipVolume;
+  float maskAlpha;
+  vec3 volumeScale;
+  float BRIGHTNESS;
+  vec2 iResolution;
+  vec2 textureRes;
+  vec2 ATLAS_DIMS;
+  float DENSITY;
+  float GAMMA_MIN;
+  float GAMMA_MAX;
+  float GAMMA_SCALE;
+  float SLICES;
+  float isOrtho;
+  float orthoThickness;
+  float orthoScale;
+  float BREAK_STEPS;
+  float usingPositionTexture;
+  float maxProject;
+  float interpolationEnabled;
+};
+
+// Samplers can't live inside a UBO, so they remain standalone uniforms.
 uniform sampler2D textureAtlas;
 uniform sampler2D textureAtlasMask;
 uniform sampler2D textureDepth;
-uniform int usingPositionTexture;
-uniform int BREAK_STEPS;
-uniform float SLICES;
-uniform float isOrtho;
-uniform float orthoThickness;
-uniform float orthoScale;
-uniform int maxProject;
-uniform bool interpolationEnabled;
-uniform vec3 flipVolume;
-uniform vec3 volumeScale;
 
-// view space to axis-aligned volume box
-uniform mat4 inverseModelViewMatrix;
-uniform mat4 inverseProjMatrix;
+in vec3 pObj;
 
-varying vec3 pObj;
+out vec4 fragColor;
 
 float powf(float a, float b) {
   return pow(a, b);
@@ -99,13 +110,13 @@ vec4 sampleAtlasLinear(sampler2D tex, vec4 pos) {
   vec2 o0 = offsetFrontBack(z0) + loc0;
   vec2 o1 = offsetFrontBack(z1) + loc0;
 
-  vec4 slice0Color = texture2D(tex, o0);
-  vec4 slice1Color = texture2D(tex, o1);
+  vec4 slice0Color = texture(tex, o0);
+  vec4 slice1Color = texture(tex, o1);
   // NOTE we could premultiply the mask in the fuse function,
   // but that is slower to update the maskAlpha value than here in the shader.
   // it is a memory vs perf tradeoff.  Do users really need to update the maskAlpha at realtime speed?
-  float slice0Mask = texture2D(textureAtlasMask, o0).x;
-  float slice1Mask = texture2D(textureAtlasMask, o1).x;
+  float slice0Mask = texture(textureAtlasMask, o0).x;
+  float slice1Mask = texture(textureAtlasMask, o1).x;
   // or use max for conservative 0 or 1 masking?
   float maskVal = mix(slice0Mask, slice1Mask, t);
   // take mask from 0..1 to alpha..1
@@ -137,10 +148,10 @@ vec4 sampleAtlasNearest(sampler2D tex, vec4 pos) {
   }
 
   vec2 o = offsetFrontBack(z) + loc0;
-  vec4 voxelColor = texture2D(tex, o);
+  vec4 voxelColor = texture(tex, o);
 
   // Apply mask
-  float voxelMask = texture2D(textureAtlasMask, o).x;
+  float voxelMask = texture(textureAtlasMask, o).x;
   voxelMask = mix(voxelMask, 1.0, maskAlpha);
   voxelColor.rgb *= voxelMask;
 
@@ -200,8 +211,8 @@ vec4 integrateVolume(
   // estimate step length
   const int maxSteps = 512;
   // modify the 3 components of eye_d by volume scale
-  float scaledSteps = float(BREAK_STEPS) * length((eye_d.xyz / volumeScale));
-  float csteps = clamp(float(scaledSteps), 1.0, float(maxSteps));
+  float scaledSteps = BREAK_STEPS * length((eye_d.xyz / volumeScale));
+  float csteps = clamp(scaledSteps, 1.0, float(maxSteps));
   float invstep = (tfar - tnear) / csteps;
   // special-casing the single slice to remove the random ray dither.
   // this removes a Moire pattern visible in single slice images, which we want to view as 2D images as best we can.
@@ -226,9 +237,9 @@ vec4 integrateVolume(
     // AABB clip is independent of this and is only used to determine tnear and tfar.
     pos.xyz = (pos.xyz - (-0.5)) / ((0.5) - (-0.5)); //0.5 * (pos + 1.0); // map position from [boxMin, boxMax] to [0, 1] coordinates
 
-    vec4 col = interpolationEnabled ? sampleAtlasLinear(textureAtlas, pos) : sampleAtlasNearest(textureAtlas, pos);
+    vec4 col = (interpolationEnabled > 0.5) ? sampleAtlasLinear(textureAtlas, pos) : sampleAtlasNearest(textureAtlas, pos);
 
-    if (maxProject != 0) {
+    if (maxProject != 0.0) {
       col.xyz *= BRIGHTNESS;
       C = max(col, C);
     } else {
@@ -251,7 +262,7 @@ vec4 integrateVolume(
 }
 
 void main() {
-  gl_FragColor = vec4(0.0);
+  fragColor = vec4(0.0);
   vec2 vUv = gl_FragCoord.xy / iResolution.xy;
 
   vec3 eyeRay_o, eyeRay_d;
@@ -285,7 +296,7 @@ void main() {
   if (!hit) {
     // return background color if ray misses the cube
     // is this safe to do when there is other geometry / gObjects drawn?
-    gl_FragColor = vec4(0.0); //C1;//vec4(0.0);
+    fragColor = vec4(0.0); //C1;//vec4(0.0);
     return;
   }
 
@@ -295,13 +306,13 @@ void main() {
   // Sample the depth/position texture
   // If this is a depth texture, the r component is a depth value. If this is a position texture,
   // the xyz components are a view space position and w is 1.0 iff there's a mesh at this fragment.
-  vec4 meshPosSample = texture2D(textureDepth, vUv);
+  vec4 meshPosSample = texture(textureDepth, vUv);
   // Note: we make a different check for whether a mesh is present with depth vs. position textures.
   // Here's the check for depth textures:
-  bool hasDepthValue = usingPositionTexture == 0 && meshPosSample.r < 1.0;
+  bool hasDepthValue = usingPositionTexture < 0.5 && meshPosSample.r < 1.0;
 
   // If there's a depth-contributing mesh at this fragment, we may need to terminate the ray early
-  if (hasDepthValue || (usingPositionTexture == 1 && meshPosSample.a > 0.0)) {
+  if (hasDepthValue || (usingPositionTexture > 0.5 && meshPosSample.a > 0.0)) {
     if (hasDepthValue) {
       // We're working with a depth value, so we need to convert back to view space position
       // Get a projection space position from depth and uv, and unproject back to view space
@@ -325,6 +336,6 @@ void main() {
   vec4 C = integrateVolume(vec4(eyeRay_o, 1.0), vec4(eyeRay_d, 0.0), tnear, tfar, clipNear, clipFar, textureAtlas);
 
   C = clamp(C, 0.0, 1.0);
-  gl_FragColor = C;
+  fragColor = C;
   return;
 }

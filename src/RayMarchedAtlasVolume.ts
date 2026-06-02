@@ -7,6 +7,7 @@ import {
   Color,
   DataTexture,
   DepthTexture,
+  GLSL3,
   Group,
   LineBasicMaterial,
   LineSegments,
@@ -24,9 +25,13 @@ import {
 
 import FusedChannelData from "./FusedChannelData.js";
 import {
-  rayMarchingVertexShaderSrc,
+  createRayMarchShaderResources,
+  RayMarchSamplerName,
+  RayMarchShaderResources,
+  RayMarchUniformName,
+  RayMarchUniformValueMap,
   rayMarchingFragmentShaderSrc,
-  rayMarchingShaderUniforms,
+  rayMarchingVertexShaderSrc,
 } from "./constants/volumeRayMarchShader.js";
 import { Volume } from "./index.js";
 import Channel from "./Channel.js";
@@ -46,7 +51,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   private boxHelper: Box3Helper;
   private tickMarksMesh: LineSegments;
   private geometryTransformNode: Group;
-  private uniforms: ReturnType<typeof rayMarchingShaderUniforms>;
+  private shaderResources: RayMarchShaderResources;
   private channelData!: FusedChannelData;
   private emptyPositionTex: DataTexture;
 
@@ -59,8 +64,8 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   constructor(volume: Volume, settings: VolumeRenderSettings = new VolumeRenderSettings(volume)) {
     this.volume = volume;
 
-    this.uniforms = rayMarchingShaderUniforms();
-    [this.geometry, this.geometryMesh] = this.createGeometry(this.uniforms);
+    this.shaderResources = createRayMarchShaderResources();
+    [this.geometry, this.geometryMesh] = this.createGeometry(this.shaderResources);
 
     this.boxHelper = new Box3Helper(
       new Box3(new Vector3(-0.5, -0.5, -0.5), new Vector3(0.5, 0.5, 0.5)),
@@ -193,7 +198,7 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
     }
 
     if (dirtyFlags & SettingsFlags.SAMPLING) {
-      this.setUniform("interpolationEnabled", this.settings.useInterpolation);
+      this.setUniform("interpolationEnabled", this.settings.useInterpolation ? 1 : 0);
       this.setUniform("iResolution", this.settings.resolution);
     }
 
@@ -213,15 +218,15 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
    * @param uniforms object containing uniforms to pass to the shader material.
    * @returns the new geometry and geometry mesh.
    */
-  private createGeometry(
-    uniforms: ReturnType<typeof rayMarchingShaderUniforms>
-  ): [BoxGeometry, Mesh<BufferGeometry, Material>] {
+  private createGeometry(shaderResources: RayMarchShaderResources): [BoxGeometry, Mesh<BufferGeometry, Material>] {
     const geom = new BoxGeometry(1.0, 1.0, 1.0);
 
     // shader,vtx and frag.
 
     const threeMaterial = new ShaderMaterial({
-      uniforms: uniforms,
+      glslVersion: GLSL3,
+      uniforms: shaderResources.samplerUniforms,
+      uniformsGroups: [shaderResources.uniformsGroup],
       vertexShader: rayMarchingVertexShaderSrc,
       fragmentShader: rayMarchingFragmentShaderSrc,
       transparent: true,
@@ -345,14 +350,18 @@ export default class RayMarchedAtlasVolume implements VolumeRenderImpl {
   //////////////////////////////////////////
   //////////////////////////////////////////
 
-  private setUniform<U extends keyof ReturnType<typeof rayMarchingShaderUniforms>>(
+  private setUniform<U extends RayMarchUniformName | RayMarchSamplerName>(
     name: U,
-    value: ReturnType<typeof rayMarchingShaderUniforms>[U]["value"]
+    value: U extends RayMarchUniformName ? RayMarchUniformValueMap[U] | number : Texture
   ) {
-    if (!this.uniforms[name]) {
-      return;
+    if (name in this.shaderResources.samplerUniforms) {
+      this.shaderResources.setSamplerUniform(name as RayMarchSamplerName, value as Texture);
+    } else {
+      this.shaderResources.setBlockUniform(
+        name as RayMarchUniformName,
+        value as RayMarchUniformValueMap[RayMarchUniformName]
+      );
     }
-    this.uniforms[name].value = value;
   }
 
   // channelcolors is array of {rgbColor, lut} and channeldata is volume.channels
