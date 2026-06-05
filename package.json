@@ -29,7 +29,7 @@
     "typeCheck": "tsc -p tsconfig.json --noEmit"
   },
   "author": "Daniel Toloudis",
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "publishConfig": {
     "access": "public"
   },
