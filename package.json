@@ -9,8 +9,7 @@
   "files": [
     "es",
     "README.md",
-    "package.json",
-    "LICENSE.txt"
+    "package.json"
   ],
   "scripts": {
     "prepare": "npm run build",
