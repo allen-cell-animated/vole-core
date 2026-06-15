@@ -9,6 +9,7 @@ import {
   Color,
   Light as ThreeLight,
   Matrix4,
+  EventDispatcher,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -24,6 +25,7 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
+  RenderEvent,
 } from "./types.js";
 import { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { Axis } from "./VolumeRenderSettings.js";
@@ -49,7 +51,7 @@ const allGlobalLoadingOptions = {
 /**
  * @class
  */
-export class View3d {
+export class View3d extends EventDispatcher<{ render: RenderEvent }> {
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
@@ -76,6 +78,7 @@ export class View3d {
    *   The viewer will attempt to fill this element if provided.
    */
   constructor(options?: View3dOptions) {
+    super();
     const useWebGL2 = options?.useWebGL2 === undefined ? true : options.useWebGL2;
 
     this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
