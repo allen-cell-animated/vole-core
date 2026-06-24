@@ -69,6 +69,9 @@ export class View3d {
 
   private tweakpane: Pane | null;
 
+  // Triple slice state
+  private tripleSliceCallback?: (indices: { x: number; y: number; z: number }) => void;
+
   /**
    * @param {Object} options Optional options.
    * @param {boolean} options.useWebGL2 Default true
@@ -212,6 +215,13 @@ export class View3d {
     volume.addVolumeDataObserver(this);
     options = options || {};
     options.renderMode = this.volumeRenderMode;
+    if (this.canvas3d.getViewMode() === Axis.XYZ || this.canvas3d.getViewMode() === Axis.NONE) {
+      options.renderMode = this.volumeRenderMode;
+    } else if (this.canvas3d.getViewMode() === Axis.TRIPLE) {
+      options.renderMode = RenderMode.TRIPLE_SLICE;
+    } else {
+      options.renderMode = RenderMode.SLICE;
+    }
     this.setImage(new VolumeDrawable(volume, options));
   }
 
@@ -520,12 +530,57 @@ export class View3d {
   // TODO: Change mode to an enum
   /**
    * Change the camera projection to look along an axis, or to view in a 3d perspective camera.
-   * @param {string} mode Mode can be "3D", or "XY" or "Z", or "YZ" or "X", or "XZ" or "Y".  3D is a perspective view, and all the others are orthographic projections
+   * @param {string} mode Mode can be "3D", "XY" or "Z", "YZ" or "X", "XZ" or "Y", or "TRIPLE".
+   *   3D is a perspective view, all single-axis modes are orthographic projections,
+   *   and TRIPLE shows three linked orthographic slices (XY, YZ, XZ).
    */
   setCameraMode(mode: string): void {
-    this.canvas3d.switchViewMode(mode);
+    // setViewMode must be called before switchViewMode so that the TripleSliceVolume
+    // is created (by VolumeDrawable) before ThreeJsPanel needs the source reference.
     this.image?.setViewMode(mode, this.volumeRenderMode);
-    this.image?.setIsOrtho(mode !== "3D");
+    this.image?.setIsOrtho(mode.toUpperCase() !== "3D");
+
+    // we need to set up a coupling between the canvas3d and the volumedrawable
+    // for triple slice mode, so that the canvas3d can update the slice indices
+    // in the volumedrawable when the user drags the crosshairs.
+    if (mode.toUpperCase() === "TRIPLE" && this.image) {
+      const source = this.image.getTripleSliceSource();
+      this.canvas3d.setTripleSliceSource(source);
+      this.canvas3d.setTripleSliceChangeCallback((indices) => this.tripleSliceCallback?.(indices));
+    } else {
+      this.canvas3d.setTripleSliceSource(undefined);
+      this.canvas3d.setTripleSliceChangeCallback(undefined);
+    }
+
+    this.canvas3d.switchViewMode(mode);
+
+    this.canvas3d.redraw();
+  }
+
+  // --- Public triple-slice API ---
+
+  /**
+   * Set a callback that fires when triple-slice crosshair indices change.
+   */
+  setTripleSliceCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | null): void {
+    this.tripleSliceCallback = cb ?? undefined;
+  }
+
+  /**
+   * Get the current triple-slice indices.
+   */
+  getTripleSliceIndices(): { x: number; y: number; z: number } | undefined {
+    return this.image?.tripleSliceIndices;
+  }
+
+  /**
+   * Set a triple-slice index for a given axis.
+   */
+  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+    if (!this.image) {
+      return;
+    }
+    this.image.setTripleSliceIndex(axis, index);
     this.canvas3d.redraw();
   }
 
@@ -873,6 +928,8 @@ export class View3d {
 
   /**
    * Switch between single pass ray-marched volume rendering and progressive path traced rendering.
+   * This setting is relevant for 3d modes and in particular is used to distinguish path trace
+   * from any other rendering algorithm.
    * @param {RenderMode} mode RAYMARCH for single pass ray march, PATHTRACE for progressive path trace
    */
   setVolumeRenderMode(mode: RenderMode.PATHTRACE | RenderMode.RAYMARCH): void {
@@ -883,7 +940,7 @@ export class View3d {
     this.volumeRenderMode = mode;
     if (this.image) {
       const viewMode = this.image.getViewMode();
-      if (viewMode === Axis.Z) {
+      if (viewMode === Axis.Z || viewMode === Axis.TRIPLE) {
         // if the camera view is in single-slice view, then we don't want to change
         // anything but still remember the mode for when we switch back to a volumetric view
         return;
