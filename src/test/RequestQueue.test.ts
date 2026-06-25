@@ -6,6 +6,11 @@ import type { TypedArray } from "zarrita";
 import RequestQueue, { type Request } from "../utils/RequestQueue.js";
 import { LoadSpec, loadSpecToString } from "../loaders/IVolumeLoader.js";
 
+// Fixes a type error where process is undefined
+declare const process: {
+  on(event: "unhandledRejection", listener: () => void): void;
+};
+
 /**
  * Returns a promise that resolves once the timeout (give in ms) is completed.
  */
