@@ -8,7 +8,7 @@ import { LoadSpec, loadSpecToString } from "../loaders/IVolumeLoader.js";
 
 // Fixes a type error where process is undefined
 declare const process: {
-  on(event: "unhandledRejection", listener: (reason: any, promise: Promise<any>) => void): void;
+  on(event: "unhandledRejection", listener: () => void): void;
 };
 
 /**
