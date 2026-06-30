@@ -4,8 +4,9 @@ import Channel from "./Channel.js";
 import Histogram from "./Histogram.js";
 import { Lut } from "./Lut.js";
 import { getColorByChannelIndex } from "./constants/colors.js";
-import { type IVolumeLoader, LoadSpec, type PerChannelCallback } from "./loaders/IVolumeLoader.js";
-import { MAX_ATLAS_EDGE, pickLevelToLoadUnscaled } from "./loaders/VolumeLoaderUtils.js";
+import type { IVolumeLoader, PerChannelCallback } from "./loaders/IVolumeLoader.js";
+import { cloneLoadSpec, defaultLoadSpec, LoadSpec, regionToBox3 } from "./loaders/IVolumeLoader.js";
+import { pickLevelToLoadUnscaled } from "./loaders/VolumeLoaderUtils.js";
 import type { NumberType, TypedArray } from "./types.js";
 import { type ImageInfo, CImageInfo, defaultImageInfo } from "./ImageInfo.js";
 import type { VolumeDims } from "./VolumeDims.js";
@@ -78,18 +79,11 @@ export default class Volume {
     // TODO: use getter?
     this.name = imageInfo.name;
     this.loadSpec = {
-      // Fill in defaults for optional properties
-      multiscaleLevel: 0,
-      scaleLevelBias: 0,
-      maxAtlasEdge: MAX_ATLAS_EDGE,
+      ...defaultLoadSpec(),
       channels: Array.from({ length: this.imageInfo.numChannels }, (_val, idx) => idx),
-      ...loadSpec,
+      ...cloneLoadSpec(loadSpec),
     };
-    this.loadSpecRequired = {
-      ...this.loadSpec,
-      channels: this.loadSpec.channels.slice(),
-      subregion: this.loadSpec.subregion.clone(),
-    };
+    this.loadSpecRequired = cloneLoadSpec(this.loadSpec);
     this.loader = loader;
     // imageMetadata to be filled in by Volume Loaders
     this.imageMetadata = {};
@@ -166,11 +160,14 @@ export default class Volume {
 
   /** Returns `true` iff differences between `loadSpec` and `loadSpecRequired` indicate new data *must* be loaded. */
   private mustLoadNewData(): boolean {
+    const { loadSpec, loadSpecRequired } = this;
+    const currentRegion = regionToBox3(loadSpec.subregion);
+    const requiredRegion = regionToBox3(loadSpecRequired.subregion);
     return (
-      this.loadSpec.useExplicitLevel !== this.loadSpecRequired.useExplicitLevel || // explicit vs automatic level changed
-      this.loadSpec.time !== this.loadSpecRequired.time || // time point changed
-      !this.loadSpec.subregion.containsBox(this.loadSpecRequired.subregion) || // new subregion not contained in old
-      this.loadSpecRequired.channels.some((channel) => !this.loadSpec.channels.includes(channel)) // new channel(s)
+      loadSpec.useExplicitLevel !== loadSpecRequired.useExplicitLevel || // explicit vs automatic level changed
+      loadSpec.time !== loadSpecRequired.time || // time point changed
+      !currentRegion.containsBox(requiredRegion) || // new subregion not contained in old
+      (loadSpecRequired.channels ?? []).some((channel) => !(loadSpec.channels ?? []).includes(channel)) // new channel(s)
     );
   }
 
@@ -184,11 +181,14 @@ export default class Volume {
    * imposed by `multiscaleLevel`.
    */
   private mayLoadNewScaleLevel(): boolean {
+    const { loadSpec, loadSpecRequired } = this;
+    const currentRegion = regionToBox3(loadSpec.subregion);
+    const requiredRegion = regionToBox3(loadSpecRequired.subregion);
     return (
-      !this.loadSpec.subregion.equals(this.loadSpecRequired.subregion) ||
-      this.loadSpecRequired.maxAtlasEdge !== this.loadSpec.maxAtlasEdge ||
-      this.loadSpecRequired.multiscaleLevel !== this.loadSpec.multiscaleLevel ||
-      this.loadSpecRequired.scaleLevelBias !== this.loadSpec.scaleLevelBias
+      !currentRegion.equals(requiredRegion) ||
+      loadSpecRequired.maxAtlasEdge !== loadSpec.maxAtlasEdge ||
+      loadSpecRequired.multiscaleLevel !== loadSpec.multiscaleLevel ||
+      loadSpecRequired.scaleLevelBias !== loadSpec.scaleLevelBias
     );
   }
 
@@ -229,10 +229,7 @@ export default class Volume {
    */
   private async loadNewData(onChannelLoaded?: PerChannelCallback): Promise<void> {
     this.setUnloaded();
-    this.loadSpec = {
-      ...this.loadSpecRequired,
-      subregion: this.loadSpecRequired.subregion.clone(),
-    };
+    this.loadSpec = cloneLoadSpec(this.loadSpecRequired);
 
     try {
       await this.loader?.loadVolumeData(this, undefined, onChannelLoaded);
