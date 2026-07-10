@@ -1,83 +1,71 @@
-import type { AbsolutePath, Array as ZarrArray, AsyncReadable, Chunk, DataType } from "zarrita";
-import { FetchStore } from "zarrita";
+import { defineArrayExtension } from "zarrita";
 
 import VolumeCache, { isChunk } from "../../VolumeCache.js";
-import type { WrappedArrayOpts } from "./types.js";
 import SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
+import type { SubscriberId } from "./types.js";
 
-type AsyncReadableExt<Opts> = AsyncReadable<Opts & WrappedArrayOpts>;
+export type VoleInstrumentationOpts = {
+  baseUrl: string;
+  cache?: VolumeCache;
+  queue?: SubscribableRequestQueue;
+  subscriber?: SubscriberId;
+  reportChunk?: (coords: number[], subscriber: SubscriberId) => void;
+  isPrefetch?: boolean;
+};
 
-export default function wrapArray<
-  T extends DataType,
-  Opts = unknown,
-  Store extends AsyncReadable<Opts> = AsyncReadable<Opts>,
->(
-  array: ZarrArray<T, Store>,
-  basePath: string,
-  cache?: VolumeCache,
-  queue?: SubscribableRequestQueue
-): ZarrArray<T, AsyncReadableExt<Opts>> {
-  const path = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
-  const keyBase = path + array.path + (array.path.endsWith("/") ? "" : "/");
+/**
+ * Per-request array extension. Intercepts `getChunk` to:
+ *   - fire `reportChunk(coords, subscriber)` (best-effort instrumentation hook),
+ *   - short-circuit to `VolumeCache` on hit,
+ *   - otherwise dedup the underlying fetch through `SubscribableRequestQueue`
+ *     when a subscriber is supplied, and insert the decoded chunk into cache.
+ *
+ * Wrap a fresh instance around a base array per `zarr.get` / `getChunk` call so
+ * the closure captures the caller's `subscriber` and `reportChunk`. In zarrita
+ * 0.7 there's no mechanism to thread store-specific options through `zarr.get`
+ * any more; carrying the context on the extension itself replaces the old
+ * `{ opts: { subscriber, reportChunk } }` pass-through.
+ */
+export const withVoleInstrumentation = defineArrayExtension((array, opts: VoleInstrumentationOpts) => {
+  const baseUrl = opts.baseUrl.endsWith("/") ? opts.baseUrl.slice(0, -1) : opts.baseUrl;
+  const keyBase = baseUrl + array.path + (array.path.endsWith("/") ? "" : "/");
 
-  const getChunk = async (coords: number[], opts?: Parameters<AsyncReadableExt<Opts>["get"]>[1]): Promise<Chunk<T>> => {
-    if (opts?.subscriber && opts.reportChunk) {
-      opts.reportChunk(coords, opts.subscriber);
-    }
-
-    const fullKey = keyBase + coords.join(",");
-    const cacheResult = cache?.get(fullKey);
-    if (cacheResult && isChunk(cacheResult)) {
-      return cacheResult;
-    }
-
-    let result: Chunk<T>;
-    if (queue && opts?.subscriber) {
-      result = await queue.addRequest(fullKey, opts?.subscriber, () => array.getChunk(coords, opts), opts.isPrefetch);
-    } else {
-      result = await array.getChunk(coords, opts);
-    }
-
-    cache?.insert(fullKey, result);
-    return result;
-  };
-
-  return new Proxy(array, {
-    get: (target, prop) => {
-      if (prop === "getChunk") {
-        return getChunk;
+  return {
+    async getChunk(coords, options, inner) {
+      if (opts.subscriber !== undefined && opts.reportChunk) {
+        opts.reportChunk(coords, opts.subscriber);
       }
 
-      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#no_private_property_forwarding
-      const value = target[prop];
-      if (value instanceof Function) {
-        return function (...args: unknown[]) {
-          return value.apply(target, args);
-        };
+      const fullKey = keyBase + coords.join(",");
+      const cached = opts.cache?.get(fullKey);
+      if (cached && isChunk(cached)) {
+        return cached;
       }
-      return value;
+
+      const fetchChunk = () => array.getChunk(coords, options, inner);
+      const result =
+        opts.queue && opts.subscriber !== undefined
+          ? await opts.queue.addRequest(fullKey, opts.subscriber, fetchChunk, opts.isPrefetch)
+          : await fetchChunk();
+
+      opts.cache?.insert(fullKey, result);
+      return result;
     },
-  });
-}
+  };
+});
 
-type NewFetchStoreOptions = ConstructorParameters<typeof FetchStore>[1];
-
-export class RelaxedFetchStore extends FetchStore {
-  constructor(baseUrl: string, options?: NewFetchStoreOptions) {
-    super(baseUrl, options);
+/**
+ * `fetch` handler for `FetchStore` that remaps 403 responses to 404, so they're
+ * surfaced as "missing key" instead of throwing. S3 and other backends return
+ * 403 (not 404) for missing keys on private buckets.
+ *
+ * Based on the "Handle S3 403 as missing key" example in zarrita's
+ * `FetchStore` docs.
+ */
+export async function relaxedFetch(request: Request): Promise<Response> {
+  const response = await fetch(request);
+  if (response.status === 403) {
+    return new Response(null, { status: 404 });
   }
-
-  // Solution for https://github.com/manzt/zarrita.js/pull/212
-  // taken from https://github.com/vitessce/vitessce/pull/2069
-  async get(key: AbsolutePath, options: RequestInit = {}): Promise<Uint8Array | undefined> {
-    try {
-      return await super.get(key, options);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (e: any) {
-      if (e?.message?.startsWith("Unexpected response status 403")) {
-        return undefined;
-      }
-      throw e;
-    }
-  }
+  return response;
 }
