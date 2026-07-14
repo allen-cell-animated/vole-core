@@ -1,7 +1,7 @@
 import { Box3, Vector3 } from "three";
 
 import Volume from "../Volume.js";
-import type { VolumeDims } from "../VolumeDims.js";
+import type { NewVolumeDims } from "../VolumeDims.js";
 import { CImageInfo, type ImageInfo } from "../ImageInfo.js";
 import type { TypedArray, NumberType } from "../types.js";
 import { createDefaultMetadata, MAX_ATLAS_EDGE } from "./VolumeLoaderUtils.js";
@@ -110,7 +110,7 @@ export type RawChannelDataCallback = (
  */
 export interface IVolumeLoader {
   /** Use VolumeDims to further refine a `LoadSpec` for use in `createVolume` */
-  loadDims(loadSpec: LoadSpec): Promise<VolumeDims[]>;
+  loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims>;
 
   /**
    * Create an empty `Volume` from a `LoadSpec`, which must be passed to `loadVolumeData` to begin loading.
@@ -148,7 +148,7 @@ export interface IVolumeLoader {
 /** Abstract class which allows loaders to accept and return types that are easier to transfer to/from a worker. */
 export abstract class ThreadableVolumeLoader implements IVolumeLoader {
   /** Unchanged from `IVolumeLoader`. See that interface for details. */
-  abstract loadDims(loadSpec: LoadSpec): Promise<VolumeDims[]>;
+  abstract loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims>;
 
   /**
    * Creates an `ImageInfo` object from a `LoadSpec`, which may be passed to the `Volume` constructor to create an

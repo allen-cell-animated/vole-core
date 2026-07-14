@@ -10,7 +10,7 @@ import {
 import { computePackedAtlasDims, MAX_ATLAS_EDGE } from "./VolumeLoaderUtils.js";
 import { VolumeLoadError, VolumeLoadErrorType, wrapVolumeLoadError } from "./VolumeLoadError.js";
 import { type ImageInfo, CImageInfo } from "../ImageInfo.js";
-import type { VolumeDims } from "../VolumeDims.js";
+import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
 import { TypedArray, NumberType } from "../types.js";
 import { remapUri } from "../utils/url_utils.js";
 
@@ -194,7 +194,7 @@ class TiffLoader extends ThreadableVolumeLoader {
     return this.dims;
   }
 
-  async loadDims(_loadSpec: LoadSpec): Promise<VolumeDims[]> {
+  async loadDims(_loadSpec: LoadSpec): Promise<NewVolumeDims> {
     const dims = await this.loadOmeDims();
 
     const atlasDims = computePackedAtlasDims(dims.sizez, dims.sizex, dims.sizey);
@@ -216,7 +216,7 @@ class TiffLoader extends ThreadableVolumeLoader {
       dataType: getDtype(dims.pixeltype),
       timeUnit: "s",
     };
-    return [d];
+    return { levels: [d], levelToLoad: 0 };
   }
 
   async createImageInfo(_loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {

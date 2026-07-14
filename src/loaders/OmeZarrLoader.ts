@@ -4,7 +4,7 @@ import * as zarr from "zarrita";
 const { slice } = zarr;
 
 import type { ImageInfo } from "../ImageInfo.js";
-import type { VolumeDims } from "../VolumeDims.js";
+import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
 import VolumeCache from "../VolumeCache.js";
 import { getDataRange } from "../utils/num_utils.js";
 import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
@@ -15,6 +15,7 @@ import {
   computePackedAtlasDims,
   convertSubregionToPixels,
   pickLevelToLoad,
+  pickLevelToLoadUnscaled,
   unitNameToSymbol,
 } from "./VolumeLoaderUtils.js";
 import ChunkPrefetchIterator from "./zarr_utils/ChunkPrefetchIterator.js";
@@ -288,7 +289,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     this.fetchOptions = { ...this.fetchOptions, ...options };
   }
 
-  loadDims(loadSpec: LoadSpec): Promise<VolumeDims[]> {
+  loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims> {
     const [spaceUnit, timeUnit] = this.getUnitSymbols();
     // Compute subregion size so we can factor that in
     const maxExtent = this.maxExtent ?? { min: [0, 0, 0], max: [1, 1, 1] };
@@ -296,21 +297,25 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     const regionSize = subregion.getSize(new Vector3());
     const regionArr = [1, 1, regionSize.z, regionSize.y, regionSize.x];
 
-    const result = this.sources[0].scaleLevels.map((level, i) => {
+    const levels = this.sources[0].scaleLevels.map((level, i) => {
       const scale = this.getScale(i);
+      const shapeTCZYX = this.orderByTCZYX(level.shape, 1);
       const dims: VolumeDims = {
         spaceUnit: spaceUnit,
         timeUnit: timeUnit,
-        shape: this.orderByTCZYX(level.shape, 1).map((val, idx) =>
-          Math.max(Math.ceil(val * regionArr[idx]), 1)
-        ) as TCZYX<number>,
+        shape: shapeTCZYX.map((val, idx) => Math.max(Math.ceil(val * regionArr[idx]), 1)) as TCZYX<number>,
         spacing: this.orderByTCZYX(scale, 1),
         dataType: level.dtype,
       };
       return dims;
     });
 
-    return Promise.resolve(result);
+    const levelToLoad = pickLevelToLoadUnscaled(
+      loadSpec,
+      levels.map(({ shape: [_t, _c, z, y, x] }) => [z, y, x])
+    );
+
+    return Promise.resolve({ levels, levelToLoad });
   }
 
   createImageInfo(loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {

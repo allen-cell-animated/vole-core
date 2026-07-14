@@ -1,11 +1,11 @@
 import { ThreadableVolumeLoader, LoadSpec, RawChannelDataCallback, LoadedVolumeInfo } from "./IVolumeLoader.js";
 import { computeAtlasSize, type ImageInfo } from "../ImageInfo.js";
-import type { VolumeDims } from "../VolumeDims.js";
+import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
 import { JsonImageInfoLoader } from "./JsonImageInfoLoader.js";
 import { getDataRange } from "../utils/num_utils.js";
 
 class OpenCellLoader extends ThreadableVolumeLoader {
-  async loadDims(_: LoadSpec): Promise<VolumeDims[]> {
+  async loadDims(_: LoadSpec): Promise<NewVolumeDims> {
     const d: VolumeDims = {
       shape: [1, 2, 27, 600, 600],
       spacing: [1, 1, 2, 1, 1],
@@ -13,7 +13,7 @@ class OpenCellLoader extends ThreadableVolumeLoader {
       dataType: "uint8",
       timeUnit: "",
     };
-    return [d];
+    return { levels: [d], levelToLoad: 0 };
   }
 
   async createImageInfo(_loadSpec: LoadSpec): Promise<LoadedVolumeInfo> {

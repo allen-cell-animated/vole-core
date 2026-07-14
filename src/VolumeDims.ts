@@ -27,6 +27,11 @@ export type VolumeDims = {
   dataType: NumberType;
 };
 
+export type NewVolumeDims = {
+  levels: VolumeDims[];
+  levelToLoad: number;
+};
+
 export function defaultVolumeDims(): VolumeDims {
   return {
     shape: [0, 0, 0, 0, 0],
