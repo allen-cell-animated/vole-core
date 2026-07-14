@@ -3,7 +3,6 @@ import {
   Object3D,
   Euler,
   Vector2,
-  Box3,
   DepthTexture,
   OrthographicCamera,
   PerspectiveCamera,
@@ -842,7 +841,7 @@ export default class VolumeDrawable {
     switch (newRenderMode) {
       case RenderMode.PATHTRACE:
         this.volumeRendering = new PathTracedVolume(this.volume, this.settings);
-        this.volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
+        this.volume.updateRequiredData({ subregion: { min: [0, 0, 0], max: [1, 1, 1] } });
         this.volumeRendering.setRenderUpdateListener(this.renderUpdateListener);
         break;
       case RenderMode.SLICE:
@@ -852,7 +851,7 @@ export default class VolumeDrawable {
       case RenderMode.RAYMARCH:
       default:
         this.volumeRendering = new RayMarchedAtlasVolume(this.volume, this.settings);
-        this.volume.updateRequiredData({ subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)) });
+        this.volume.updateRequiredData({ subregion: { min: [0, 0, 0], max: [1, 1, 1] } });
         break;
     }
     if (this.pickRendering) {
