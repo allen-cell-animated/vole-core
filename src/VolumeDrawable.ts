@@ -933,10 +933,6 @@ export default class VolumeDrawable {
     scaleFolder
       .addInput(this.volume.loadSpecRequired, "useExplicitLevel")
       .on("change", ({ value }) => this.volume.updateRequiredData({ useExplicitLevel: value }));
-    // only relevant when not using explicit level
-    scaleFolder
-      .addInput(this.volume.loadSpecRequired, "scaleLevelBias")
-      .on("change", ({ value }) => this.volume.updateRequiredData({ scaleLevelBias: value }));
     // which level to load
     scaleFolder
       .addInput(this.volume.loadSpecRequired, "multiscaleLevel")

@@ -26,19 +26,25 @@ export class LoadSpec {
   time = 0;
   /** The max size of a volume atlas that may be produced by a load. Used to pick the appropriate multiscale level. */
   maxAtlasEdge?: number;
-  /** An optional bias added to the scale level index after the optimal level is picked based on `maxAtlasEdge`. */
-  scaleLevelBias?: number;
   /**
-   * The max scale level to load. Even when this is specified, the loader may pick a *lower* scale level based on
-   * limits imposed by `scaleLevelBias` and `maxAtlasEdge` (or their defaults if unspecified).
+   * The target scale level to load.
+   *
+   * When `useExplicitLevel` is `true`, this `LoadSpec` requires the loader to load *exactly* this scale level.
+   *
+   * When `useExplicitLevel` is `false`, this property is the "minimum" scale level: if the automatically selected
+   * scale level based on the value of `maxAtlasEdge` (or the default max atlas edge if `undefined`) has a higher index
+   * (i.e. is smaller), the loader loads that scale level instead.
    */
   multiscaleLevel?: number;
   /** Subregion of volume to load. If not specified, the entire volume is loaded. Specify as floats between 0-1. */
   subregion: Region = { min: [0, 0, 0], max: [1, 1, 1] };
+  /** The set of channels to load. */
   channels?: number[];
-  /** Treat multiscaleLevel literally and don't use other constraints to change it.
-   * By default we will try to load the best level based on the maxAtlasEdge and scaleLevelBias,
-   * so this is false.
+  /**
+   * Override `maxAtlasEdge` and load *exactly* the scale level specified by `multiscaleLevel`.
+   *
+   * In other words, if the scale level that would be automatically selected to fit within `maxAtlasEdge` is smaller
+   * (has a higher index) than `multiscaleLevel`, ignore it and load `multiscaleLevel` anyways.
    */
   useExplicitLevel = false;
 }
@@ -54,7 +60,6 @@ export function defaultLoadSpec(): Required<LoadSpec> {
   return {
     ...new LoadSpec(),
     maxAtlasEdge: MAX_ATLAS_EDGE,
-    scaleLevelBias: 0,
     multiscaleLevel: 0,
     channels: [0],
   };

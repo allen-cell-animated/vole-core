@@ -187,8 +187,7 @@ export default class Volume {
     return (
       !currentRegion.equals(requiredRegion) ||
       loadSpecRequired.maxAtlasEdge !== loadSpec.maxAtlasEdge ||
-      loadSpecRequired.multiscaleLevel !== loadSpec.multiscaleLevel ||
-      loadSpecRequired.scaleLevelBias !== loadSpec.scaleLevelBias
+      loadSpecRequired.multiscaleLevel !== loadSpec.multiscaleLevel
     );
   }
 

@@ -129,9 +129,8 @@ export function scaleMultipleDimsToSubregion(subregion: Box3, dims: ZYX[]): ZYX[
 /**
  * Picks the best scale level to load based on scale level dimensions and a `LoadSpec`. This calls
  * `estimateLevelForAtlas`, then accounts for `LoadSpec`'s scale level picking properties:
- * - `multiscaleLevel` imposes a minimum scale level (or *maximum* resolution level) to load
  * - `maxAtlasEdge` sets the maximum size of the texture atlas that may be produced by a load
- * - `scaleLevelBias` offsets the scale level index after the optimal level is picked based on `maxAtlasEdge`
+ * - `multiscaleLevel` imposes a minimum scale level (or *maximum* resolution level) to load
  *
  *  This function assumes that `spatialDimsZYX` has already been appropriately scaled to match `loadSpec`'s `subregion`.
  */
@@ -144,7 +143,7 @@ export function pickLevelToLoadUnscaled(loadSpec: LoadSpec, spatialDimsZYX: ZYX[
   let levelToLoad = estimateLevelForAtlas(spatialDimsZYX, loadSpec.maxAtlasEdge);
   // Check here for whether levelToLoad is within max atlas size?
   if (levelToLoad !== undefined) {
-    levelToLoad = Math.max(levelToLoad + (loadSpec.scaleLevelBias ?? 0), loadSpec.multiscaleLevel ?? 0);
+    levelToLoad = Math.max(levelToLoad, loadSpec.multiscaleLevel ?? 0);
     levelToLoad = Math.max(0, Math.min(spatialDimsZYX.length - 1, levelToLoad));
 
     if (doesSpatialDimensionFitInAtlas(spatialDimsZYX[levelToLoad], loadSpec.maxAtlasEdge)) {
