@@ -6,10 +6,9 @@ import { Lut } from "./Lut.js";
 import { getColorByChannelIndex } from "./constants/colors.js";
 import type { IVolumeLoader, PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { cloneLoadSpec, defaultLoadSpec, LoadSpec, regionToBox3 } from "./loaders/IVolumeLoader.js";
-import { pickLevelToLoadUnscaled } from "./loaders/VolumeLoaderUtils.js";
 import type { NumberType, TypedArray } from "./types.js";
 import { type ImageInfo, CImageInfo, defaultImageInfo } from "./ImageInfo.js";
-import type { VolumeDims } from "./VolumeDims.js";
+import type { NewVolumeDims } from "./VolumeDims.js";
 
 interface VolumeDataObserver {
   onVolumeData: (vol: Volume, batch: number[]) => void;
@@ -201,10 +200,7 @@ export default class Volume {
       // Loaders should cache loaded dimensions so that this call blocks no more than once per valid `LoadSpec`.
       const dims = await this.loadScaleLevelDims();
       if (dims) {
-        const dimsZYX = dims.map(({ shape }): [number, number, number] => [shape[2], shape[3], shape[4]]);
-        // Determine which scale level *would* be loaded, and see if it's different than what we have
-        const levelToLoad = pickLevelToLoadUnscaled(this.loadSpecRequired, dimsZYX);
-        shouldReload = this.imageInfo.multiscaleLevel !== levelToLoad;
+        shouldReload = this.imageInfo.multiscaleLevel !== dims.levelToLoad;
       }
     }
 
@@ -213,7 +209,7 @@ export default class Volume {
     }
   }
 
-  private async loadScaleLevelDims(): Promise<VolumeDims[] | undefined> {
+  private async loadScaleLevelDims(): Promise<NewVolumeDims | undefined> {
     try {
       return await this.loader?.loadDims(this.loadSpecRequired);
     } catch (e) {

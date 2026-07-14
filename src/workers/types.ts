@@ -1,7 +1,7 @@
 import type { ErrorObject } from "serialize-error";
 
 import type { ImageInfo } from "../ImageInfo.js";
-import type { VolumeDims } from "../VolumeDims.js";
+import type { NewVolumeDims } from "../VolumeDims.js";
 import type { CreateLoaderOptions, PrefetchDirection } from "../loaders/index.js";
 import type { LoadSpec, LoadedVolumeInfo } from "../loaders/IVolumeLoader.js";
 import type { TypedArray, NumberType } from "../types.js";
@@ -81,7 +81,7 @@ export type WorkerResponsePayload<T extends WorkerMsgType> = {
   [WorkerMsgType.CREATE_LOADER]: number | undefined;
   [WorkerMsgType.CLOSE_LOADER]: void;
   [WorkerMsgType.CREATE_VOLUME]: LoadedVolumeInfo;
-  [WorkerMsgType.LOAD_DIMS]: VolumeDims[];
+  [WorkerMsgType.LOAD_DIMS]: NewVolumeDims;
   [WorkerMsgType.LOAD_VOLUME_DATA]: void;
   [WorkerMsgType.SET_PREFETCH_PRIORITY_DIRECTIONS]: void;
   [WorkerMsgType.SYNCHRONIZE_MULTICHANNEL_LOADING]: void;
