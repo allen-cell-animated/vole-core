@@ -28,7 +28,7 @@ import Line3d from "./drawables/lines/Line3d.js";
 import VectorArrows3d from "./drawables/VectorArrows3d.js";
 import Spheres3d from "./drawables/spheres/Spheres3d.js";
 import { createDefaultMetadata } from "./loaders/VolumeLoaderUtils.js";
-import type { ScaleLevelDims } from "./VolumeDims.js";
+import type { ScaleLevelDims, VolumeDims } from "./VolumeDims.js";
 
 export type { ImageInfo } from "./ImageInfo.js";
 export type { ControlPoint } from "./Lut.js";
@@ -58,7 +58,8 @@ export {
   type RawArrayData,
   type RawArrayInfo,
   type RawArrayLoaderOptions,
-  type ScaleLevelDims as VolumeDims,
+  type ScaleLevelDims,
+  type VolumeDims,
   TiffLoader,
   VolumeLoaderContext,
   VolumeLoadError,
