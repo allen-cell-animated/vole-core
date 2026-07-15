@@ -1,4 +1,4 @@
-import { type VolumeDims, volumeSize, physicalPixelSize } from "./VolumeDims.js";
+import { type ScaleLevelDims, volumeSize, physicalPixelSize } from "./VolumeDims.js";
 import { Vector3, Vector2 } from "three";
 
 export type ImageInfo = Readonly<{
@@ -23,7 +23,7 @@ export type ImageInfo = Readonly<{
   channelColors?: ([number, number, number] | undefined)[];
 
   /** Dimensions of each scale level, at original size, from the first data source */
-  multiscaleLevelDims: VolumeDims[];
+  multiscaleLevelDims: ScaleLevelDims[];
 
   /** The scale level from which this image was loaded, between `0` and `numMultiscaleLevels-1` */
   multiscaleLevel: number;
@@ -80,7 +80,7 @@ export class CImageInfo {
     this.imageInfo = imageInfo || defaultImageInfo();
   }
 
-  get currentLevelDims(): VolumeDims {
+  get currentLevelDims(): ScaleLevelDims {
     return this.imageInfo.multiscaleLevelDims[this.imageInfo.multiscaleLevel];
   }
 

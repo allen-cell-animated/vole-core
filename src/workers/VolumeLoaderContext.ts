@@ -2,7 +2,7 @@ import { deserializeError } from "serialize-error";
 import { throttledQueue } from "throttled-queue";
 
 import { ImageInfo } from "../ImageInfo.js";
-import { NewVolumeDims } from "../VolumeDims.js";
+import { VolumeDims } from "../VolumeDims.js";
 import { CreateLoaderOptions, PrefetchDirection, VolumeFileFormat, pathToFileType } from "../loaders/index.js";
 import {
   ThreadableVolumeLoader,
@@ -288,7 +288,7 @@ class WorkerLoader extends ThreadableVolumeLoader {
     return this.workerHandle.sendMessage(WorkerMsgType.SYNCHRONIZE_MULTICHANNEL_LOADING, sync, this.getLoaderId());
   }
 
-  loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims> {
+  loadDims(loadSpec: LoadSpec): Promise<VolumeDims> {
     return this.workerHandle.sendMessage(WorkerMsgType.LOAD_DIMS, loadSpec, this.getLoaderId());
   }
 

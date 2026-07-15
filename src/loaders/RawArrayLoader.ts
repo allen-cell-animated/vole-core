@@ -6,7 +6,7 @@ import {
 } from "./IVolumeLoader.js";
 import { computePackedAtlasDims } from "./VolumeLoaderUtils.js";
 import type { ImageInfo } from "../ImageInfo.js";
-import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
+import type { VolumeDims, ScaleLevelDims } from "../VolumeDims.js";
 import { ARRAY_CONSTRUCTORS, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
 
@@ -113,10 +113,10 @@ class RawArrayLoader extends ThreadableVolumeLoader {
     }
   }
 
-  async loadDims(_loadSpec: LoadSpec): Promise<NewVolumeDims> {
+  async loadDims(_loadSpec: LoadSpec): Promise<VolumeDims> {
     const jsonInfo = this.jsonInfo;
 
-    const d: VolumeDims = {
+    const d: ScaleLevelDims = {
       shape: [1, jsonInfo.sizeC, jsonInfo.sizeZ, jsonInfo.sizeY, jsonInfo.sizeX],
       spacing: [1, 1, jsonInfo.physicalPixelSize[2], jsonInfo.physicalPixelSize[1], jsonInfo.physicalPixelSize[0]],
       spaceUnit: jsonInfo.spatialUnit || "μm",

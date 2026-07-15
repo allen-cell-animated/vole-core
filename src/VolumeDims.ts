@@ -1,7 +1,7 @@
 import { type NumberType } from "./types.js";
 import { Vector3 } from "three";
 
-export type VolumeDims = {
+export type ScaleLevelDims = {
   // shape: [t, c, z, y, x]
   shape: [number, number, number, number, number];
   // spacing: [t, c, z, y, x]; generally expect 1 for non-spatial dimensions
@@ -27,12 +27,12 @@ export type VolumeDims = {
   dataType: NumberType;
 };
 
-export type NewVolumeDims = {
-  levels: VolumeDims[];
+export type VolumeDims = {
+  levels: ScaleLevelDims[];
   levelToLoad: number;
 };
 
-export function defaultVolumeDims(): VolumeDims {
+export function defaultVolumeDims(): ScaleLevelDims {
   return {
     shape: [0, 0, 0, 0, 0],
     spacing: [1, 1, 1, 1, 1],
@@ -42,10 +42,10 @@ export function defaultVolumeDims(): VolumeDims {
   };
 }
 
-export function volumeSize(volumeDims: VolumeDims): Vector3 {
+export function volumeSize(volumeDims: ScaleLevelDims): Vector3 {
   return new Vector3(volumeDims.shape[4], volumeDims.shape[3], volumeDims.shape[2]);
 }
 
-export function physicalPixelSize(volumeDims: VolumeDims): Vector3 {
+export function physicalPixelSize(volumeDims: ScaleLevelDims): Vector3 {
   return new Vector3(volumeDims.spacing[4], volumeDims.spacing[3], volumeDims.spacing[2]);
 }

@@ -5,7 +5,7 @@ import {
   type LoadedVolumeInfo,
 } from "./IVolumeLoader.js";
 import { computeAtlasSize, type ImageInfo } from "../ImageInfo.js";
-import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
+import type { VolumeDims, ScaleLevelDims } from "../VolumeDims.js";
 import VolumeCache, { isChunk } from "../VolumeCache.js";
 import type { TypedArray, NumberType } from "../types.js";
 import { getDataRange } from "../utils/num_utils.js";
@@ -156,12 +156,12 @@ class JsonImageInfoLoader extends ThreadableVolumeLoader {
     this.syncChannels = sync;
   }
 
-  async loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims> {
+  async loadDims(loadSpec: LoadSpec): Promise<VolumeDims> {
     const jsonInfo = await this.getJsonImageInfo(loadSpec.time);
 
     const [px, py, pz] = rescalePixelSize(jsonInfo);
 
-    const d: VolumeDims = {
+    const d: ScaleLevelDims = {
       shape: [jsonInfo.times || 1, jsonInfo.channels, jsonInfo.tiles, jsonInfo.tile_height, jsonInfo.tile_width],
       spacing: [1, 1, pz, py, px],
       spaceUnit: jsonInfo.pixel_size_unit ?? "μm",

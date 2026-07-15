@@ -8,7 +8,7 @@ import type { IVolumeLoader, PerChannelCallback } from "./loaders/IVolumeLoader.
 import { cloneLoadSpec, defaultLoadSpec, LoadSpec, regionToBox3 } from "./loaders/IVolumeLoader.js";
 import type { NumberType, TypedArray } from "./types.js";
 import { type ImageInfo, CImageInfo, defaultImageInfo } from "./ImageInfo.js";
-import type { NewVolumeDims } from "./VolumeDims.js";
+import type { VolumeDims } from "./VolumeDims.js";
 
 interface VolumeDataObserver {
   onVolumeData: (vol: Volume, batch: number[]) => void;
@@ -209,7 +209,7 @@ export default class Volume {
     }
   }
 
-  private async loadScaleLevelDims(): Promise<NewVolumeDims | undefined> {
+  private async loadScaleLevelDims(): Promise<VolumeDims | undefined> {
     try {
       return await this.loader?.loadDims(this.loadSpecRequired);
     } catch (e) {

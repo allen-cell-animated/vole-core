@@ -4,7 +4,7 @@ import * as zarr from "zarrita";
 const { slice } = zarr;
 
 import type { ImageInfo } from "../ImageInfo.js";
-import type { NewVolumeDims, VolumeDims } from "../VolumeDims.js";
+import type { VolumeDims, ScaleLevelDims } from "../VolumeDims.js";
 import VolumeCache from "../VolumeCache.js";
 import { getDataRange } from "../utils/num_utils.js";
 import SubscribableRequestQueue from "../utils/SubscribableRequestQueue.js";
@@ -289,7 +289,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     this.fetchOptions = { ...this.fetchOptions, ...options };
   }
 
-  loadDims(loadSpec: LoadSpec): Promise<NewVolumeDims> {
+  loadDims(loadSpec: LoadSpec): Promise<VolumeDims> {
     const [spaceUnit, timeUnit] = this.getUnitSymbols();
     // Compute subregion size so we can factor that in
     const maxExtent = this.maxExtent ?? { min: [0, 0, 0], max: [1, 1, 1] };
@@ -300,7 +300,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
     const levels = this.sources[0].scaleLevels.map((level, i) => {
       const scale = this.getScale(i);
       const shapeTCZYX = this.orderByTCZYX(level.shape, 1);
-      const dims: VolumeDims = {
+      const dims: ScaleLevelDims = {
         spaceUnit: spaceUnit,
         timeUnit: timeUnit,
         shape: shapeTCZYX.map((val, idx) => Math.max(Math.ceil(val * regionArr[idx]), 1)) as TCZYX<number>,
@@ -391,7 +391,7 @@ class OMEZarrLoader extends ThreadableVolumeLoader {
       channelColors.push(...colors);
     }
 
-    const alldims: VolumeDims[] = source0.scaleLevels.map((level, i) => {
+    const alldims: ScaleLevelDims[] = source0.scaleLevels.map((level, i) => {
       const dims = {
         spaceUnit: spatialUnit,
         timeUnit: timeUnit,
