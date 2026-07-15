@@ -71,8 +71,7 @@ class MockStore implements AsyncReadable, AsyncWritable {
 const MOCK_STORE = new MockStore();
 
 const createMockArrays = (shapes: number[][]): Promise<NumericZarrArray[]> => {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  const promises = shapes.map((shape) => zarr.create(MOCK_STORE, { shape, chunk_shape: shape, data_type: "uint8" }));
+  const promises = shapes.map((shape) => zarr.create(MOCK_STORE, { shape, chunkShape: shape, dtype: "uint8" }));
   return Promise.all(promises);
 };
 
@@ -85,6 +84,7 @@ const createOneMockSource = async (
   colors?: (string | undefined)[]
 ): Promise<ZarrSource> => ({
   scaleLevels: await createMockArrays(shapes),
+  baseUrl: "mock://",
   multiscaleMetadata: createMockMultiscaleMetadata(scales, paths),
   omeroMetadata: createMockOmeroMetadata(shapes[0][1], names, colors),
   axesTCZYX: [0, 1, 2, 3, 4],

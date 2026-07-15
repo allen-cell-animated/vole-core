@@ -46,7 +46,7 @@
     "serialize-error": "^11.0.3",
     "throttled-queue": "^3.0.0",
     "tweakpane": "^3.1.9",
-    "zarrita": "^0.5.1"
+    "zarrita": "^0.7.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.25.6",

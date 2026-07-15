@@ -1,5 +1,4 @@
 import * as zarr from "zarrita";
-import { AsyncReadable } from "@zarrita/storage";
 
 import type SubscribableRequestQueue from "../../utils/SubscribableRequestQueue.js";
 
@@ -92,18 +91,14 @@ export type OMEZarrMetadata = {
   omero?: OmeroTransitionalMetadata;
 };
 
-export type WrappedArrayOpts = {
-  subscriber?: SubscriberId;
-  reportChunk?: (coords: number[], subscriber: SubscriberId) => void;
-  isPrefetch?: boolean;
-};
-
-export type NumericZarrArray = zarr.Array<zarr.NumberDataType, AsyncReadable<RequestInit & WrappedArrayOpts>>;
+export type NumericZarrArray = zarr.Array<zarr.NumberDataType>;
 
 /** A record with everything we need to access and use a single remote source of multiscale OME-Zarr data. */
 export type ZarrSource = {
   /** Representations of each scale level in this zarr. We pick one and pass it to zarrita to load data. */
   scaleLevels: NumericZarrArray[];
+  /** The URL the scale-level arrays were opened from. Used to key per-chunk cache entries and dedup requests. */
+  baseUrl: string;
   /**
    * Zarr dimensions may be ordered in many ways or missing altogether (e.g. TCXYZ, TYX). `axesTCZYX` represents
    * dimension order as a mapping from dimensions to their indices in dimension-ordered arrays for this source.
