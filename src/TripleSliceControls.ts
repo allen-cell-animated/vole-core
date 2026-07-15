@@ -1,3 +1,5 @@
+import type { Vector3 } from "three";
+
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
 import type { TripleViewPanes } from "./ThreeJsPanel.js";
 import { Axis } from "./types.js";
@@ -18,7 +20,7 @@ export default class TripleSliceControls {
   private host: TripleSliceHost;
 
   source?: TripleSliceSource;
-  changeCallback?: (indices: { x: number; y: number; z: number }) => void;
+  changeCallback?: (indices: Vector3) => void;
 
   private dragging = false;
   private dragPane?: "xy" | "yz" | "xz";
@@ -85,7 +87,7 @@ export default class TripleSliceControls {
 
     for (const [key, pane] of Object.entries(panes) as [
       "xy" | "yz" | "xz",
-      { x: number; y: number; w: number; h: number }
+      { x: number; y: number; w: number; h: number },
     ][]) {
       if (x >= pane.x && x <= pane.x + pane.w && y >= pane.y && y <= pane.y + pane.h) {
         return key;
@@ -240,6 +242,7 @@ export default class TripleSliceControls {
 
     const volSize = this.source.getVolumeSize();
 
+    // The vertical or horizontal axis depends on which projection pane we are in.
     // axis "v" → dragging the vertical line → updates the u-coordinate
     // axis "u" → dragging the horizontal line → updates the v-coordinate
     switch (paneKey) {

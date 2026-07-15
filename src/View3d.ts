@@ -71,7 +71,7 @@ export class View3d {
   private tweakpane: Pane | null;
 
   // Triple slice state
-  private tripleSliceCallback?: (indices: { x: number; y: number; z: number }) => void;
+  private tripleSliceCallback?: (indices: Vector3) => void;
 
   /**
    * @param {Object} options Optional options.
@@ -563,14 +563,14 @@ export class View3d {
   /**
    * Set a callback that fires when triple-slice crosshair indices change.
    */
-  setTripleSliceCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | null): void {
+  setTripleSliceCallback(cb: ((indices: Vector3) => void) | null): void {
     this.tripleSliceCallback = cb ?? undefined;
   }
 
   /**
-   * Get the current triple-slice indices.
+   * Get a copy of the current triple-slice indices.
    */
-  getTripleSliceIndices(): { x: number; y: number; z: number } | undefined {
+  getTripleSliceIndices(): Vector3 | undefined {
     return this.image?.tripleSliceIndices;
   }
 

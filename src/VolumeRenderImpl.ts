@@ -11,7 +11,7 @@ import Channel from "./Channel.js";
  * without callback indirection.
  */
 export interface TripleSliceSource {
-  getIndices(): { x: number; y: number; z: number };
+  getIndices(): Vector3;
   getVolumeSize(): Vector3;
   getPhysicalSize(): Vector3;
   setSliceIndex(axis: AxisName, index: number): void;

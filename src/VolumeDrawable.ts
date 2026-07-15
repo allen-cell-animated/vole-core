@@ -80,9 +80,9 @@ export default class VolumeDrawable {
 
   private renderUpdateListener?: (iteration: number) => void;
 
-  /** Returns the current triple slice indices. */
-  get tripleSliceIndices(): { x: number; y: number; z: number } {
-    return this.settings.tripleSliceIndices;
+  /** Returns a copy of the current triple slice indices, to prevent external mutation of internal state. */
+  get tripleSliceIndices(): Vector3 {
+    return this.settings.tripleSliceIndices.clone();
   }
 
   /** Returns the TripleSliceSource if currently in triple-slice render mode, otherwise undefined. */

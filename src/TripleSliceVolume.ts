@@ -190,9 +190,9 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     this.applySliceToRenderer(Axis.Z);
   }
 
-  /** Returns the current per-axis slice indices. */
-  getIndices(): { x: number; y: number; z: number } {
-    return this.baseSettings.tripleSliceIndices;
+  /** Returns a copy of the current per-axis slice indices, to prevent external mutation of internal state. */
+  getIndices(): Vector3 {
+    return this.baseSettings.tripleSliceIndices.clone();
   }
 
   /** Returns the volume dimensions in voxels. */
@@ -379,10 +379,5 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
       yz: { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH },
       xz: { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH },
     };
-  }
-
-  /** Returns the three internal Atlas2DSlice renderers [XY, YZ, XZ]. */
-  getRenderers(): [Atlas2DSlice, Atlas2DSlice, Atlas2DSlice] {
-    return this.renderers;
   }
 }

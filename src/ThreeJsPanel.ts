@@ -687,7 +687,7 @@ export class ThreeJsPanel {
    * Sets a callback that fires when triple-slice crosshair indices change
    * due to user interaction (drag or double-click).
    */
-  setTripleSliceChangeCallback(cb: ((indices: { x: number; y: number; z: number }) => void) | undefined): void {
+  setTripleSliceChangeCallback(cb: ((indices: Vector3) => void) | undefined): void {
     this.tripleSliceControls.changeCallback = cb;
   }
 
@@ -823,7 +823,12 @@ export class ThreeJsPanel {
     // do whatever we have to do before the main render of this.scene
     for (let i = 0; i < this.animateFuncs.length; i++) {
       if (this.animateFuncs[i]) {
-        this.animateFuncs[i](this.renderer, this.camera, isTriple ? null : this.meshRenderTarget.depthTexture, this.scene);
+        this.animateFuncs[i](
+          this.renderer,
+          this.camera,
+          isTriple ? null : this.meshRenderTarget.depthTexture,
+          this.scene
+        );
       }
     }
 
