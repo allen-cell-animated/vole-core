@@ -1,8 +1,8 @@
 import type { Vector3 } from "three";
 
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
-import type { TripleViewPanes } from "./ThreeJsPanel.js";
 import { Axis } from "./types.js";
+import type { TripleViewPanes } from "./types.js";
 
 /** Minimal interface for the host panel that TripleSliceControls needs. */
 export interface TripleSliceHost {

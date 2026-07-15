@@ -27,6 +27,7 @@ import scaleBarSVG from "./constants/scaleBarSVG.js";
 import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRight } from "./types.js";
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
 import { Axis } from "./types.js";
+import type { TripleViewPaneRect, TripleViewPanes } from "./types.js";
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
 import TripleSliceControls from "./TripleSliceControls.js";
 import RenderToBuffer from "./RenderToBuffer.js";
@@ -51,17 +52,6 @@ const DEFAULT_PERSPECTIVE_CAMERA_NEAR = 0.1;
 const DEFAULT_PERSPECTIVE_CAMERA_FAR = 20.0;
 
 const DEFAULT_ORTHO_SCALE = 0.5;
-
-export type TripleViewPaneRect = { x: number; y: number; w: number; h: number };
-
-export type TripleViewPanes = {
-  /** XY slice (bottom-left) */
-  xy: TripleViewPaneRect;
-  /** YZ slice (bottom-right) */
-  yz: TripleViewPaneRect;
-  /** XZ slice (top-left) */
-  xz: TripleViewPaneRect;
-};
 
 export type CameraState = {
   position: [number, number, number];

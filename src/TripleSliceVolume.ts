@@ -16,9 +16,9 @@ import {
 
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import Channel from "./Channel.js";
-import { OVERLAY_LAYER, type TripleViewPanes } from "./ThreeJsPanel.js";
+import { OVERLAY_LAYER } from "./ThreeJsPanel.js";
 import Volume from "./Volume.js";
-import type { AxisName, FuseChannel } from "./types.js";
+import type { AxisName, FuseChannel, TripleViewPanes } from "./types.js";
 import { Axis } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";

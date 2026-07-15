@@ -8,7 +8,7 @@ import RequestQueue from "./utils/RequestQueue.js";
 import SubscribableRequestQueue from "./utils/SubscribableRequestQueue.js";
 import Histogram from "./Histogram.js";
 import { Lut, remapControlPoints } from "./Lut.js";
-import { type AxisName, type ColorizeFeature, type NumberType, ViewportCorner } from "./types.js";
+import { type AxisName, type ColorizeFeature, type NumberType, type TripleViewPanes, ViewportCorner } from "./types.js";
 import { VolumeFileFormat, createVolumeLoader, PrefetchDirection } from "./loaders/index.js";
 import { LoadSpec } from "./loaders/IVolumeLoader.js";
 import { OMEZarrLoader } from "./loaders/OmeZarrLoader.js";
@@ -22,7 +22,7 @@ import {
 import { TiffLoader } from "./loaders/TiffLoader.js";
 import VolumeLoaderContext from "./workers/VolumeLoaderContext.js";
 import { VolumeLoadError, VolumeLoadErrorType } from "./loaders/VolumeLoadError.js";
-import { type CameraState, type TripleViewPanes } from "./ThreeJsPanel.js";
+import { type CameraState } from "./ThreeJsPanel.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Line3d from "./drawables/lines/Line3d.js";
 import VectorArrows3d from "./drawables/VectorArrows3d.js";

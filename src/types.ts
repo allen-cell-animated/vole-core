@@ -22,6 +22,19 @@ export enum Axis {
 /** Name of a single spatial axis: `"x"`, `"y"`, or `"z"`. */
 export type AxisName = Axis.X | Axis.Y | Axis.Z;
 
+/** Rectangle of a single triple-slice pane, in CSS pixels. */
+export type TripleViewPaneRect = { x: number; y: number; w: number; h: number };
+
+/** The three pane rectangles that make up the triple-slice view. */
+export type TripleViewPanes = {
+  /** XY slice (bottom-left) */
+  xy: TripleViewPaneRect;
+  /** YZ slice (bottom-right) */
+  yz: TripleViewPaneRect;
+  /** XZ slice (top-left) */
+  xz: TripleViewPaneRect;
+};
+
 // numeric types compatible with zarrita.js.
 // see https://github.com/manzt/zarrita.js/blob/main/packages/core/src/metadata.ts
 export type Int8 = "int8";

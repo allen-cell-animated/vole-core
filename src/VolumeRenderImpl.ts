@@ -1,8 +1,7 @@
 import { DepthTexture, Object3D, OrthographicCamera, PerspectiveCamera, Texture, Vector3, WebGLRenderer } from "three";
 
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
-import type { AxisName, FuseChannel } from "./types.js";
-import type { TripleViewPanes } from "./ThreeJsPanel.js";
+import type { AxisName, FuseChannel, TripleViewPanes } from "./types.js";
 import Channel from "./Channel.js";
 
 /**
