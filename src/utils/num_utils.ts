@@ -1,5 +1,5 @@
 import { parseTimeUnit, TimeUnit } from "../constants/time.js";
-import { Axis } from "../VolumeRenderSettings.js";
+import { Axis } from "../types.js";
 
 export const DEFAULT_SIG_FIGS = 5;
 

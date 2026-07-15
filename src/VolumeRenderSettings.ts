@@ -1,7 +1,7 @@
 import { Euler, Vector2, Vector3 } from "three";
 
 import Volume from "./Volume.js";
-import type { Bounds } from "./types.js";
+import { Axis, type Bounds } from "./types.js";
 
 /**
  * Marks groups of related settings that may have changed.
@@ -26,19 +26,6 @@ export enum SettingsFlags {
   /** parameters: maskChannelIndex */
   MASK_DATA = 0b100000000,
   ALL = 0b1111111111,
-}
-
-export enum Axis {
-  X = "x",
-  Y = "y",
-  Z = "z",
-  /** Alias for NONE, indicates 3D mode */
-  XYZ = "",
-  /** No current axis, indicates 3D mode */
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
-  NONE = "",
-  /** Triple orthographic slice view (XY + YZ + XZ) */
-  TRIPLE = "triple",
 }
 
 /**

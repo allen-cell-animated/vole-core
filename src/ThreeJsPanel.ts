@@ -26,7 +26,7 @@ import Timing from "./Timing.js";
 import scaleBarSVG from "./constants/scaleBarSVG.js";
 import { isOrthographicCamera, isPerspectiveCamera, ViewportCorner, isTop, isRight } from "./types.js";
 import { constrainToAxis, formatNumber, getTimestamp } from "./utils/num_utils.js";
-import { Axis } from "./VolumeRenderSettings.js";
+import { Axis } from "./types.js";
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
 import TripleSliceControls from "./TripleSliceControls.js";
 import RenderToBuffer from "./RenderToBuffer.js";

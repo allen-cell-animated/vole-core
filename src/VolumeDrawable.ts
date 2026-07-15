@@ -21,15 +21,21 @@ import PathTracedVolume from "./PathTracedVolume.js";
 import PickVolume from "./PickVolume.js";
 import { LUT_ARRAY_LENGTH } from "./Lut.js";
 import Volume from "./Volume.js";
-import type { VolumeDisplayOptions, VolumeChannelDisplayOptions, FuseChannel, ColorizeFeature } from "./types.js";
+import type {
+  AxisName,
+  VolumeDisplayOptions,
+  VolumeChannelDisplayOptions,
+  FuseChannel,
+  ColorizeFeature,
+} from "./types.js";
 import type { IDrawableObject } from "./drawables/IDrawableObject.js";
-import { RenderMode } from "./types.js";
+import { Axis, RenderMode } from "./types.js";
 import { Light } from "./Light.js";
 import Channel from "./Channel.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import TripleSliceVolume from "./TripleSliceVolume.js";
-import { VolumeRenderSettings, SettingsFlags, Axis } from "./VolumeRenderSettings.js";
+import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
 import ContourPass from "./ContourPass.js";
 
 type ColorArray = [number, number, number];
@@ -1005,7 +1011,7 @@ export default class VolumeDrawable {
    * @param axis "x", "y", or "z"
    * @param index Integer voxel index along that axis
    */
-  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+  setTripleSliceIndex(axis: AxisName, index: number): void {
     const source = this.getTripleSliceSource();
     if (source) {
       source.setSliceIndex(axis, index);

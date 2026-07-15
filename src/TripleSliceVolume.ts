@@ -18,9 +18,10 @@ import Atlas2DSlice from "./Atlas2DSlice.js";
 import Channel from "./Channel.js";
 import { OVERLAY_LAYER, type TripleViewPanes } from "./ThreeJsPanel.js";
 import Volume from "./Volume.js";
-import type { FuseChannel } from "./types.js";
+import type { AxisName, FuseChannel } from "./types.js";
+import { Axis } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
-import { Axis, SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
+import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 
 /**
  * A VolumeRenderImpl that manages three Atlas2DSlice renderers (XY, YZ, XZ)
@@ -174,7 +175,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
    * Applies one axis's slice index to its corresponding renderer.
    * XY renderer (index 0) slices along Z, YZ (index 1) along X, XZ (index 2) along Y.
    */
-  private applySliceToRenderer(axis: "x" | "y" | "z"): void {
+  private applySliceToRenderer(axis: AxisName): void {
     const index = this.baseSettings.tripleSliceIndices[axis];
     const rendererIndex = axis === "z" ? 0 : axis === "x" ? 1 : 2;
     const settings = this.baseSettings.clone();
@@ -184,9 +185,9 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
 
   /** Applies all three axis slice indices to their renderers. */
   private applyAllSliceIndices(): void {
-    this.applySliceToRenderer("x");
-    this.applySliceToRenderer("y");
-    this.applySliceToRenderer("z");
+    this.applySliceToRenderer(Axis.X);
+    this.applySliceToRenderer(Axis.Y);
+    this.applySliceToRenderer(Axis.Z);
   }
 
   /** Returns the current per-axis slice indices. */
@@ -208,7 +209,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
    * Sets the slice index for a given axis, clamping to valid range.
    * Updates the corresponding internal renderer.
    */
-  setSliceIndex(axis: "x" | "y" | "z", index: number): void {
+  setSliceIndex(axis: AxisName, index: number): void {
     const volSize = this.volume.imageInfo.volumeSize;
     const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
     this.baseSettings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));

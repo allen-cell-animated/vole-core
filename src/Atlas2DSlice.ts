@@ -19,9 +19,9 @@ import {
 import { Channel, Volume } from "./index.js";
 import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
-import { Axis, SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
+import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import FusedChannelData from "./FusedChannelData.js";
-import type { FuseChannel } from "./types.js";
+import { Axis, type FuseChannel } from "./types.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
 

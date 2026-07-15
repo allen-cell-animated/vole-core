@@ -18,6 +18,7 @@ import VolumeDrawable from "./VolumeDrawable.js";
 import { Light, AREA_LIGHT, SKY_LIGHT } from "./Light.js";
 import Volume from "./Volume.js";
 import {
+  type AxisName,
   type ColorizeFeature,
   type VolumeChannelDisplayOptions,
   type VolumeDisplayOptions,
@@ -26,7 +27,7 @@ import {
   RenderMode,
 } from "./types.js";
 import { IDrawableObject } from "./drawables/IDrawableObject.js";
-import { Axis } from "./VolumeRenderSettings.js";
+import { Axis } from "./types.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./drawables/lines/Line3d.js";
@@ -576,7 +577,7 @@ export class View3d {
   /**
    * Set a triple-slice index for a given axis.
    */
-  setTripleSliceIndex(axis: "x" | "y" | "z", index: number): void {
+  setTripleSliceIndex(axis: AxisName, index: number): void {
     if (!this.image) {
       return;
     }
@@ -847,8 +848,8 @@ export class View3d {
    * @param {number} maxval 0..1, should be greater than minval
    * @param {boolean} isOrthoAxis is this an orthographic projection or just a clipping of the range for perspective view
    */
-  setAxisClip(volume: Volume, axis: "x" | "y" | "z", minval: number, maxval: number, isOrthoAxis: boolean): void {
-    this.image?.setAxisClip(axis as Axis, minval, maxval, isOrthoAxis);
+  setAxisClip(volume: Volume, axis: AxisName, minval: number, maxval: number, isOrthoAxis: boolean): void {
+    this.image?.setAxisClip(axis, minval, maxval, isOrthoAxis);
     this.redraw();
   }
 

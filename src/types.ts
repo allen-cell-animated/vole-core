@@ -5,6 +5,22 @@ export interface Bounds {
   bmax: Vector3;
 }
 
+export enum Axis {
+  X = "x",
+  Y = "y",
+  Z = "z",
+  /** Alias for NONE, indicates 3D mode */
+  XYZ = "",
+  /** No current axis, indicates 3D mode */
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  NONE = "",
+  /** Triple orthographic slice view (XY + YZ + XZ) */
+  TRIPLE = "triple",
+}
+
+/** Name of a single spatial axis: `"x"`, `"y"`, or `"z"`. */
+export type AxisName = Axis.X | Axis.Y | Axis.Z;
+
 // numeric types compatible with zarrita.js.
 // see https://github.com/manzt/zarrita.js/blob/main/packages/core/src/metadata.ts
 export type Int8 = "int8";

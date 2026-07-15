@@ -1,5 +1,6 @@
 import type { TripleSliceSource } from "./VolumeRenderImpl.js";
 import type { TripleViewPanes } from "./ThreeJsPanel.js";
+import { Axis } from "./types.js";
 
 /** Minimal interface for the host panel that TripleSliceControls needs. */
 export interface TripleSliceHost {
@@ -211,16 +212,16 @@ export default class TripleSliceControls {
     // Move both crosshairs to the double-click point
     switch (pane) {
       case "xy":
-        this.source.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
-        this.source.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        this.source.setSliceIndex(Axis.X, Math.round(uv.u * (volSize.x - 1)));
+        this.source.setSliceIndex(Axis.Y, Math.round(uv.v * (volSize.y - 1)));
         break;
       case "yz":
-        this.source.setSliceIndex("z", Math.round(uv.u * (volSize.z - 1)));
-        this.source.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+        this.source.setSliceIndex(Axis.Z, Math.round(uv.u * (volSize.z - 1)));
+        this.source.setSliceIndex(Axis.Y, Math.round(uv.v * (volSize.y - 1)));
         break;
       case "xz":
-        this.source.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
-        this.source.setSliceIndex("z", Math.round(uv.v * (volSize.z - 1)));
+        this.source.setSliceIndex(Axis.X, Math.round(uv.u * (volSize.x - 1)));
+        this.source.setSliceIndex(Axis.Z, Math.round(uv.v * (volSize.z - 1)));
         break;
     }
 
@@ -244,23 +245,23 @@ export default class TripleSliceControls {
     switch (paneKey) {
       case "xy":
         if (axis === "v") {
-          this.source.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+          this.source.setSliceIndex(Axis.X, Math.round(uv.u * (volSize.x - 1)));
         } else {
-          this.source.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+          this.source.setSliceIndex(Axis.Y, Math.round(uv.v * (volSize.y - 1)));
         }
         break;
       case "yz":
         if (axis === "v") {
-          this.source.setSliceIndex("z", Math.round(uv.u * (volSize.z - 1)));
+          this.source.setSliceIndex(Axis.Z, Math.round(uv.u * (volSize.z - 1)));
         } else {
-          this.source.setSliceIndex("y", Math.round(uv.v * (volSize.y - 1)));
+          this.source.setSliceIndex(Axis.Y, Math.round(uv.v * (volSize.y - 1)));
         }
         break;
       case "xz":
         if (axis === "v") {
-          this.source.setSliceIndex("x", Math.round(uv.u * (volSize.x - 1)));
+          this.source.setSliceIndex(Axis.X, Math.round(uv.u * (volSize.x - 1)));
         } else {
-          this.source.setSliceIndex("z", Math.round(uv.v * (volSize.z - 1)));
+          this.source.setSliceIndex(Axis.Z, Math.round(uv.v * (volSize.z - 1)));
         }
         break;
     }
