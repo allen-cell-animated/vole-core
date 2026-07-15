@@ -5,6 +5,7 @@ export interface Bounds {
   bmax: Vector3;
 }
 
+// this enum represents all allowed viewing modes in Vol-E.
 export enum Axis {
   X = "x",
   Y = "y",
