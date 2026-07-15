@@ -417,13 +417,10 @@ export class ThreeJsPanel {
   }
 
   orthoScreenPixelsToPhysicalUnits(pixels: number, physicalUnitsPerWorldUnit: number): number {
-    if (this.viewMode === Axis.TRIPLE && this.tripleSliceControls.source) {
-      // In triple mode, use the XY pane dimensions to compute the conversion.
-      const dpr = this.renderer.getPixelRatio();
-      const panes = this.tripleSliceControls.source.getTripleViewPanesCSS(
-        this.getWidth() / dpr,
-        this.getHeight() / dpr
-      );
+    // In triple mode, derive the conversion from the XY pane's width.
+    // (getTripleViewPanesCSS returns Y-flipped rects, but width is orientation-independent.)
+    const panes = this.getTripleViewPanesCSS();
+    if (panes && this.tripleSliceControls.source) {
       const phys = this.tripleSliceControls.source.getPhysicalSize();
       const worldUnitsPerPixel = phys.x / panes.xy.w;
       return pixels * worldUnitsPerPixel * physicalUnitsPerWorldUnit;

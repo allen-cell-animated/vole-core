@@ -231,6 +231,16 @@ export function constrainToAxis(
   }
 }
 
+/**
+ * Clamps a slice index to the valid voxel range `[0, axisSize - 1]` for an axis of
+ * the given size, flooring fractional inputs. Returns 0 for a degenerate axis (`axisSize <= 1`).
+ * @param index The desired slice index (may be fractional or out of range).
+ * @param axisSize The number of voxels along the axis.
+ */
+export function clampSliceIndex(index: number, axisSize: number): number {
+  return Math.max(0, Math.min(Math.floor(index), axisSize - 1));
+}
+
 export function getDataRange(data: ArrayLike<number>): [number, number] {
   let min = data[0];
   let max = data[0];

@@ -22,6 +22,8 @@ import type { AxisName, FuseChannel, TripleViewPanes } from "./types.js";
 import { Axis } from "./types.js";
 import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
+import { clampSliceIndex } from "./utils/num_utils.js";
+import { computeTripleLayout, computeTripleViewPanes } from "./utils/tripleSliceLayout.js";
 
 /**
  * A VolumeRenderImpl that manages three Atlas2DSlice renderers (XY, YZ, XZ)
@@ -211,8 +213,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
    */
   setSliceIndex(axis: AxisName, index: number): void {
     const volSize = this.volume.imageInfo.volumeSize;
-    const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
-    this.baseSettings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
+    this.baseSettings.tripleSliceIndices[axis] = clampSliceIndex(index, volSize[axis]);
     this.applySliceToRenderer(axis);
     this.updateCrosshairs();
   }
@@ -266,32 +267,6 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private static readonly TRIPLE_VIEW_GAP = 2;
 
   /**
-   * Computes the common layout parameters for triple-slice pane fitting.
-   * @param availableW Available width (CSS pixels or world units)
-   * @param availableH Available height (CSS pixels or world units)
-   * @param gap Gap size in the same units as availableW/H
-   * @returns The uniform scale (units-per-physical-unit) and physical dimensions, or null if degenerate.
-   */
-  private computeLayoutParams(
-    availableW: number,
-    availableH: number,
-    gap: number
-  ): { fitScale: number; px: number; py: number; pz: number; gap: number } | null {
-    const phys = this.volume.normPhysicalSize;
-    const px = phys.x;
-    const py = phys.y;
-    const pz = phys.z;
-
-    const scaleX = (availableW - gap) / (px + pz);
-    const scaleY = (availableH - gap) / (py + pz);
-    const fitScale = Math.min(scaleX, scaleY);
-    if (fitScale <= 0) {
-      return null;
-    }
-    return { fitScale, px, py, pz, gap };
-  }
-
-  /**
    * Recomputes the layout of the three slice panes to fit within the current camera frustum.
    * Uses `baseSettings.resolution` and `baseSettings.orthoScale` to derive the frustum,
    * then scales and positions all three slice groups accordingly.
@@ -315,7 +290,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     const pixelsPerWorldUnit = resolution.y / frustumHeight;
     const gapWorld = pixelsPerWorldUnit > 0 ? TripleSliceVolume.TRIPLE_VIEW_GAP / pixelsPerWorldUnit : 0;
 
-    const layout = this.computeLayoutParams(frustumWidth, frustumHeight, gapWorld);
+    const layout = computeTripleLayout(this.volume.normPhysicalSize, frustumWidth, frustumHeight, gapWorld);
     if (!layout) {
       return;
     }
@@ -347,37 +322,11 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
 
   /**
    * Computes the per-pane rectangles for triple-slice view in CSS pixels (bottom-left origin).
-   * Uses the same layout algorithm as `updateLayout`, but in screen-pixel coordinates.
+   * Delegates to the pure {@link computeTripleViewPanes} using this volume's physical size.
    * @param canvasW Canvas width in CSS pixels
    * @param canvasH Canvas height in CSS pixels
    */
   getTripleViewPanesCSS(canvasW: number, canvasH: number): TripleViewPanes {
-    const gap = TripleSliceVolume.TRIPLE_VIEW_GAP;
-    const layout = this.computeLayoutParams(canvasW, canvasH, gap);
-
-    if (!layout) {
-      // Degenerate: return zero-size panes
-      const zero = { x: 0, y: 0, w: 0, h: 0 };
-      return { xy: zero, yz: zero, xz: zero };
-    }
-    const { fitScale, px, py, pz } = layout;
-
-    const xyW = Math.floor(px * fitScale);
-    const xyH = Math.floor(py * fitScale);
-    const yzW = Math.floor(pz * fitScale);
-    const yzH = Math.floor(py * fitScale);
-    const xzW = Math.floor(px * fitScale);
-    const xzH = Math.floor(pz * fitScale);
-
-    const totalW = xyW + gap + yzW;
-    const totalH = xyH + gap + xzH;
-    const offsetX = Math.floor((canvasW - totalW) / 2);
-    const offsetY = Math.floor((canvasH - totalH) / 2);
-
-    return {
-      xy: { x: offsetX, y: offsetY, w: xyW, h: xyH },
-      yz: { x: offsetX + xyW + gap, y: offsetY, w: yzW, h: yzH },
-      xz: { x: offsetX, y: offsetY + xyH + gap, w: xzW, h: xzH },
-    };
+    return computeTripleViewPanes(this.volume.normPhysicalSize, canvasW, canvasH, TripleSliceVolume.TRIPLE_VIEW_GAP);
   }
 }

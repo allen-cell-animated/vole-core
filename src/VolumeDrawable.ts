@@ -36,6 +36,7 @@ import type { VolumeRenderImpl, TripleSliceSource } from "./VolumeRenderImpl.js"
 import Atlas2DSlice from "./Atlas2DSlice.js";
 import TripleSliceVolume from "./TripleSliceVolume.js";
 import { VolumeRenderSettings, SettingsFlags } from "./VolumeRenderSettings.js";
+import { clampSliceIndex } from "./utils/num_utils.js";
 import ContourPass from "./ContourPass.js";
 
 type ColorArray = [number, number, number];
@@ -1018,8 +1019,7 @@ export default class VolumeDrawable {
     } else {
       // Fallback: update settings directly even if not in triple mode
       const volSize = this.volume.imageInfo.volumeSize;
-      const maxIndex = axis === "x" ? volSize.x : axis === "y" ? volSize.y : volSize.z;
-      this.settings.tripleSliceIndices[axis] = Math.max(0, Math.min(Math.floor(index), maxIndex - 1));
+      this.settings.tripleSliceIndices[axis] = clampSliceIndex(index, volSize[axis]);
     }
     this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
   }
