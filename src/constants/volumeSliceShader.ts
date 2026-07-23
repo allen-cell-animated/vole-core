@@ -112,5 +112,13 @@ export const sliceShaderUniforms = () => {
       type: "v2",
       value: new Vector2(1.0, 1.0),
     },
+    viewAxis: {
+      type: "i",
+      value: 0,
+    },
+    volumeSize: {
+      type: "v3",
+      value: new Vector3(1.0, 1.0, 1.0),
+    },
   };
 };

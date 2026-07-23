@@ -1299,6 +1299,10 @@ function main() {
   d3Btn?.addEventListener("click", () => {
     view3D.setCameraMode("3D");
   });
+  const tripleBtn = document.getElementById("tripleBtn");
+  tripleBtn?.addEventListener("click", () => {
+    view3D.setCameraMode("TRIPLE");
+  });
   const rotBtn = document.getElementById("rotBtn");
   rotBtn?.addEventListener("click", () => {
     myState.isTurntable = !myState.isTurntable;
