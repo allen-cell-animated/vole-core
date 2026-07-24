@@ -19,6 +19,7 @@ export const enum VolumeFileFormat {
 export type CreateLoaderOptions = {
   fileType?: VolumeFileFormat;
   cache?: VolumeCache;
+  lowResCache?: VolumeCache;
   queue?: SubscribableRequestQueue;
   scene?: number;
   fetchOptions?: ZarrLoaderFetchOptions;
@@ -48,6 +49,7 @@ export async function createVolumeLoader(
         path,
         options?.scene,
         options?.cache,
+        options?.lowResCache,
         options?.queue,
         options?.fetchOptions
       );
