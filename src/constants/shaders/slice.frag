@@ -15,7 +15,7 @@ uniform vec3 AABB_CLIP_MIN;
 uniform vec3 AABB_CLIP_MAX;
 uniform sampler2D textureAtlas;
 uniform sampler2D textureAtlasMask;
-uniform int Z_SLICE;
+uniform int SLICE_INDEX;
 uniform float SLICES;
 uniform bool interpolationEnabled;
 uniform vec3 flipVolume;
@@ -104,21 +104,21 @@ void main() {
 
   // Compute the normalized slice coordinate
   float sliceNorm =
-      (SLICES == 1.0 && Z_SLICE == 0) ? 0.0 : float(Z_SLICE) / (SLICES - 1.0);
+      (SLICES == 1.0 && SLICE_INDEX == 0) ? 0.0 : float(SLICE_INDEX) / (SLICES - 1.0);
 
   // Build the 3D sample position based on viewAxis
   vec4 pos;
   if (viewAxis == VIEW_AXIS_X) {
     // YZ view: UV.x -> Z, UV.y -> Y, slice along X (Y vertical to align with XY
-    // pane) Z_SLICE is an X voxel index; normalize by volumeSize.x
+    // pane) SLICE_INDEX is an X voxel index; normalize by volumeSize.x
     float xNorm =
-        (volumeSize.x <= 1.0) ? 0.0 : float(Z_SLICE) / (volumeSize.x - 1.0);
+        (volumeSize.x <= 1.0) ? 0.0 : float(SLICE_INDEX) / (volumeSize.x - 1.0);
     pos = vec4(xNorm, vUv.y, vUv.x, 0.0);
   } else if (viewAxis == VIEW_AXIS_Y) {
     // XZ view: UV.x -> X, UV.y -> Z, slice along Y
-    // Z_SLICE is a Y voxel index; normalize by volumeSize.y
+    // SLICE_INDEX is a Y voxel index; normalize by volumeSize.y
     float yNorm =
-        (volumeSize.y <= 1.0) ? 0.0 : float(Z_SLICE) / (volumeSize.y - 1.0);
+        (volumeSize.y <= 1.0) ? 0.0 : float(SLICE_INDEX) / (volumeSize.y - 1.0);
     pos = vec4(vUv.x, yNorm, vUv.y, 0.0);
   } else {
     // XY view (default): UV -> XY, slice along Z

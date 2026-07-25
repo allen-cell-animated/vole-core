@@ -80,7 +80,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
 
     this.geometryTransformNode.add(this.boxHelper, this.geometryMesh);
 
-    this.setUniform("Z_SLICE", Math.floor(volume.imageInfo.volumeSize.z / 2));
+    this.setUniform("SLICE_INDEX", Math.floor(volume.imageInfo.volumeSize.z / 2));
     this.settings = settings;
     this.updateVolumeDimensions();
     this.updateSettings(settings, SettingsFlags.ALL);
@@ -125,7 +125,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
       // If the slice is outside the current loaded subregion, defer until the subregion is updated
       this.sliceUpdateWaiting = true;
     } else {
-      this.setUniform("Z_SLICE", slice);
+      this.setUniform("SLICE_INDEX", slice);
       this.sliceUpdateWaiting = false;
     }
 

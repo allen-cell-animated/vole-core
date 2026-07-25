@@ -52,7 +52,7 @@ export const sliceShaderUniforms = () => {
       type: "v2",
       value: new Vector2(6, 6),
     },
-    Z_SLICE: {
+    SLICE_INDEX: {
       type: "i",
       value: 0,
     },
