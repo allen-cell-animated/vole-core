@@ -23,6 +23,7 @@ uniform vec3 flipVolume;
 #define VIEW_AXIS_X 1
 #define VIEW_AXIS_Y 2
 uniform int viewAxis;
+// in voxels
 uniform vec3 volumeSize;
 
 varying vec2 vUv;

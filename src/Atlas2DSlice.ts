@@ -21,12 +21,12 @@ import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } fro
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
 import FusedChannelData from "./FusedChannelData.js";
-import { Axis, type FuseChannel } from "./types.js";
+import { Axis, type AxisName, type FuseChannel } from "./types.js";
 
 const BOUNDING_BOX_DEFAULT_COLOR = new Color(0xffff00);
 
-/** Maps the slice-along Axis to the integer expected by the viewAxis shader uniform. */
-function axisToShaderInt(axis: Axis): number {
+/** Maps the slice axis to the integer expected by the viewAxis shader uniform. */
+function axisToShaderInt(axis: AxisName): number {
   switch (axis) {
     case Axis.X:
       return 1;
@@ -381,7 +381,7 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
    * Sets the view axis for this slice renderer.
    * @param axis The axis to slice along: Axis.Z = XY view, Axis.X = YZ view, Axis.Y = XZ view.
    */
-  public setViewAxis(axis: Axis): void {
+  public setViewAxis(axis: AxisName): void {
     this.viewAxisValue = axis;
     this.setUniform("viewAxis", axisToShaderInt(axis));
   }
