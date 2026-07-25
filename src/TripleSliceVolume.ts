@@ -181,7 +181,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     const index = this.baseSettings.tripleSliceIndices[axis];
     const rendererIndex = axis === "z" ? 0 : axis === "x" ? 1 : 2;
     const settings = this.baseSettings.clone();
-    settings.zSlice = index;
+    settings.sliceIndex = index;
     this.renderers[rendererIndex].updateSettings(settings, SettingsFlags.ROI);
   }
 

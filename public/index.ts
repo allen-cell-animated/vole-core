@@ -1145,7 +1145,7 @@ async function loadVolume(name: string, loadSpec: LoadSpec, loader: IVolumeLoade
   onVolumeCreated(name, volume);
   loader.loadVolumeData(volume);
 
-  // Set default zSlice
+  // Set default slice index
   goToZSlice(Math.floor(volume.imageInfo.subregionSize.z / 2));
 }
 

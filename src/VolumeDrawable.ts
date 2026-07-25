@@ -170,7 +170,6 @@ export default class VolumeDrawable {
     this.settings.rotation = new Euler().fromArray(this.volume.getRotation());
 
     this.setOptions(options);
-    // this.volumeRendering.setZSlice(this.zSlice);
   }
 
   public getPickBuffer(): WebGLRenderTarget | undefined {
@@ -998,8 +997,8 @@ export default class VolumeDrawable {
 
   setZSlice(slice: number): boolean {
     const sizez = this.volume.imageInfo.volumeSize.z;
-    if (this.settings.zSlice !== slice && slice < sizez && slice >= 0) {
-      this.settings.zSlice = slice;
+    if (this.settings.sliceIndex !== slice && slice < sizez && slice >= 0) {
+      this.settings.sliceIndex = slice;
       this.volumeRendering.updateSettings(this.settings, SettingsFlags.ROI);
       this.pickRendering?.updateSettings(this.settings, SettingsFlags.ROI);
       return true;

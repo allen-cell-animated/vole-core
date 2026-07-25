@@ -87,12 +87,12 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
   }
 
   /**
-   * Syncs `this.settings.zSlice` with the corresponding shader uniform, or defers syncing until the slice is loaded.
-   * For non-XY views, zSlice represents the coordinate along the slicing axis (X for YZ, Y for XZ).
+   * Syncs `this.settings.sliceIndex` with the corresponding shader uniform, or defers syncing until the slice is loaded.
+   * For non-XY views, sliceIndex represents the coordinate along the slicing axis (X for YZ, Y for XZ).
    * @returns a boolean indicating whether the slice is out of bounds of the volume entirely.
    */
   private updateSlice(): boolean {
-    const slice = Math.floor(this.settings.zSlice);
+    const slice = Math.floor(this.settings.sliceIndex);
     const volSize = this.volume.imageInfo.volumeSize;
 
     // Determine the axis-appropriate size and subregion bounds
@@ -248,8 +248,8 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
             subregion: new Box3(new Vector3(0, 0, 0), new Vector3(1, 1, 1)),
           });
         } else {
-          const sliceLowerBound = Math.floor(this.settings.zSlice) / this.volume.imageInfo.volumeSize.z;
-          const sliceUpperBound = (Math.floor(this.settings.zSlice) + 1) / this.volume.imageInfo.volumeSize.z;
+          const sliceLowerBound = Math.floor(this.settings.sliceIndex) / this.volume.imageInfo.volumeSize.z;
+          const sliceUpperBound = (Math.floor(this.settings.sliceIndex) + 1) / this.volume.imageInfo.volumeSize.z;
           this.volume.updateRequiredData({
             subregion: new Box3(new Vector3(0, 0, sliceLowerBound), new Vector3(1, 1, sliceUpperBound)),
           });
