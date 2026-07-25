@@ -115,14 +115,14 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   }
 
   doRender(
-    _renderer: WebGLRenderer,
-    _camera: PerspectiveCamera | OrthographicCamera,
+    renderer: WebGLRenderer,
+    camera: PerspectiveCamera | OrthographicCamera,
     _depthTexture?: DepthTexture | Texture | null
   ): void {
     // Render all three slices; they are positioned in world space by updateLayout
     for (let i = 0; i < 3; i++) {
       this.renderers[i].get3dObject().visible = true;
-      this.renderers[i].doRender(_renderer, _camera);
+      this.renderers[i].doRender(renderer, camera);
     }
   }
 
@@ -137,9 +137,10 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     // Clamp indices to current volume bounds (resolution may differ across mode switches)
     const volSize = this.volume.imageInfo.volumeSize;
     const indices = this.baseSettings.tripleSliceIndices;
-    indices.x = Math.min(indices.x, Math.max(0, volSize.x - 1));
-    indices.y = Math.min(indices.y, Math.max(0, volSize.y - 1));
-    indices.z = Math.min(indices.z, Math.max(0, volSize.z - 1));
+    indices.x = clampSliceIndex(indices.x, volSize.x);
+    indices.y = clampSliceIndex(indices.y, volSize.y);
+    indices.z = clampSliceIndex(indices.z, volSize.z);
+
     this.applyAllSliceIndices();
     this.updateCrosshairs();
     this.updateLayout();
@@ -322,7 +323,6 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
 
   /**
    * Computes the per-pane rectangles for triple-slice view in CSS pixels (bottom-left origin).
-   * Delegates to the pure {@link computeTripleViewPanes} using this volume's physical size.
    * @param canvasW Canvas width in CSS pixels
    * @param canvasH Canvas height in CSS pixels
    */

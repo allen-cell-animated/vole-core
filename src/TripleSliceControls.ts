@@ -178,12 +178,12 @@ export default class TripleSliceControls {
     if (!pane) {
       return;
     }
-    const lineHit = this.hitTestCrosshairLine(e.clientX, e.clientY, pane);
-    if (lineHit) {
+    const selectedAxis = this.hitTestCrosshairLine(e.clientX, e.clientY, pane);
+    if (selectedAxis) {
       this.dragging = true;
       this.dragPane = pane;
-      this.dragAxis = lineHit;
-      this.handleDrag(e.clientX, e.clientY, pane, lineHit);
+      this.dragAxis = selectedAxis;
+      this.handleDrag(e.clientX, e.clientY, pane, selectedAxis);
     }
   }
 

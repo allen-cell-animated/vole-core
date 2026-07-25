@@ -819,6 +819,9 @@ export class ThreeJsPanel {
       }
     }
 
+    // TODO if these conditionals become any more complicated,
+    // we should refactor this into a separate function or some kind of
+    // tabular or mapping based set of render passes.
     if (!isTriple) {
       // RENDERING
       // Step 1: Render meshes, e.g. isosurfaces, separately to a render
