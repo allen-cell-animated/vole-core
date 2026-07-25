@@ -441,6 +441,15 @@ export class View3d {
     this.updatePerspectiveScaleBar(img.volume);
     this.updateTimestepIndicator(img.volume);
 
+    // If we're in triple-slice mode, re-run setCameraMode with the current mode to
+    // re-establish the crosshair source coupling with the new image. The previous
+    // image's TripleSliceVolume was just removed from the scene, so the canvas3d's
+    // controls would otherwise keep hit-testing and updating a stale source,
+    // breaking drag and double-click interaction.
+    if (this.canvas3d.getViewMode() === Axis.TRIPLE) {
+      this.setCameraMode(this.canvas3d.getViewMode().toUpperCase());
+    }
+
     // redraw if not already in draw loop
     this.redraw();
 
