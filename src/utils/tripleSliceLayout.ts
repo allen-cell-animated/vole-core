@@ -11,7 +11,7 @@ import type { TripleViewPanes } from "../types.js";
  * @param availableH Available height, in the same units as `availableW`.
  * @param gap Gap between panes, in the same units as `availableW`/`availableH`.
  * @returns The uniform scale (units per physical unit) and normalized physical
- *   dimensions, or null if degenerate.
+ *   dimensions, or null if the available dimensions are insufficient.
  */
 export function computeTripleLayout(
   normPhysicalSize: Vector3,
@@ -44,14 +44,19 @@ export function computeTripleLayout(
  *  |   XY   |   YZ   |
  *  +--------+--------+
  * ```
- * @param phys Normalized physical size of the volume.
+ * @param normPhysicalSize Normalized physical size of the volume.
  * @param canvasW Canvas width in CSS pixels.
  * @param canvasH Canvas height in CSS pixels.
  * @param gap Gap between panes in CSS pixels.
  * @returns The three pane rects, centered in the canvas; all zero-size if the layout is degenerate.
  */
-export function computeTripleViewPanes(phys: Vector3, canvasW: number, canvasH: number, gap: number): TripleViewPanes {
-  const layout = computeTripleLayout(phys, canvasW, canvasH, gap);
+export function computeTripleViewPanes(
+  normPhysicalSize: Vector3,
+  canvasW: number,
+  canvasH: number,
+  gap: number
+): TripleViewPanes {
+  const layout = computeTripleLayout(normPhysicalSize, canvasW, canvasH, gap);
   if (!layout) {
     // Degenerate: return zero-size panes
     return { xy: { x: 0, y: 0, w: 0, h: 0 }, yz: { x: 0, y: 0, w: 0, h: 0 }, xz: { x: 0, y: 0, w: 0, h: 0 } };
