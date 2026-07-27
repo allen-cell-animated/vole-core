@@ -86,6 +86,6 @@
     "vitest": "^4.1.9",
     "webpack": "^5.69.1",
     "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^5.2.1"
+    "webpack-dev-server": "^6.0.0"
   }
 }
