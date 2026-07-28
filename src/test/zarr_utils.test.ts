@@ -384,6 +384,27 @@ describe("zarr_utils", () => {
       );
     });
 
+    it("throws an error if sources have no matching scale levels", async () => {
+      const sources = await createMockSources([
+        {
+          shapes: [
+            [1, 1, 10, 10, 10],
+            [1, 1, 5, 5, 5],
+          ],
+        },
+        {
+          shapes: [
+            [1, 1, 8, 8, 8],
+            [1, 1, 4, 4, 4],
+          ],
+        },
+      ]);
+
+      expect(() => matchSourceScaleLevels(sources)).to.throw(
+        "Incompatible zarr arrays: no sets of scale levels found that matched in all sources"
+      );
+    });
+
     it("Does not throw an error if two scale levels of the same size have different scale transformations", async () => {
       const sources = await createMockSources([
         { shapes: [[1, 1, 1, 1, 1]], scales: [[1, 1, 2, 2, 2]] },
