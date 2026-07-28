@@ -278,7 +278,7 @@ export function matchSourceScaleLevels(sources: ZarrSource[]): void {
     }
   }
 
-  if (sources[0].scaleLevels.length === 0) {
+  if (matchedLevels[0].length === 0) {
     throw new VolumeLoadError("Incompatible zarr arrays: no sets of scale levels found that matched in all sources", {
       type: VolumeLoadErrorType.INVALID_MULTI_SOURCE_ZARR,
     });
