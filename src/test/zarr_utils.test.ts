@@ -71,8 +71,7 @@ class MockStore implements AsyncReadable, AsyncWritable {
 const MOCK_STORE = new MockStore();
 
 const createMockArrays = (shapes: number[][]): Promise<NumericZarrArray[]> => {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  const promises = shapes.map((shape) => zarr.create(MOCK_STORE, { shape, chunk_shape: shape, data_type: "uint8" }));
+  const promises = shapes.map((shape) => zarr.create(MOCK_STORE, { shape, chunkShape: shape, dtype: "uint8" }));
   return Promise.all(promises);
 };
 
@@ -85,6 +84,7 @@ const createOneMockSource = async (
   colors?: (string | undefined)[]
 ): Promise<ZarrSource> => ({
   scaleLevels: await createMockArrays(shapes),
+  baseUrl: "mock://",
   multiscaleMetadata: createMockMultiscaleMetadata(scales, paths),
   omeroMetadata: createMockOmeroMetadata(shapes[0][1], names, colors),
   axesTCZYX: [0, 1, 2, 3, 4],
@@ -224,17 +224,17 @@ describe("zarr_utils", () => {
   });
   // TODO: `pickLevelToLoad`
 
-  const VALS_TCZYX: TCZYX<number> = [1, 2, 3, 4, 5];
+  const VALS_TCZYX: TCZYX<string> = ["t", "c", "z", "y", "x"];
   describe("orderByDimension", () => {
     it("orders an array in dimension order based on the given indices", () => {
       const order: TCZYX<number> = [3, 1, 4, 0, 2];
-      expect(orderByDimension(VALS_TCZYX, order)).to.deep.equal([1, 2, 3, 4, 5]);
+      expect(orderByDimension(VALS_TCZYX, order)).to.deep.equal(["y", "c", "x", "t", "z"]);
     });
 
     it("excludes the T, C, or Z dimension if its index is negative", () => {
-      expect(orderByDimension(VALS_TCZYX, [-1, 0, 1, 3, 2])).to.deep.equal([2, 3, 4, 5]);
-      expect(orderByDimension(VALS_TCZYX, [0, -1, 1, 3, 2])).to.deep.equal([1, 3, 4, 5]);
-      expect(orderByDimension(VALS_TCZYX, [0, 1, -1, 3, 2])).to.deep.equal([1, 2, 4, 5]);
+      expect(orderByDimension(VALS_TCZYX, [-1, 0, 1, 3, 2])).to.deep.equal(["c", "z", "x", "y"]);
+      expect(orderByDimension(VALS_TCZYX, [0, -1, 1, 3, 2])).to.deep.equal(["t", "z", "x", "y"]);
+      expect(orderByDimension(VALS_TCZYX, [0, 1, -1, 3, 2])).to.deep.equal(["t", "c", "x", "y"]);
     });
 
     it("throws an error if an axis index is out of bounds", () => {
