@@ -9,7 +9,6 @@ import {
   Color,
   Light as ThreeLight,
   Matrix4,
-  EventDispatcher,
 } from "three";
 import { Pane } from "tweakpane";
 
@@ -31,6 +30,7 @@ import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./drawables/lines/Line3d.js";
+import EventDispatcher from "./EventDispatcher.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;
@@ -395,6 +395,11 @@ export class View3d extends EventDispatcher<{
     const oldImage = this.unsetImage();
 
     this.image = img;
+
+    const isPathtrace = this.volumeRenderMode === RenderMode.PATHTRACE;
+    this.image.setRenderUpdateListener((iteration) => {
+      this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+    });
 
     this.scene.add(img.sceneRoot);
 
