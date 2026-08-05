@@ -108,12 +108,6 @@ export interface ColorizeFeature {
   hideOutOfRange: boolean;
 }
 
-export type RenderEvent = {
-  iteration: number;
-  isPathtrace: boolean;
-  frameMs: number;
-};
-
 export interface FuseChannel {
   chIndex: number;
   lut: Uint8Array;
