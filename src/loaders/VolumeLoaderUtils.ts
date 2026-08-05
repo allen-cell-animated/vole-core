@@ -212,7 +212,7 @@ export function composeSubregion(region: Region, container: Region): Box3 {
   return new Box3(min, max);
 }
 
-function isEmpty(obj) {
+function isEmpty(obj: object) {
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       return false;
