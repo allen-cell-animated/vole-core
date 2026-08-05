@@ -60,7 +60,6 @@ export class View3d extends EventDispatcher<{
   private pixelSamplingRate: number;
   private exposure: number;
   private volumeRenderMode: RenderMode.PATHTRACE | RenderMode.RAYMARCH;
-  private renderUpdateListener?: (iteration: number) => void;
   private loadErrorHandler?: (volume: Volume, error: unknown) => void;
   private image?: VolumeDrawable;
 
