@@ -2,7 +2,7 @@
 type EventMap = Record<string, object | void>;
 // An event is an object containing the event payload plus its type name (or just the name for events with no payload).
 export type Event<M extends EventMap, E extends keyof M> = M[E] extends void ? { type: E } : M[E] & { type: E };
-// Listeners are functions that receive events.
+// A listener is a function that receives an event of a specific type.
 export type Listener<M extends EventMap, E extends keyof M> = (event: Event<M, E>) => void;
 
 export default class EventDispatcher<M extends EventMap> {
