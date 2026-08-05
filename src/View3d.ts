@@ -30,6 +30,7 @@ import { Axis } from "./VolumeRenderSettings.js";
 import { PerChannelCallback } from "./loaders/IVolumeLoader.js";
 import { WorkerLoader } from "./workers/VolumeLoaderContext.js";
 import Line3d from "./drawables/lines/Line3d.js";
+import EventDispatcher from "./EventDispatcher.js";
 
 // Constants are kept for compatibility reasons.
 export const RENDERMODE_RAYMARCH = RenderMode.RAYMARCH;
@@ -49,14 +50,16 @@ const allGlobalLoadingOptions = {
 /**
  * @class
  */
-export class View3d {
+export class View3d extends EventDispatcher<{
+  render: void;
+  renderIteration: { iteration: number; isPathtrace: boolean };
+}> {
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
   private pixelSamplingRate: number;
   private exposure: number;
   private volumeRenderMode: RenderMode.PATHTRACE | RenderMode.RAYMARCH;
-  private renderUpdateListener?: (iteration: number) => void;
   private loadErrorHandler?: (volume: Volume, error: unknown) => void;
   private image?: VolumeDrawable;
 
@@ -76,9 +79,11 @@ export class View3d {
    *   The viewer will attempt to fill this element if provided.
    */
   constructor(options?: View3dOptions) {
+    super();
     const useWebGL2 = options?.useWebGL2 === undefined ? true : options.useWebGL2;
 
     this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
+    this.canvas3d.setOnRenderCallback(() => this.dispatchEvent({ type: "render" }));
     this.redraw = this.redraw.bind(this);
     this.scene = new Scene();
     this.backgroundColor = new Color(0x000000);
@@ -185,13 +190,6 @@ export class View3d {
     }
   }
 
-  /**
-   * Sets a listener that will be called after the 3D canvas renders.
-   */
-  setOnRenderCallback(callback: (() => void) | null): void {
-    this.canvas3d.setOnRenderCallback(callback);
-  }
-
   unsetImage(): VolumeDrawable | undefined {
     if (this.image) {
       this.canvas3d.removeControlHandlers();
@@ -259,14 +257,6 @@ export class View3d {
       this.removeVolume(this.image.volume);
     }
     this.image = undefined;
-  }
-
-  /**
-   * @param {function} callback a function that will receive the number of render iterations when it changes
-   */
-  setRenderUpdateListener(callback: (iteration: number) => void): void {
-    this.renderUpdateListener = callback;
-    this.image?.setRenderUpdateListener(callback);
   }
 
   // channels is an array of channel indices for which new data just arrived.
@@ -404,6 +394,11 @@ export class View3d {
     const oldImage = this.unsetImage();
 
     this.image = img;
+
+    const isPathtrace = this.volumeRenderMode === RenderMode.PATHTRACE;
+    this.image.setRenderUpdateListener((iteration) => {
+      this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+    });
 
     this.scene.add(img.sceneRoot);
 
@@ -882,6 +877,11 @@ export class View3d {
 
     this.volumeRenderMode = mode;
     if (this.image) {
+      const isPathtrace = mode === RenderMode.PATHTRACE;
+      this.image.setRenderUpdateListener((iteration) => {
+        this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+      });
+
       const viewMode = this.image.getViewMode();
       if (viewMode === Axis.Z) {
         // if the camera view is in single-slice view, then we don't want to change
@@ -900,8 +900,6 @@ export class View3d {
       this.image.setIsOrtho(isOrthographicCamera(this.canvas3d.camera));
       this.image.setResolution(this.canvas3d.getWidth(), this.canvas3d.getHeight());
       this.setAutoRotate(this.canvas3d.controls.autoRotate);
-
-      this.image.setRenderUpdateListener(this.renderUpdateListener);
     }
 
     // TODO remove when pathtrace supports a bounding box
