@@ -30,7 +30,8 @@ export default class EventDispatcher<M extends EventMap> {
   protected dispatchEvent<E extends keyof M>(event: Event<M, E>): void {
     const listeners = this.listeners[event.type];
     if (listeners !== undefined) {
-      for (const listener of listeners) {
+      // Iterate over a shallow copy of `listeners`, in case a listener is added/removed during iteration
+      for (const listener of listeners.slice()) {
         listener(event);
       }
     }
