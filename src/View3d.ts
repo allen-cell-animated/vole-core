@@ -878,6 +878,11 @@ export class View3d extends EventDispatcher<{
 
     this.volumeRenderMode = mode;
     if (this.image) {
+      const isPathtrace = mode === RenderMode.PATHTRACE;
+      this.image.setRenderUpdateListener((iteration) => {
+        this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+      });
+
       const viewMode = this.image.getViewMode();
       if (viewMode === Axis.Z) {
         // if the camera view is in single-slice view, then we don't want to change
@@ -896,11 +901,6 @@ export class View3d extends EventDispatcher<{
       this.image.setIsOrtho(isOrthographicCamera(this.canvas3d.camera));
       this.image.setResolution(this.canvas3d.getWidth(), this.canvas3d.getHeight());
       this.setAutoRotate(this.canvas3d.controls.autoRotate);
-
-      const isPathtrace = mode === RenderMode.PATHTRACE;
-      this.image.setRenderUpdateListener((iteration) => {
-        this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
-      });
     }
 
     // TODO remove when pathtrace supports a bounding box
