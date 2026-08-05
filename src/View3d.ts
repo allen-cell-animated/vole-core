@@ -25,7 +25,6 @@ import {
   isOrthographicCamera,
   ViewportCorner,
   RenderMode,
-  RenderEvent,
 } from "./types.js";
 import { IDrawableObject } from "./drawables/IDrawableObject.js";
 import { Axis } from "./VolumeRenderSettings.js";
@@ -51,7 +50,7 @@ const allGlobalLoadingOptions = {
 /**
  * @class
  */
-export class View3d extends EventDispatcher<{ render: RenderEvent }> {
+export class View3d extends EventDispatcher<{ render: object }> {
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
@@ -82,6 +81,7 @@ export class View3d extends EventDispatcher<{ render: RenderEvent }> {
     const useWebGL2 = options?.useWebGL2 === undefined ? true : options.useWebGL2;
 
     this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
+    this.canvas3d.setOnRenderCallback(() => this.dispatchEvent({ type: "render" }));
     this.redraw = this.redraw.bind(this);
     this.scene = new Scene();
     this.backgroundColor = new Color(0x000000);
@@ -186,13 +186,6 @@ export class View3d extends EventDispatcher<{ render: RenderEvent }> {
     } else {
       this.canvas3d.redraw();
     }
-  }
-
-  /**
-   * Sets a listener that will be called after the 3D canvas renders.
-   */
-  setOnRenderCallback(callback: (() => void) | null): void {
-    this.canvas3d.setOnRenderCallback(callback);
   }
 
   unsetImage(): VolumeDrawable | undefined {
