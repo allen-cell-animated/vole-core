@@ -1454,8 +1454,8 @@ function main() {
   });
   const counterSpan = document.getElementById("counter");
   if (counterSpan) {
-    view3D.setRenderUpdateListener((count) => {
-      counterSpan.innerHTML = "" + count;
+    view3D.addEventListener("renderIteration", ({ iteration }) => {
+      counterSpan.innerHTML = "" + iteration;
     });
   }
 
