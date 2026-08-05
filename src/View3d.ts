@@ -51,7 +51,7 @@ const allGlobalLoadingOptions = {
  * @class
  */
 export class View3d extends EventDispatcher<{
-  render: object;
+  render: void;
   renderIteration: { iteration: number; isPathtrace: boolean };
 }> {
   private canvas3d: ThreeJsPanel;

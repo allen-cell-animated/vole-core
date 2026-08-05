@@ -1,7 +1,7 @@
 // An event dispatcher's *event map* maps event type names to event payloads.
-type EventMap = Record<string, object>;
-// An event is an object containing the event's payload plus its type name.
-export type Event<M extends EventMap, E extends keyof M> = M[E] & { type: E };
+type EventMap = Record<string, object | void>;
+// An event is an object containing the event payload plus its type name (or just the name for events with no payload).
+export type Event<M extends EventMap, E extends keyof M> = M[E] extends void ? { type: E } : M[E] & { type: E };
 // Listeners are functions that receive events.
 export type Listener<M extends EventMap, E extends keyof M> = (event: Event<M, E>) => void;
 
