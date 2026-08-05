@@ -50,7 +50,10 @@ const allGlobalLoadingOptions = {
 /**
  * @class
  */
-export class View3d extends EventDispatcher<{ render: object }> {
+export class View3d extends EventDispatcher<{
+  render: object;
+  renderIteration: { iteration: number; isPathtrace: boolean };
+}> {
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
@@ -255,14 +258,6 @@ export class View3d extends EventDispatcher<{ render: object }> {
       this.removeVolume(this.image.volume);
     }
     this.image = undefined;
-  }
-
-  /**
-   * @param {function} callback a function that will receive the number of render iterations when it changes
-   */
-  setRenderUpdateListener(callback: (iteration: number) => void): void {
-    this.renderUpdateListener = callback;
-    this.image?.setRenderUpdateListener(callback);
   }
 
   // channels is an array of channel indices for which new data just arrived.
@@ -897,7 +892,10 @@ export class View3d extends EventDispatcher<{ render: object }> {
       this.image.setResolution(this.canvas3d.getWidth(), this.canvas3d.getHeight());
       this.setAutoRotate(this.canvas3d.controls.autoRotate);
 
-      this.image.setRenderUpdateListener(this.renderUpdateListener);
+      const isPathtrace = mode === RenderMode.PATHTRACE;
+      this.image.setRenderUpdateListener((iteration) => {
+        this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+      });
     }
 
     // TODO remove when pathtrace supports a bounding box
