@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { glslTransform } from "./vite.config.js";
+import fs from 'fs';
 
 describe("GLSL transform", () => {
-  it("escapes special characters (e.g. backticks) so they aren't interpreted as JS", () => {
+  const dir = './src/constants/shaders/';
+  const files = fs.readdirSync(dir).map(file => dir + file);
+
+  it.each(files)("escapes special characters in %s", (file) => {
     // Arrange
-    const code = "`backtick`, \\ and ${notATemplateExpression}";
+    const code = fs.readFileSync(file).toString();
     
     // Act
     const result = glslTransform(code, "shader.frag");
