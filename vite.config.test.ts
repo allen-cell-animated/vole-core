@@ -9,7 +9,7 @@ describe("GLSL transform", () => {
     
     // Act
     const result = glslTransform(code, "shader.frag");
-    const body = (result || "").replace("export default", "return");
+    const body = (result ?? "").replace("export default", "return");
     const evaluated = new Function(body)();
 
     // Assert
