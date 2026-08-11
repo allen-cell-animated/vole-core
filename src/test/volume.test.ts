@@ -5,6 +5,7 @@ import VolumeMaker from "../VolumeMaker.js";
 import { LUT_ARRAY_LENGTH } from "../Lut.js";
 import Channel from "../Channel.js";
 import { CImageInfo, ImageInfo } from "../ImageInfo.js";
+import { IVolumeLoader, LoadSpec } from "../loaders/IVolumeLoader.js";
 import { getDataRange } from "../utils/num_utils.js";
 
 // PREPARE SOME TEST DATA TO TRY TO DISPLAY A VOLUME.
@@ -44,6 +45,30 @@ const testimgdata: ImageInfo = {
     scale: [1, 1, 1],
   },
 };
+
+const multiscaleTestimgdata: ImageInfo = {
+  ...testimgdata,
+  multiscaleLevelDims: [
+    ...testimgdata.multiscaleLevelDims,
+    {
+      shape: [1, 9, 33, 146, 102],
+      spacing: [1, 1, 0.58, (0.065 * 494) / 146, (0.065 * 306) / 102],
+      spaceUnit: "",
+      timeUnit: "",
+      dataType: "uint8",
+    },
+  ],
+};
+
+function createTestLoader(multiscaleLevelDims: ImageInfo["multiscaleLevelDims"]): IVolumeLoader {
+  return {
+    loadDims: vi.fn().mockResolvedValue(multiscaleLevelDims),
+    createVolume: vi.fn(),
+    loadVolumeData: vi.fn(),
+    setPrefetchPriority: vi.fn(),
+    syncMultichannelLoading: vi.fn(),
+  };
+}
 
 function checkVolumeConstruction(v: Volume, imgdata: ImageInfo) {
   expect(v).to.be.a("Object");
@@ -132,7 +157,9 @@ describe("test volume", () => {
   describe("loading events", () => {
     it("does not dispatch loadStart when no reload is required", async () => {
       // ARRANGE
-      const v = new Volume(testimgdata);
+      // loader is needed for loadStart to potentially be triggered
+      const loader = createTestLoader(testimgdata.multiscaleLevelDims);
+      const v = new Volume(testimgdata, new LoadSpec(), loader);
       const loadStart = vi.fn();
       v.addEventListener("loadStart", loadStart);
 
@@ -142,6 +169,28 @@ describe("test volume", () => {
       // ASSERT: `testimgdata` has only one multiscale level, so
       // changing scaleLevelBias should not trigger any load.
       expect(loadStart).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("biasesSelectDifferentLevels", () => {
+    it("reports when the scale-level bias selects a different resolution", async () => {
+      // ARRANGE
+      const loader = createTestLoader(multiscaleTestimgdata.multiscaleLevelDims);
+      const loadSpec = new LoadSpec();
+      loadSpec.scaleLevelBias = 1;
+      const v = new Volume(multiscaleTestimgdata, loadSpec, loader);
+
+      // ACT+ASSERT
+      expect(await v.biasesSelectDifferentLevels()).toBe(true);
+    });
+
+    it("reports when the scale-level bias selects the same resolution", async () => {
+      // ARRANGE
+      const loader = createTestLoader(multiscaleTestimgdata.multiscaleLevelDims);
+      const v = new Volume(multiscaleTestimgdata, new LoadSpec(), loader);
+
+      // ACT+ASSERT
+      expect(await v.biasesSelectDifferentLevels()).toBe(false);
     });
   });
 });
