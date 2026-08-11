@@ -47,13 +47,15 @@ const allGlobalLoadingOptions = {
   throttleArrivingChannelData: true,
 };
 
+type View3dEvents = {
+  render: void;
+  renderIteration: { iteration: number; isPathtrace: boolean };
+};
+
 /**
  * @class
  */
-export class View3d extends EventDispatcher<{
-  render: void;
-  renderIteration: { iteration: number; isPathtrace: boolean };
-}> {
+export class View3d extends EventDispatcher<View3dEvents> {
   private canvas3d: ThreeJsPanel;
   private scene: Scene;
   private backgroundColor: Color;
