@@ -60,6 +60,10 @@ export class View3d extends EventDispatcher<{
   private pixelSamplingRate: number;
   private exposure: number;
   private volumeRenderMode: RenderMode.PATHTRACE | RenderMode.RAYMARCH;
+  /** @deprecated Should be removed in the next major version. */
+  private renderListener?: () => void;
+  /** @deprecated Should be removed in the next major version. */
+  private renderUpdateListener?: (iteration: number) => void;
   private loadErrorHandler?: (volume: Volume, error: unknown) => void;
   private image?: VolumeDrawable;
 
@@ -83,7 +87,10 @@ export class View3d extends EventDispatcher<{
     const useWebGL2 = options?.useWebGL2 === undefined ? true : options.useWebGL2;
 
     this.canvas3d = new ThreeJsPanel(options?.parentElement, useWebGL2);
-    this.canvas3d.setOnRenderCallback(() => this.dispatchEvent({ type: "render" }));
+    this.canvas3d.setOnRenderCallback(() => {
+      this.dispatchEvent({ type: "render" });
+      this.renderListener?.();
+    });
     this.redraw = this.redraw.bind(this);
     this.scene = new Scene();
     this.backgroundColor = new Color(0x000000);
@@ -190,6 +197,15 @@ export class View3d extends EventDispatcher<{
     }
   }
 
+  /**
+   * Sets a listener that will be called after the 3D canvas renders.
+   * @deprecated Will be removed in the next major version. Use `addEventListener` to listen to the `render` event
+   * instead.
+   */
+  setOnRenderCallback(callback: (() => void) | null | undefined): void {
+    this.renderListener = callback === null ? undefined : callback;
+  }
+
   unsetImage(): VolumeDrawable | undefined {
     if (this.image) {
       this.canvas3d.removeControlHandlers();
@@ -202,7 +218,10 @@ export class View3d extends EventDispatcher<{
   }
 
   /**
-   * Add a new volume image to the viewer.  (The viewer currently only supports a single image at a time - adding repeatedly, without removing in between, is a potential resource leak)
+   * Add a new volume image to the viewer.
+   *
+   * (The viewer currently only supports a single image at a time - adding repeatedly, without removing in between, is
+   * a potential resource leak)
    * @param {Volume} volume
    * @param {VolumeDisplayOptions} options
    */
@@ -257,6 +276,15 @@ export class View3d extends EventDispatcher<{
       this.removeVolume(this.image.volume);
     }
     this.image = undefined;
+  }
+
+  /**
+   * @param {function} callback a function that will receive the number of render iterations when it changes
+   * @deprecated Will be removed in the next major version. Use `addEventListener` to listen to the `renderUpdate`
+   * event instead.
+   */
+  setRenderUpdateListener(callback: (iteration: number) => void): void {
+    this.renderUpdateListener = callback;
   }
 
   // channels is an array of channel indices for which new data just arrived.
@@ -398,6 +426,7 @@ export class View3d extends EventDispatcher<{
     const isPathtrace = this.volumeRenderMode === RenderMode.PATHTRACE;
     this.image.setRenderUpdateListener((iteration) => {
       this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+      this.renderUpdateListener?.(iteration);
     });
 
     this.scene.add(img.sceneRoot);
@@ -880,6 +909,7 @@ export class View3d extends EventDispatcher<{
       const isPathtrace = mode === RenderMode.PATHTRACE;
       this.image.setRenderUpdateListener((iteration) => {
         this.dispatchEvent({ type: "renderIteration", iteration, isPathtrace });
+        this.renderUpdateListener?.(iteration);
       });
 
       const viewMode = this.image.getViewMode();
