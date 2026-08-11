@@ -9,6 +9,7 @@ import { MAX_ATLAS_EDGE, pickLevelToLoadUnscaled } from "./loaders/VolumeLoaderU
 import type { NumberType, TypedArray } from "./types.js";
 import { type ImageInfo, CImageInfo, defaultImageInfo } from "./ImageInfo.js";
 import type { VolumeDims } from "./VolumeDims.js";
+import EventDispatcher from "./EventDispatcher.js";
 
 interface VolumeDataObserver {
   onVolumeData: (vol: Volume, batch: number[]) => void;
@@ -22,7 +23,9 @@ interface VolumeDataObserver {
  * @class
  * @param {ImageInfo} imageInfo
  */
-export default class Volume {
+export default class Volume extends EventDispatcher<{
+  loadStart: undefined;
+}> {
   public imageInfo: CImageInfo;
   public loadSpec: Required<LoadSpec>;
   public loader?: IVolumeLoader;
@@ -73,6 +76,7 @@ export default class Volume {
   private loaded: boolean;
 
   constructor(imageInfo: ImageInfo = defaultImageInfo(), loadSpec: LoadSpec = new LoadSpec(), loader?: IVolumeLoader) {
+    super();
     this.loaded = false;
     this.imageInfo = new CImageInfo(imageInfo);
     // TODO: use getter?
@@ -233,6 +237,7 @@ export default class Volume {
       ...this.loadSpecRequired,
       subregion: this.loadSpecRequired.subregion.clone(),
     };
+    this.dispatchEvent({ type: "loadStart" });
 
     try {
       await this.loader?.loadVolumeData(this, undefined, onChannelLoaded);
