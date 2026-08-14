@@ -234,8 +234,11 @@ export default class RequestQueue {
     this.activeRequests.add(key);
 
     await requestItem.action().then(requestItem.resolve, requestItem.reject);
-    this.activeRequests.delete(key);
-    this.allRequests.delete(key);
+    // A new request for the same key may have been added during the await
+    if (requestItem === this.allRequests.get(requestKey)) {
+      this.activeRequests.delete(key);
+      this.allRequests.delete(key);
+    }
     this.dequeue();
   }
 
