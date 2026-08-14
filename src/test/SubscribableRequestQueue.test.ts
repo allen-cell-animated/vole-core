@@ -192,26 +192,33 @@ describe("SubscribableRequestQueue", () => {
       expect(queue.cancelRequest("test", id)).to.be.false;
     });
 
-    it("does not cancel an underlying request if it is running", async () => {
+    it("aborts a request even it is running", async () => {
+      // Arrange
       const queue = new SubscribableRequestQueue();
       const id1 = queue.addSubscriber();
       const id2 = queue.addSubscriber();
+      const abort = vi.fn();
 
-      const promise1 = queue.addRequest("test", id1, () => delay(TIMEOUT, "foo"));
+      const promise1 = queue.addRequest("test", id1, () => delay(TIMEOUT, "foo"), undefined, undefined, abort);
       expect(queue.hasRequest("test")).to.be.true;
       expect(queue.requestRunning("test")).to.be.true;
       expect(queue.isSubscribed(id1, "test")).to.be.true;
       expect(queue.isSubscribed(id2, "test")).to.be.false;
 
+      // Act
       queue.cancelRequest("test", id1);
-      expect(queue.hasRequest("test")).to.be.true;
+      // Assert
+      expect(queue.hasRequest("test")).to.be.false;
       expect(queue.isSubscribed(id1, "test")).to.be.false;
       expect(await isRejected(promise1)).to.be.true;
+      expect(abort).toHaveBeenCalled();
 
+      // Act
       const promise2 = queue.addRequest("test", id2, () => delay(TIMEOUT, "bar"));
+      // Assert
       expect(queue.isSubscribed(id2, "test")).to.be.true;
       const result = await promise2;
-      expect(result).to.equal("foo");
+      expect(result).to.equal("bar");
     });
 
     it("does not cancel an underlying request if it has another subscription", async () => {

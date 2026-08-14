@@ -85,13 +85,13 @@ export default class SubscribableRequestQueue {
     key: string,
     subscriberId: number,
     requestAction: () => Promise<T>,
-    abortAction: () => void,
     lowPriority?: boolean,
-    delayMs?: number
+    delayMs?: number,
+    abortAction?: () => void,
   ): Promise<T> {
     // Create single underlying request if it does not yet exist
     this.queue
-      .addRequest(key, requestAction, abortAction, lowPriority, delayMs)
+      .addRequest(key, requestAction, lowPriority, delayMs, abortAction)
       .then((value) => this.resolveAll(key, value))
       .catch((reason) => this.rejectAll(key, reason));
 

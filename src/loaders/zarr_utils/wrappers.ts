@@ -49,7 +49,7 @@ export const withVoleInstrumentation = defineArrayExtension((array, opts: VoleIn
       const abort = () => controller.abort();
       const result =
         opts.queue && opts.subscriber !== undefined
-          ? await opts.queue.addRequest(fullKey, opts.subscriber, fetchChunk, abort, opts.isPrefetch)
+          ? await opts.queue.addRequest(fullKey, opts.subscriber, fetchChunk, opts.isPrefetch, undefined, abort)
           : await fetchChunk();
 
       opts.cache?.insert(fullKey, result);
