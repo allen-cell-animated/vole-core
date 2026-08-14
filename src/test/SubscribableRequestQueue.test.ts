@@ -263,6 +263,52 @@ describe("SubscribableRequestQueue", () => {
       expect(queue.hasRequest("test")).to.be.false;
       expect(queue.isSubscribed(id, "test")).to.be.false;
     });
+
+    it("keeps a reissued request tracked when another request is canceled", async () => {
+      // Arrange
+      const queue = new SubscribableRequestQueue();
+      const firstSubscriber = queue.addSubscriber();
+      const controller = new AbortController();
+
+      queue
+        .addRequest(
+          "same-key",
+          firstSubscriber,
+          () =>
+            new Promise<void>((_, reject) => {
+              // Note: in practice, it's possible that a real fetch would take some
+              // time between receiving the abort signal and rejecting the promise.
+              controller.signal.addEventListener("abort", reject);
+            }),
+          undefined,
+          undefined,
+          () => controller.abort()
+        )
+        .catch(() => undefined);
+
+      // Act
+      queue.removeSubscriber(firstSubscriber); // Triggers abort()
+
+      let resolveSecond: () => void = () => undefined;
+      const second = queue.addRequest(
+        "same-key",
+        queue.addSubscriber(),
+        () => new Promise<void>((resolve) => (resolveSecond = resolve))
+      );
+      const handledSecond = second.catch(() => undefined);
+
+      await delay(0, undefined); // Wait for the abort signal to trigger reject()
+
+      try {
+        // Assert
+        expect(queue.hasRequest("same-key")).to.be.true;
+        expect(queue.requestRunning("same-key")).to.be.true;
+      } finally {
+        // Cleanup
+        resolveSecond();
+        await handledSecond;
+      }
+    });
   });
 
   describe("removeSubscriber", () => {
