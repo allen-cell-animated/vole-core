@@ -85,12 +85,13 @@ export default class SubscribableRequestQueue {
     key: string,
     subscriberId: number,
     requestAction: () => Promise<T>,
+    abortAction: () => void,
     lowPriority?: boolean,
     delayMs?: number
   ): Promise<T> {
     // Create single underlying request if it does not yet exist
     this.queue
-      .addRequest(key, requestAction, lowPriority, delayMs)
+      .addRequest(key, requestAction, abortAction, lowPriority, delayMs)
       .then((value) => this.resolveAll(key, value))
       .catch((reason) => this.rejectAll(key, reason));
 
@@ -122,7 +123,7 @@ export default class SubscribableRequestQueue {
 
   /**
    * Rejects a subscription and removes it from the list of subscriptions for a request, then cancels the underlying
-   * request if it is no longer subscribed and is not running already.
+   * request if it is no longer subscribed.
    */
   private rejectSubscription(key: string, reject: Rejecter, cancelReason?: unknown): void {
     // Reject the outer "subscription" promise
@@ -140,8 +141,8 @@ export default class SubscribableRequestQueue {
       subscriptions.splice(idx, 1);
     }
 
-    // Remove the underlying request if there are no more subscribers and the request is not already running
-    if (subscriptions.length < 1 && !this.queue.requestRunning(key)) {
+    // Remove the underlying request if there are no more subscribers.
+    if (subscriptions.length < 1) {
       this.queue.cancelRequest(key, cancelReason);
       this.requests.delete(key);
     }

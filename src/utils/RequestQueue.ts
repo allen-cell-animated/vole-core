@@ -2,6 +2,7 @@
 export type Request<V> = {
   key: string;
   requestAction: () => Promise<V>;
+  abort: () => void;
 };
 
 export const DEFAULT_REQUEST_CANCEL_REASON = "request cancelled";
@@ -14,6 +15,8 @@ interface RequestItem<V> {
   key: string;
   /** Action to be run. */
   action: () => Promise<V>;
+  /** Callback to cancelation the action after it's started */
+  abort: () => void;
   /** Reference to the promise object that will be resolved when the action is complete. */
   promise: Promise<V>;
   /** Callback used to resolve the promise. */
@@ -76,7 +79,7 @@ export default class RequestQueue {
    * @param requestAction callable function action of the request.
    * @returns a reference to the new, registered RequestItem.
    */
-  private registerRequest<T>(key: string, requestAction: () => Promise<T>): RequestItem<T> {
+  private registerRequest<T>(key: string, requestAction: () => Promise<T>, abortAction: () => void): RequestItem<T> {
     // Create a new promise and store the resolve and reject callbacks for later.
     // This lets us perform the actual action at a later point, when the request is at the
     // front of the processing queue.
@@ -89,6 +92,7 @@ export default class RequestQueue {
     const requestItem = {
       key: key,
       action: requestAction,
+      abort: abortAction,
       resolve: promiseResolve,
       reject: promiseReject,
       promise,
@@ -141,10 +145,10 @@ export default class RequestQueue {
    *  until the request is resolved or cancelled.
    *  Note that the return type of the promise will match that of the first request's instance.
    */
-  public addRequest<T>(key: string, requestAction: () => Promise<T>, lowPriority = false, delayMs = 0): Promise<T> {
+  public addRequest<T>(key: string, requestAction: () => Promise<T>, abortAction: () => void, lowPriority = false, delayMs = 0): Promise<T> {
     if (!this.allRequests.has(key)) {
       // New request!
-      const requestItem = this.registerRequest(key, requestAction);
+      const requestItem = this.registerRequest(key, requestAction, abortAction);
       // If a delay is set, wait to add this to the queue.
       if (delayMs > 0) {
         const timeoutId = setTimeout(() => this.addRequestToQueue(key, lowPriority), delayMs);
@@ -190,7 +194,7 @@ export default class RequestQueue {
     const promises: Promise<unknown>[] = [];
     for (let i = 0; i < requests.length; i++) {
       const item = requests[i];
-      const promise = this.addRequest(item.key, item.requestAction, lowPriority, delayMs * i);
+      const promise = this.addRequest(item.key, item.requestAction, item.abort, lowPriority, delayMs * i);
       promises.push(promise);
     }
     return promises;
@@ -250,6 +254,8 @@ export default class RequestQueue {
         // Cancel requests that have not been queued yet.
         clearTimeout(requestItem.timeoutId);
       }
+      // Cancel in-progress work
+      requestItem.abort();
       // Reject the request, then clear from the queue and known requests.
       requestItem.reject(cancelReason);
     }
