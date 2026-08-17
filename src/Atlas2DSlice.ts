@@ -16,7 +16,8 @@ import {
   Vector3,
   WebGLRenderer,
 } from "three";
-import { Channel, Volume } from "./index.js";
+import type Channel from "./Channel.js";
+import type Volume from "./Volume.js";
 import { sliceFragmentShaderSrc, sliceShaderUniforms, sliceVertexShaderSrc } from "./constants/volumeSliceShader.js";
 import type { VolumeRenderImpl } from "./VolumeRenderImpl.js";
 import { SettingsFlags, VolumeRenderSettings } from "./VolumeRenderSettings.js";
@@ -382,8 +383,14 @@ export default class Atlas2DSlice implements VolumeRenderImpl {
    * @param axis The axis to slice along: Axis.Z = XY view, Axis.X = YZ view, Axis.Y = XZ view.
    */
   public setViewAxis(axis: AxisName): void {
+    if (this.viewAxisValue === axis) {
+      return;
+    }
     this.viewAxisValue = axis;
     this.setUniform("viewAxis", axisToShaderInt(axis));
+    // The plane is created as an XY slice. Switching to X or Y must immediately
+    // remap its dimensions to YZ or XZ, even when no later volume-size update occurs.
+    this.updateVolumeDimensions();
   }
 
   /**

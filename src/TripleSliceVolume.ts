@@ -40,18 +40,32 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private crosshairMaterial: LineBasicMaterial;
   private crosshairLines: [Line, Line, Line, Line, Line, Line]; // [xyV, xyH, yzV, yzH, xzV, xzH]
 
+  /**
+   * Triple view has a fixed, screen-aligned pane layout. Preserve axis flips,
+   * but do not let the volume alignment transform affect the panes.
+   */
+  private static getProjectionSettings(settings: VolumeRenderSettings): VolumeRenderSettings {
+    const projectionSettings = settings.clone();
+    projectionSettings.translation.set(0, 0, 0);
+    projectionSettings.rotation.set(0, 0, 0);
+    projectionSettings.scale.set(1, 1, 1);
+    return projectionSettings;
+  }
+
   constructor(volume: Volume, settings: VolumeRenderSettings) {
     this.volume = volume;
     this.baseSettings = settings;
 
-    const xySlice = new Atlas2DSlice(volume, settings.clone());
+    const projectionSettings = TripleSliceVolume.getProjectionSettings(settings);
+
+    const xySlice = new Atlas2DSlice(volume, projectionSettings.clone());
     xySlice.setViewAxis(Axis.Z);
     xySlice.setRequireFullVolume(true);
 
-    const yzSlice = new Atlas2DSlice(volume, settings.clone());
+    const yzSlice = new Atlas2DSlice(volume, projectionSettings.clone());
     yzSlice.setViewAxis(Axis.X);
 
-    const xzSlice = new Atlas2DSlice(volume, settings.clone());
+    const xzSlice = new Atlas2DSlice(volume, projectionSettings.clone());
     xzSlice.setViewAxis(Axis.Y);
 
     this.renderers = [xySlice, yzSlice, xzSlice];
@@ -99,12 +113,15 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
     // Forward non-ROI flags to all renderers
     const nonRoiFlags = dirtyFlags !== undefined ? dirtyFlags & ~SettingsFlags.ROI : dirtyFlags;
     if (nonRoiFlags === undefined || nonRoiFlags !== 0) {
+      const projectionSettings = TripleSliceVolume.getProjectionSettings(settings);
       for (const r of this.renderers) {
-        r.updateSettings(settings, nonRoiFlags);
+        r.updateSettings(projectionSettings, nonRoiFlags);
       }
     }
-    // Recompute layout when resolution or view parameters change
-    if (dirtyFlags === undefined || dirtyFlags & (SettingsFlags.SAMPLING | SettingsFlags.VIEW)) {
+    // Recompute layout when resolution or view parameters change. A transform
+    // update also touches each slice renderer's root node, which is where the
+    // fixed pane position lives, so restore the pane layout afterward.
+    if (dirtyFlags === undefined || dirtyFlags & (SettingsFlags.SAMPLING | SettingsFlags.VIEW | SettingsFlags.TRANSFORM)) {
       this.updateCrosshairs();
       this.updateLayout();
     }
@@ -181,7 +198,7 @@ export default class TripleSliceVolume implements VolumeRenderImpl, TripleSliceS
   private applySliceToRenderer(axis: AxisName): void {
     const index = this.baseSettings.tripleSliceIndices[axis];
     const rendererIndex = axis === "z" ? 0 : axis === "x" ? 1 : 2;
-    const settings = this.baseSettings.clone();
+    const settings = TripleSliceVolume.getProjectionSettings(this.baseSettings);
     settings.sliceIndex = index;
     this.renderers[rendererIndex].updateSettings(settings, SettingsFlags.ROI);
   }
