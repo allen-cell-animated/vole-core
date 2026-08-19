@@ -23,7 +23,7 @@ interface RequestItem<V> {
   reject: (reason?: unknown) => void;
   /** Optional, used to track timeouts if the item will be added to the queue later. */
   timeoutId?: ReturnType<typeof setTimeout>;
-  /** Callback to cancelation the action after it's started */
+  /** Callback to cancel the action after it's started */
   abort?: () => void;
 }
 
