@@ -3,7 +3,7 @@ import { wrapTweakpaneCall } from "../utils/TweakpaneWrapper.js";
 
 describe("TweakpaneWrapper", () => {
   it("Replaces TpError with instance of Error", () => {
-    let error: any;
+    let error: unknown;
     try {
       wrapTweakpaneCall(() => (new Pane()).addInput({ foo: undefined }, 'foo'));
     } catch (e) {

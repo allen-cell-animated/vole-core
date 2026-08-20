@@ -1,7 +1,7 @@
 // Workaround for https://github.com/cocopon/tweakpane/issues/665
 export class WrappedTpError extends Error {
-  constructor(e: any) {
-  super();
+  constructor(e: unknown) {
+    super();
     Object.assign(this, e);
   }
 }
@@ -9,8 +9,8 @@ export class WrappedTpError extends Error {
 export function wrapTweakpaneCall<T>(fn: () => T): T {
   try {
     return fn();
-  } catch (e: any) {
-    if (e.name === "TpError") {
+  } catch (e: unknown) {
+    if (e instanceof Object && "name" in e && e.name === "TpError") {
       throw new WrappedTpError(e);
     }
     throw e;
